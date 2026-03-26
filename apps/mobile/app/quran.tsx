@@ -25,9 +25,10 @@ const RECITERS = [
   { id: 'ar.mahermuaiqly',      name: 'Maher Al-Muaiqly' },
 ]
 
+// Bug 14 fix: Saheeh International first so it's the default translation
 const LANGS = [
+  { id: 'en.sahih',    name: 'Saheeh International' },
   { id: 'en.asad',     name: 'Muhammad Asad' },
-  { id: 'en.sahih',   name: 'Saheeh International' },
   { id: 'en.pickthall',name: 'Pickthall' },
 ]
 
@@ -527,9 +528,14 @@ export default function QuranScreen() {
                 borderWidth: 1, borderColor: isThisPlaying ? colors.primary : colors.border,
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <View style={{ backgroundColor: isThisPlaying ? colors.primary : colors.primaryLight, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  {/* Bug 13 fix: ayah number badge is tappable to start recitation from that ayah */}
+                  <TouchableOpacity
+                    onPress={() => handlePlaySingle(ayah, index)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ backgroundColor: isThisPlaying ? colors.primary : colors.primaryLight, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}
+                  >
                     <Text style={{ fontSize: 12, fontWeight: '700', color: isThisPlaying ? colors.primaryContrast : colors.primary }}>{ayah.numberInSurah}</Text>
-                  </View>
+                  </TouchableOpacity>
                   {ayah.audio && (
                     <TouchableOpacity
                       onPress={() => handlePlaySingle(ayah, index)}

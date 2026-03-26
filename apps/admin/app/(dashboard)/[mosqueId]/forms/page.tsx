@@ -208,7 +208,9 @@ export default function FormsPage() {
 
               <div className="flex items-center gap-2 flex-shrink-0">
                 <a
-                  href={doc.fileUrl}
+                  href={doc.mimeType === 'application/pdf'
+                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.fileUrl)}`
+                    : doc.fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-green-700 font-medium px-3 py-1.5 rounded-lg hover:bg-green-50"

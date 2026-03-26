@@ -543,11 +543,134 @@ function UnownedMosquesTab({
   )
 }
 
+// ── All Mosques Tab ──────────────────────────────────────────────────────
+
+function AllMosquesTab({
+  adminFetch,
+  onAssign,
+}: {
+  adminFetch: ReturnType<typeof useAdminFetch>
+  onAssign: (mosqueId: string, mosqueName: string) => void
+}) {
+  const [searchText, setSearchText] = useState('')
+  const [submittedQuery, setSubmittedQuery] = useState('')
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['all-mosques', submittedQuery],
+    queryFn: async () => {
+      const params = submittedQuery ? `?q=${encodeURIComponent(submittedQuery)}&limit=1500` : '?limit=1500'
+      const res = await adminFetch(`/admin/mosque-import/all${params}`)
+      const json = await res.json()
+      return json.data as {
+        items: Array<{
+          id: string; name: string; city: string; state: string; zipCode: string | null
+          isVerified: boolean; importSource: string | null
+          owner: { name: string | null; email: string } | null
+        }>
+        hasMore: boolean
+      }
+    },
+  })
+
+  const mosques = data?.items ?? []
+
+  return (
+    <div>
+      <form
+        onSubmit={(e) => { e.preventDefault(); setSubmittedQuery(searchText.trim()) }}
+        className="flex gap-2 mb-4"
+      >
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Search by name, city, state, or zip code..."
+          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+        />
+        <button
+          type="submit"
+          className="px-4 py-2.5 bg-green-800 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors"
+        >
+          Search
+        </button>
+        {submittedQuery && (
+          <button
+            type="button"
+            onClick={() => { setSearchText(''); setSubmittedQuery('') }}
+            className="px-3 py-2.5 border border-gray-200 text-gray-500 text-sm rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            Clear
+          </button>
+        )}
+      </form>
+
+      {(isLoading || isFetching) ? (
+        <div className="p-12 text-center bg-white rounded-2xl border border-gray-100">
+          <svg className="animate-spin w-6 h-6 text-green-700 mx-auto" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3V0a12 12 0 100 24v-4l-3 3 3 3v4a12 12 0 01-12-12z" />
+          </svg>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-gray-500">
+              <span className="font-semibold text-gray-900">{mosques.length}</span>
+              {submittedQuery ? ` result${mosques.length !== 1 ? 's' : ''} for "${submittedQuery}"` : ' mosques'}
+              {data?.hasMore && ' (showing first 1500 — refine your search)'}
+            </p>
+          </div>
+
+          {mosques.length === 0 && submittedQuery && (
+            <div className="p-8 text-center bg-white rounded-2xl border border-gray-100">
+              <p className="text-gray-500 text-sm">No mosques match <span className="font-semibold">"{submittedQuery}"</span></p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {mosques.map((m) => (
+              <div key={m.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900 text-sm truncate">{m.name}</p>
+                    {m.isVerified && <span className="text-xs font-bold shrink-0" style={{ color: '#C9963A' }}>✓</span>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <p className="text-xs text-gray-400">{m.city}, {m.state}{m.zipCode ? ` ${m.zipCode}` : ''}</p>
+                    {m.owner ? (
+                      <span className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px] font-semibold border border-green-100">
+                        {m.owner.name ?? m.owner.email}
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[10px] font-semibold border border-orange-100">No owner</span>
+                    )}
+                    {m.importSource === 'google_places' && (
+                      <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-semibold border border-blue-100">Google Places</span>
+                    )}
+                  </div>
+                </div>
+                {!m.owner && (
+                  <button
+                    onClick={() => onAssign(m.id, m.name)}
+                    className="px-3 py-1.5 bg-green-800 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors shrink-0"
+                  >
+                    Assign Owner →
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────
 
 export default function MosqueImportPage() {
   const adminFetch = useAdminFetch()
-  const [activeTab, setActiveTab] = useState<'search' | 'bulk' | 'unowned'>('search')
+  const [activeTab, setActiveTab] = useState<'search' | 'bulk' | 'unowned' | 'all'>('search')
 
   // Search
   const [query, setQuery] = useState('')
@@ -705,9 +828,10 @@ export default function MosqueImportPage() {
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl p-1 mb-6 w-fit" style={{ background: '#EDE6D5' }}>
         {([
-          { key: 'search', label: 'Search' },
-          { key: 'bulk',   label: 'Bulk US Import' },
+          { key: 'search',  label: 'Search' },
+          { key: 'bulk',    label: 'Bulk US Import' },
           { key: 'unowned', label: 'Unowned Mosques' },
+          { key: 'all',     label: 'All Mosques' },
         ] as const).map((tab) => (
           <button
             key={tab.key}
@@ -727,6 +851,12 @@ export default function MosqueImportPage() {
       {activeTab === 'bulk' && <BulkImportTab adminFetch={adminFetch} />}
       {activeTab === 'unowned' && (
         <UnownedMosquesTab
+          adminFetch={adminFetch}
+          onAssign={(mosqueId, mosqueName) => setAssignTarget({ mosqueId, mosqueName })}
+        />
+      )}
+      {activeTab === 'all' && (
+        <AllMosquesTab
           adminFetch={adminFetch}
           onAssign={(mosqueId, mosqueName) => setAssignTarget({ mosqueId, mosqueName })}
         />

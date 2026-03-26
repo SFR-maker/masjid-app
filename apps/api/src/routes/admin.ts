@@ -537,6 +537,43 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.send({ success: true, message: 'Bulk import started. Poll /admin/mosque-import/bulk-status for progress.' })
   })
 
+  // GET /admin/mosque-import/all — all mosques with optional search
+  app.get('/mosque-import/all', { preHandler: [requireSuperAdmin] }, async (req, reply) => {
+    const { q, limit = '1500' } = req.query as { q?: string; limit?: string }
+    const search = q?.trim()
+    const mosques = await prisma.mosqueProfile.findMany({
+      where: {
+        isActive: true,
+        ...(search ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { city: { contains: search, mode: 'insensitive' } },
+            { state: { contains: search, mode: 'insensitive' } },
+            { zipCode: { contains: search, mode: 'insensitive' } },
+          ],
+        } : {}),
+      },
+      select: {
+        id: true, name: true, city: true, state: true, zipCode: true,
+        isVerified: true, importSource: true,
+        admins: { where: { role: 'OWNER' }, select: { user: { select: { name: true, email: true } } } },
+      },
+      take: Number(limit),
+      orderBy: { name: 'asc' },
+    })
+    return reply.send({
+      success: true,
+      data: {
+        items: mosques.map((m) => ({
+          ...m,
+          owner: m.admins[0]?.user ?? null,
+          admins: undefined,
+        })),
+        hasMore: mosques.length === Number(limit),
+      },
+    })
+  })
+
   // GET /admin/mosque-import/unowned — mosques without an OWNER admin
   app.get('/mosque-import/unowned', { preHandler: [requireSuperAdmin] }, async (req, reply) => {
     const { cursor, limit = '1500' } = req.query as { cursor?: string; limit?: string }

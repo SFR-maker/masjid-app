@@ -364,7 +364,7 @@ function UnownedMosquesTab({
   const { data, isLoading } = useQuery({
     queryKey: ['unowned-mosques'],
     queryFn: async () => {
-      const res = await adminFetch('/admin/mosque-import/unowned?limit=500')
+      const res = await adminFetch('/admin/mosque-import/unowned?limit=1500')
       const json = await res.json()
       return json.data as {
         items: Array<{
@@ -417,7 +417,9 @@ function UnownedMosquesTab({
     )
   }
 
-  if (mosques.length === 0) {
+  const allItems = data?.items ?? []
+
+  if (allItems.length === 0) {
     return (
       <div className="p-12 text-center bg-white rounded-2xl border border-gray-100">
         <div className="text-4xl mb-3">✅</div>
@@ -447,6 +449,11 @@ function UnownedMosquesTab({
           Mosques with a Google Place ID can be resynced to refresh their phone/website/description — no new search needed.
         </p>
       </div>
+      {mosques.length === 0 && (
+        <div className="p-8 text-center bg-white rounded-2xl border border-gray-100">
+          <p className="text-gray-500 text-sm">No mosques match <span className="font-semibold">"{searchText}"</span></p>
+        </div>
+      )}
       <div className="space-y-2">
         {mosques.map((m) => (
           <div key={m.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">

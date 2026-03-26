@@ -539,7 +539,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   // GET /admin/mosque-import/unowned — mosques without an OWNER admin
   app.get('/mosque-import/unowned', { preHandler: [requireSuperAdmin] }, async (req, reply) => {
-    const { cursor, limit = '50' } = req.query as { cursor?: string; limit?: string }
+    const { cursor, limit = '1500' } = req.query as { cursor?: string; limit?: string }
     const mosques = await prisma.mosqueProfile.findMany({
       where: {
         isActive: true,

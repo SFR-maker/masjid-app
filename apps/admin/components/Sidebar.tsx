@@ -180,10 +180,10 @@ export function Sidebar({ user, mosques }: SidebarProps) {
               </p>
               <div className="space-y-0.5">
                 {section.items.map(({ href, label, icon: Icon }) => {
-                  const to = `/${mosqueId}${href}`
-                  const active = href === ''
-                    ? pathname === `/${mosqueId}`
-                    : pathname.startsWith(`/${mosqueId}${href}`)
+                  const to = mosqueId ? `/${mosqueId}${href}` : '/'
+                  const active = mosqueId
+                    ? (href === '' ? pathname === `/${mosqueId}` : pathname.startsWith(`/${mosqueId}${href}`))
+                    : false
                   return (
                     <Link
                       key={href}

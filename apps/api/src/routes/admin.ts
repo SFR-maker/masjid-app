@@ -545,7 +545,7 @@ export async function adminRoutes(app: FastifyInstance) {
         isActive: true,
         admins: { none: { role: 'OWNER' } },
       },
-      select: { id: true, name: true, city: true, state: true, googlePlaceId: true, importSource: true, importedAt: true },
+      select: { id: true, name: true, city: true, state: true, zipCode: true, googlePlaceId: true, importSource: true, importedAt: true },
       take: Number(limit),
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       orderBy: { name: 'asc' },

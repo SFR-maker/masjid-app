@@ -359,15 +359,16 @@ function UnownedMosquesTab({
   const queryClient = useQueryClient()
   const [syncingId, setSyncingId] = useState<string | null>(null)
   const [syncResults, setSyncResults] = useState<Record<string, string>>({})
+  const [searchText, setSearchText] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['unowned-mosques'],
     queryFn: async () => {
-      const res = await adminFetch('/admin/mosque-import/unowned?limit=200')
+      const res = await adminFetch('/admin/mosque-import/unowned?limit=500')
       const json = await res.json()
       return json.data as {
         items: Array<{
-          id: string; name: string; city: string; state: string
+          id: string; name: string; city: string; state: string; zipCode: string | null
           googlePlaceId: string | null; importSource: string | null
           importedAt: string | null; lastSyncedAt?: string | null
         }>
@@ -394,7 +395,16 @@ function UnownedMosquesTab({
     }
   }
 
-  const mosques = data?.items ?? []
+  const q = searchText.trim().toLowerCase()
+  const mosques = (data?.items ?? []).filter((m) => {
+    if (!q) return true
+    return (
+      m.name.toLowerCase().includes(q) ||
+      m.city.toLowerCase().includes(q) ||
+      m.state.toLowerCase().includes(q) ||
+      (m.zipCode ?? '').toLowerCase().includes(q)
+    )
+  })
 
   if (isLoading) {
     return (
@@ -418,10 +428,20 @@ function UnownedMosquesTab({
 
   return (
     <div>
+      <div className="mb-4">
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Search by name, city, state, or zip code..."
+          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+        />
+      </div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-gray-500">
-          <span className="font-semibold text-gray-900">{mosques.length}</span> unowned mosques
-          {data?.hasMore && ' (showing first 200)'}
+          <span className="font-semibold text-gray-900">{mosques.length}</span>
+          {q ? ` result${mosques.length !== 1 ? 's' : ''}` : ' unowned mosques'}
+          {!q && data?.hasMore && ' (showing first 500)'}
         </p>
         <p className="text-xs text-gray-400">
           Mosques with a Google Place ID can be resynced to refresh their phone/website/description — no new search needed.
@@ -433,7 +453,7 @@ function UnownedMosquesTab({
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-900 text-sm truncate">{m.name}</p>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <p className="text-xs text-gray-400">{m.city}, {m.state}</p>
+                <p className="text-xs text-gray-400">{m.city}, {m.state}{m.zipCode ? ` ${m.zipCode}` : ''}</p>
                 {m.importSource === 'google_places' && (
                   <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-semibold border border-blue-100">
                     Google Places

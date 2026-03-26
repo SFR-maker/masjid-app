@@ -6,11 +6,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'masjid-app',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/images/icon.png',
+  icon: './assets/icon.png',
   scheme: 'masjid',
   userInterfaceStyle: 'automatic',
   splash: {
-    image: './assets/images/splash.png',
+    image: './assets/splash.png',
     resizeMode: 'contain',
     backgroundColor: '#1B4332',
   },
@@ -24,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/images/adaptive-icon.png',
+      foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#1B4332',
     },
     package: 'com.masjidapp.mobile',

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+'use client'
+import { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, SectionList,
 } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -11,11 +12,37 @@ import { router } from 'expo-router'
 import { api } from '../../lib/api'
 import { MosqueListItem } from '../../components/MosqueListItem'
 import { useTheme } from '../../contexts/ThemeContext'
+import type { MosqueListItem as TMosqueListItem } from '@masjid/types'
 
 const RADIUS_KM = 32   // 20 miles ≈ 32.2 km
 const ZIP_RE = /^\d{5}$/
-// City pattern: letters/spaces/commas, optional state, at least 3 chars
-const CITY_RE = /^[a-zA-Z][a-zA-Z\s,]{2,}$/
+
+// State name ↔ abbreviation map
+const STATE_MAP: Record<string, string> = {
+  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
+  colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
+  hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
+  kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
+  massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS',
+  missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV',
+  'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+  'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH', oklahoma: 'OK',
+  oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+  'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT',
+  virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI', wyoming: 'WY',
+}
+const STATE_ABBRS = new Set(Object.values(STATE_MAP))
+const ABBR_TO_NAME = Object.fromEntries(Object.entries(STATE_MAP).map(([k, v]) => [v, k]))
+
+// Returns a 2-letter abbreviation if the query is a US state name or abbreviation, else null
+function detectStateQuery(q: string): string | null {
+  const trimmed = q.trim()
+  const upper = trimmed.toUpperCase()
+  if (STATE_ABBRS.has(upper)) return upper
+  const lower = trimmed.toLowerCase()
+  if (STATE_MAP[lower]) return STATE_MAP[lower]
+  return null
+}
 
 async function geocodeZip(zip: string): Promise<{ lat: number; lng: number } | null> {
   try {
@@ -50,39 +77,75 @@ async function geocodeCity(city: string): Promise<{ lat: number; lng: number; di
   }
 }
 
+// Sort results: favorite first → following → rest
+function sortByEngagement(items: TMosqueListItem[]): TMosqueListItem[] {
+  return [...items].sort((a, b) => {
+    const scoreA = a.isFavorite ? 2 : a.isFollowing ? 1 : 0
+    const scoreB = b.isFavorite ? 2 : b.isFollowing ? 1 : 0
+    return scoreB - scoreA
+  })
+}
+
+type Section = { title: string; data: TMosqueListItem[] }
+
+function buildSections(items: TMosqueListItem[]): Section[] {
+  const favorite = items.filter((m) => m.isFavorite)
+  const following = items.filter((m) => m.isFollowing && !m.isFavorite)
+  const rest = items.filter((m) => !m.isFollowing && !m.isFavorite)
+
+  const sections: Section[] = []
+  if (favorite.length > 0) sections.push({ title: 'Your Mosque', data: favorite })
+  if (following.length > 0) sections.push({ title: 'Following', data: following })
+  if (rest.length > 0) sections.push({ title: favorite.length + following.length > 0 ? 'All Mosques' : '', data: rest })
+  return sections
+}
+
 export default function DiscoverScreen() {
   const { colors } = useTheme()
   const [query, setQuery] = useState('')
-  // GPS location from "Near Me"
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [loadingGps, setLoadingGps] = useState(false)
-  // Geocoded zip location
   const [zipLocation, setZipLocation] = useState<{ lat: number; lng: number; zip: string } | null>(null)
-  // Geocoded city location
   const [cityLocation, setCityLocation] = useState<{ lat: number; lng: number; displayName: string } | null>(null)
+  const [stateFilter, setStateFilter] = useState<string | null>(null) // e.g. "TX"
   const [geocoding, setGeocoding] = useState(false)
 
-  // Geocode on zip or city entry (debounced 500ms)
   useEffect(() => {
-    if (ZIP_RE.test(query)) {
+    const trimmed = query.trim()
+
+    // ZIP code
+    if (ZIP_RE.test(trimmed)) {
       setGeocoding(true)
+      setStateFilter(null)
       setCityLocation(null)
       const timer = setTimeout(async () => {
-        const coords = await geocodeZip(query)
+        const coords = await geocodeZip(trimmed)
         setGeocoding(false)
         if (coords) {
-          setZipLocation({ ...coords, zip: query })
+          setZipLocation({ ...coords, zip: trimmed })
           setGpsLocation(null)
         }
       }, 400)
       return () => { clearTimeout(timer); setGeocoding(false) }
     }
 
-    if (CITY_RE.test(query) && query.length >= 3) {
+    // State name or abbreviation
+    const stateAbbr = detectStateQuery(trimmed)
+    if (stateAbbr) {
       setZipLocation(null)
+      setCityLocation(null)
+      setStateFilter(stateAbbr)
+      setGpsLocation(null)
+      return
+    }
+
+    // City/text geocode
+    if (trimmed.length >= 3) {
+      setZipLocation(null)
+      setStateFilter(null)
       setGeocoding(true)
       const timer = setTimeout(async () => {
-        const result = await geocodeCity(query)
+        const result = await geocodeCity(trimmed)
         setGeocoding(false)
         if (result) {
           setCityLocation(result)
@@ -96,21 +159,24 @@ export default function DiscoverScreen() {
 
     setZipLocation(null)
     setCityLocation(null)
+    setStateFilter(null)
   }, [query])
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['mosques', query, gpsLocation, zipLocation, cityLocation],
+    queryKey: ['mosques', query, gpsLocation, zipLocation, cityLocation, stateFilter],
     queryFn: () => {
       const params = new URLSearchParams()
       const geoCoords = zipLocation ?? cityLocation ?? gpsLocation
 
-      if (geoCoords) {
-        // Radius search — coords override text query
+      if (stateFilter) {
+        params.set('state', stateFilter)
+        params.set('limit', '100')
+      } else if (geoCoords) {
         params.set('lat', String(geoCoords.lat))
         params.set('lng', String(geoCoords.lng))
         params.set('radius', String(RADIUS_KM))
-      } else if (query) {
-        params.set('q', query)
+      } else if (query.trim()) {
+        params.set('q', query.trim())
       }
 
       return api.get(`/mosques?${params.toString()}`)
@@ -118,6 +184,10 @@ export default function DiscoverScreen() {
     staleTime: 30000,
     enabled: !geocoding,
   })
+
+  const rawItems: TMosqueListItem[] = data?.data?.items ?? []
+  const sections = useMemo(() => buildSections(rawItems), [rawItems])
+  const hasEngagement = rawItems.some((m) => m.isFollowing || m.isFavorite)
 
   async function handleNearMeToggle() {
     if (gpsLocation) {
@@ -131,19 +201,15 @@ export default function DiscoverScreen() {
         Alert.alert('Location Required', 'Please allow location access to find nearby mosques.')
         return
       }
-      // Use Balanced accuracy + 8s timeout for fast response.
-      // Fall back to last known position if available so the UI
-      // shows something immediately while a fresh fix is acquired.
       const last = await Location.getLastKnownPositionAsync()
-      if (last) {
-        setGpsLocation({ lat: last.coords.latitude, lng: last.coords.longitude })
-      }
+      if (last) setGpsLocation({ lat: last.coords.latitude, lng: last.coords.longitude })
       const loc = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
         timeInterval: 8000,
       })
       setGpsLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude })
-      setZipLocation(null) // GPS overrides zip
+      setZipLocation(null)
+      setStateFilter(null)
       setQuery('')
     } finally {
       setLoadingGps(false)
@@ -154,12 +220,14 @@ export default function DiscoverScreen() {
     setQuery('')
     setZipLocation(null)
     setCityLocation(null)
+    setStateFilter(null)
   }
 
   const nearMeActive = gpsLocation !== null
 
-  // Status line shown below the search bar
-  const statusLine = zipLocation
+  const statusLine = stateFilter
+    ? `All mosques in ${ABBR_TO_NAME[stateFilter] ? ABBR_TO_NAME[stateFilter].replace(/\b\w/g, c => c.toUpperCase()) : stateFilter}`
+    : zipLocation
     ? `Mosques within 20 miles of ${zipLocation.zip}`
     : cityLocation
     ? `Mosques within 20 miles of ${cityLocation.displayName}`
@@ -171,13 +239,9 @@ export default function DiscoverScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14 }}>
-        {/* Title row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <View>
-            <Text style={{
-              fontSize: 28, fontWeight: '800', letterSpacing: -0.7,
-              color: colors.text,
-            }}>
+            <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: -0.7, color: colors.text }}>
               Discover
             </Text>
             <Text style={{ fontSize: 13, color: colors.textTertiary, fontWeight: '500', marginTop: 2 }}>
@@ -212,9 +276,7 @@ export default function DiscoverScreen() {
             )}
             <Text style={{
               fontSize: 12.5, fontWeight: '700',
-              color: nearMeActive
-                ? (colors.isDark ? '#0F2D1F' : '#fff')
-                : colors.primary,
+              color: nearMeActive ? (colors.isDark ? '#0F2D1F' : '#fff') : colors.primary,
             }}>
               {nearMeActive ? 'Near Me ✕' : 'Near Me'}
             </Text>
@@ -226,14 +288,20 @@ export default function DiscoverScreen() {
           flexDirection: 'row', alignItems: 'center',
           backgroundColor: colors.isDark ? '#1E293B' : '#fff',
           borderWidth: 1.5,
-          borderColor: colors.isDark ? '#334155' : '#E8E0D0',
+          borderColor: stateFilter
+            ? colors.primary
+            : colors.isDark ? '#334155' : '#E8E0D0',
           borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12,
           shadowColor: colors.isDark ? '#000' : '#0F4423',
           shadowOpacity: colors.isDark ? 0.3 : 0.06,
           shadowOffset: { width: 0, height: 3 }, shadowRadius: 10,
           elevation: 2,
         }}>
-          <Ionicons name="search-outline" size={17} color={colors.textTertiary} />
+          <Ionicons
+            name={stateFilter ? 'map-outline' : 'search-outline'}
+            size={17}
+            color={stateFilter ? colors.primary : colors.textTertiary}
+          />
           <TextInput
             style={{ flex: 1, marginLeft: 9, fontSize: 15, color: colors.text, fontWeight: '500' }}
             placeholder="Name, city, state, or zip…"
@@ -270,16 +338,56 @@ export default function DiscoverScreen() {
           <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
             <Ionicons name="wifi-outline" size={28} color="#EF4444" />
           </View>
-          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>
-            Connection error
-          </Text>
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>Connection error</Text>
           <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
             Make sure the API is running and try again
           </Text>
         </View>
+      ) : rawItems.length === 0 ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
+          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <Text style={{ fontSize: 34 }}>🕌</Text>
+          </View>
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>No mosques found</Text>
+          <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+            {stateFilter
+              ? `No mosques found in ${stateFilter}`
+              : zipLocation
+              ? `No mosques within 20 miles of ${zipLocation.zip}`
+              : query
+              ? `No results for "${query}"`
+              : 'Try searching by name, city, state, or zip code'}
+          </Text>
+        </View>
+      ) : hasEngagement ? (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) =>
+            section.title ? (
+              <View style={{ paddingTop: 4, paddingBottom: 8 }}>
+                <Text style={{
+                  fontSize: 11, fontWeight: '800', letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                  color: section.title === 'Your Mosque' ? '#C9963A' : colors.textTertiary,
+                }}>
+                  {section.title}
+                </Text>
+              </View>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <MosqueListItem
+              mosque={item}
+              onPress={() => router.push(`/mosque/${item.id}`)}
+            />
+          )}
+        />
       ) : (
         <FlatList
-          data={data?.data?.items ?? []}
+          data={rawItems}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
           renderItem={({ item }) => (
@@ -288,21 +396,6 @@ export default function DiscoverScreen() {
               onPress={() => router.push(`/mosque/${item.id}`)}
             />
           )}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingVertical: 72, paddingHorizontal: 40 }}>
-              <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                <Text style={{ fontSize: 34 }}>🕌</Text>
-              </View>
-              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>No mosques found</Text>
-              <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-                {zipLocation
-                  ? `No mosques within 20 miles of ${zipLocation.zip}`
-                  : query
-                  ? `No results for "${query}"`
-                  : 'Try searching by name, city, or zip code'}
-              </Text>
-            </View>
-          }
         />
       )}
     </SafeAreaView>

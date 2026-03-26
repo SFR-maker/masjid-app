@@ -42,6 +42,8 @@ export interface MosqueListItem {
   followersCount: number
   distanceKm?: number
   hasOwner?: boolean
+  isFollowing?: boolean
+  isFavorite?: boolean
 }
 
 export interface MosqueDetail extends MosqueListItem {

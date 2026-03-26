@@ -64,6 +64,7 @@ export async function mosqueRoutes(app: FastifyInstance) {
   app.get('/', async (req, reply) => {
     const { q, city, state, zip, lat, lng, radius = '25', limit = '20', cursor } =
       req.query as any
+    const userId = req.userId
 
     const where: any = { isActive: true }
 
@@ -88,11 +89,12 @@ export async function mosqueRoutes(app: FastifyInstance) {
       include: {
         _count: { select: { follows: true } },
         admins: { where: { role: 'OWNER' }, select: { id: true }, take: 1 },
+        ...(userId ? { follows: { where: { userId }, select: { isFavorite: true } } } : {}),
       },
       orderBy: { name: 'asc' },
     })
 
-    let results = mosques.map((m) => {
+    let results = mosques.map((m: any) => {
       const hasCoords = m.latitude != null && m.longitude != null
       const distanceKm =
         lat && lng && hasCoords
@@ -100,6 +102,7 @@ export async function mosqueRoutes(app: FastifyInstance) {
               calculateDistanceKm(Number(lat), Number(lng), m.latitude!, m.longitude!) * 10
             ) / 10
           : undefined
+      const userFollow = userId ? m.follows?.[0] ?? null : null
       return {
         id: m.id,
         name: m.name,
@@ -115,6 +118,8 @@ export async function mosqueRoutes(app: FastifyInstance) {
         followersCount: m._count.follows,
         distanceKm,
         hasOwner: m.admins.length > 0,
+        isFollowing: userId ? userFollow !== null : undefined,
+        isFavorite: userId ? (userFollow?.isFavorite ?? false) : undefined,
       }
     })
 
@@ -212,13 +217,9 @@ export async function mosqueRoutes(app: FastifyInstance) {
     }
   )
 
-  // POST /mosques/:id/follow
+  // POST /mosques/:id/follow — allowed for both claimed and unclaimed mosques
   app.post('/:id/follow', { preHandler: [requireAuth] }, async (req, reply) => {
     const { id: mosqueId } = req.params as { id: string }
-    const owner = await prisma.mosqueAdmin.findFirst({ where: { mosqueId, role: 'OWNER' }, select: { id: true } })
-    if (!owner) {
-      return reply.status(403).send({ success: false, error: 'This mosque has not been claimed by an owner yet.', code: 'MOSQUE_UNCLAIMED' })
-    }
     await prisma.userFollow.upsert({
       where: { userId_mosqueId: { userId: req.userId!, mosqueId } },
       create: { userId: req.userId!, mosqueId },

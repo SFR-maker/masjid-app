@@ -128,24 +128,24 @@ export default function MosqueProfileScreen() {
             </View>
             {isSignedIn && (
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => favoriteMutation.mutate(!!mosque.isFavorite)}
-                  disabled={favoriteMutation.isPending || !mosque.isFollowing || !mosque.hasOwner}
-                  style={{
-                    borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10,
-                    backgroundColor: mosque.isFavorite ? '#FEF3C7' : colors.surface,
-                    borderWidth: 1, borderColor: mosque.isFavorite ? '#D97706' : colors.border,
-                    opacity: !mosque.hasOwner ? 0.4 : 1,
-                  }}
-                >
-                  <Text style={{ fontSize: 16 }}>{mosque.isFavorite ? '⭐' : '☆'}</Text>
-                </TouchableOpacity>
+                {/* Favorite star — only shown for claimed mosques */}
+                {mosque.hasOwner && (
+                  <TouchableOpacity
+                    onPress={() => favoriteMutation.mutate(!!mosque.isFavorite)}
+                    disabled={favoriteMutation.isPending || !mosque.isFollowing}
+                    style={{
+                      borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10,
+                      backgroundColor: mosque.isFavorite ? '#FEF3C7' : colors.surface,
+                      borderWidth: 1, borderColor: mosque.isFavorite ? '#D97706' : colors.border,
+                      opacity: !mosque.isFollowing ? 0.4 : 1,
+                    }}
+                  >
+                    <Text style={{ fontSize: 16 }}>{mosque.isFavorite ? '⭐' : '☆'}</Text>
+                  </TouchableOpacity>
+                )}
+                {/* Follow button — allowed for both claimed and unclaimed */}
                 <TouchableOpacity
                   onPress={() => {
-                    if (!mosque.hasOwner) {
-                      Alert.alert('Unclaimed Mosque', 'This mosque has not been claimed by an owner yet and cannot be followed.')
-                      return
-                    }
                     if (mosque.isFollowing) {
                       Alert.alert('Unfollow Mosque', `Unfollow ${mosque.name}?`, [
                         { text: 'Cancel', style: 'cancel' },
@@ -158,12 +158,12 @@ export default function MosqueProfileScreen() {
                   disabled={followMutation.isPending}
                   style={{
                     borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10,
-                    backgroundColor: mosque.isFollowing ? colors.surface : mosque.hasOwner ? colors.primary : colors.border,
-                    borderWidth: 1, borderColor: mosque.isFollowing ? colors.border : mosque.hasOwner ? colors.primary : colors.border,
+                    backgroundColor: mosque.isFollowing ? colors.surface : colors.primary,
+                    borderWidth: 1, borderColor: mosque.isFollowing ? colors.border : colors.primary,
                   }}
                 >
-                  <Text style={{ color: mosque.isFollowing ? colors.textSecondary : mosque.hasOwner ? colors.primaryContrast : colors.textTertiary, fontWeight: '600', fontSize: 14 }}>
-                    {followMutation.isPending ? '...' : mosque.isFollowing ? 'Following' : mosque.hasOwner ? 'Follow' : 'Unclaimed'}
+                  <Text style={{ color: mosque.isFollowing ? colors.textSecondary : colors.primaryContrast, fontWeight: '600', fontSize: 14 }}>
+                    {followMutation.isPending ? '...' : mosque.isFollowing ? 'Following' : 'Follow'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -178,8 +178,13 @@ export default function MosqueProfileScreen() {
             <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>{mosque.city}, {mosque.state}</Text>
             <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>{mosque.followersCount} followers</Text>
             {!mosque.hasOwner && (
-              <View style={{ marginTop: 8, backgroundColor: '#FFF7ED', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#FED7AA', alignSelf: 'flex-start' }}>
-                <Text style={{ color: '#C2410C', fontSize: 11, fontWeight: '600' }}>🔓 Unclaimed mosque — not yet set up by an owner</Text>
+              <View style={{ marginTop: 8, backgroundColor: '#FFF7ED', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#FED7AA' }}>
+                <Text style={{ color: '#92400E', fontSize: 12, fontWeight: '700', marginBottom: 2 }}>
+                  🔓 This masjid hasn't enrolled in the app yet
+                </Text>
+                <Text style={{ color: '#B45309', fontSize: 11, lineHeight: 16 }}>
+                  You can follow to receive adhan times. Full features become available once the masjid joins.
+                </Text>
               </View>
             )}
           </View>

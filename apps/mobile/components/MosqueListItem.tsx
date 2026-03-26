@@ -131,6 +131,11 @@ export function MosqueListItem({ mosque, onPress }: Props) {
 
       {/* Right column */}
       <View style={{ alignItems: 'flex-end', gap: 5, marginLeft: 10 }}>
+        {mosque.isFavorite ? (
+          <Text style={{ fontSize: 15 }}>⭐</Text>
+        ) : mosque.isFollowing ? (
+          <Ionicons name="bookmark" size={14} color={colors.primary} />
+        ) : null}
         {distanceMi && (
           <View style={{
             backgroundColor: colors.isDark ? '#1A3328' : '#E8F5EC',

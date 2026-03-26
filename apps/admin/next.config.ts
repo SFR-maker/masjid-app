@@ -1,16 +1,10 @@
 import type { NextConfig } from 'next'
+import path from 'path'
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@masjid/database', '@masjid/types'],
   serverExternalPackages: ['@prisma/client', '.prisma/client'],
-  outputFileTracingIncludes: {
-    '**': [
-      '../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/query_engine-windows.dll.node',
-      '../../node_modules/.pnpm/@prisma+client@*/node_modules/@prisma/client/query_engine-windows.dll.node',
-      '../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node',
-      '../../node_modules/.pnpm/@prisma+client@*/node_modules/@prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node',
-    ],
-  },
+  outputFileTracingRoot: path.join(__dirname, '../../'),
 }
 
 export default nextConfig

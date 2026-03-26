@@ -336,6 +336,11 @@ export default function VideosScreen() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [searchText, setSearchText] = useState('')
 
+  // Reset to top whenever the displayed list changes so a card is always active
+  useEffect(() => {
+    setVisibleIndex(0)
+  }, [selectedCategory, searchText])
+
   const { data, isLoading } = useQuery({
     queryKey: ['videos-feed'],
     queryFn: () => api.get('/videos?limit=40'),

@@ -39,7 +39,7 @@ export default function NowPlayingBar() {
       {/* Icon */}
       <View style={[styles.iconBox, { backgroundColor: colors.primary }]}>
         <Ionicons
-          name={isPaused ? 'pause' : 'musical-notes'}
+          name={isPaused ? 'play' : 'musical-notes'}
           size={18}
           color="#fff"
         />

@@ -342,6 +342,6 @@ export async function nextQuranAyah() {
 export async function prevQuranAyah() {
   if (!_isPlaying && !_isPaused) return
   let prevIdx = _currentIndex - 1
-  while (prevIdx > 0 && !_ayahs[prevIdx]?.audio) prevIdx--
+  while (prevIdx >= 0 && !_ayahs[prevIdx]?.audio) prevIdx--
   await startQuranPlaybackFromIndex(Math.max(0, prevIdx))
 }

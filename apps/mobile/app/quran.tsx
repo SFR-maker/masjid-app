@@ -12,6 +12,8 @@ import {
   setAyahsForPlayback,
   setSurahNumber,
   stopQuranAudio,
+  pauseQuranAudio,
+  resumeQuranAudio,
   startQuranPlayback,
   startQuranPlaybackFromIndex,
 } from '../lib/quranAudio'
@@ -185,6 +187,7 @@ export default function QuranScreen() {
   const [readingMode, setReadingMode] = useState<'verse' | 'reading'>('verse')
 
   const isPlaying = useQuranAudioStore(s => s.isPlaying)
+  const isPaused = useQuranAudioStore(s => s.isPaused)
   const playingAyah = useQuranAudioStore(s => s.playingAyah)
   // Use getState() for actions to avoid subscribing the component to store changes
   // Track whether this is the initial mount so we can skip stopQuranAudio() on first render
@@ -264,7 +267,11 @@ export default function QuranScreen() {
 
   async function handlePlayAll() {
     if (isPlaying) {
-      await stopQuranAudio()
+      await pauseQuranAudio()
+      return
+    }
+    if (isPaused) {
+      await resumeQuranAudio()
       return
     }
     if (!ayahs.length) return
@@ -276,7 +283,7 @@ export default function QuranScreen() {
 
   async function handlePlaySingle(ayah: any, index: number) {
     if (playingAyah === ayah.numberInSurah && isPlaying) {
-      await stopQuranAudio()
+      await pauseQuranAudio()
       return
     }
     useQuranAudioStore.getState().setPlayingLocation(selectedSurah!, reciter, translation)
@@ -382,15 +389,15 @@ export default function QuranScreen() {
           <TouchableOpacity
             onPress={handlePlayAll}
             disabled={audioLoading || isLoadingSurah}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: isPlaying ? colors.primary : colors.primaryLight, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: (isPlaying || isPaused) ? colors.primary : colors.primaryLight, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 }}
           >
             {audioLoading ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Ionicons name={isPlaying ? 'pause' : 'play'} size={16} color={isPlaying ? colors.primaryContrast : colors.primary} />
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={16} color={(isPlaying || isPaused) ? colors.primaryContrast : colors.primary} />
             )}
-            <Text style={{ fontSize: 13, fontWeight: '700', color: isPlaying ? colors.primaryContrast : colors.primary }}>
-              {isPlaying ? 'Stop' : 'Play Surah'}
+            <Text style={{ fontSize: 13, fontWeight: '700', color: (isPlaying || isPaused) ? colors.primaryContrast : colors.primary }}>
+              {isPlaying ? 'Pause' : isPaused ? 'Resume' : 'Play Surah'}
             </Text>
           </TouchableOpacity>
 

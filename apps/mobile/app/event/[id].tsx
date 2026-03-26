@@ -47,6 +47,12 @@ export default function EventDetailScreen() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['event', id] })
       queryClient.invalidateQueries({ queryKey: ['user-rsvps'] })
+      // Bug 16 fix: invalidate mosque events list so RSVP count refreshes on profile
+      if (event?.mosqueId) {
+        queryClient.invalidateQueries({ queryKey: ['mosque-events', event.mosqueId] })
+      }
+      // Also invalidate the home feed so counts update there
+      queryClient.invalidateQueries({ queryKey: ['home-feed'] })
     },
   })
 

@@ -101,7 +101,10 @@ export default function RSVPsScreen() {
     queryFn: () => api.get('/users/me/rsvps'),
   })
 
-  const rsvps: any[] = data?.data?.items ?? []
+  // Bug 3 fix: defensive client-side filter — exclude NOT_GOING/declined RSVPs
+  const rsvps: any[] = (data?.data?.items ?? []).filter(
+    (r: any) => r.status === 'GOING' || r.status === 'MAYBE'
+  )
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>

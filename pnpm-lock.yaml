@@ -52,6 +52,9 @@ importers:
       '@types/react':
         specifier: ^18.3.0
         version: 18.3.28
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.27(postcss@8.5.8)
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -61,6 +64,9 @@ importers:
       next:
         specifier: 15.5.14
         version: 15.5.14(babel-plugin-react-compiler@1.0.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      postcss:
+        specifier: ^8.4.49
+        version: 8.5.8
       prisma:
         specifier: ^6.0.0
         version: 6.19.2(typescript@5.9.3)
@@ -73,22 +79,15 @@ importers:
       recharts:
         specifier: ^2.13.0
         version: 2.15.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.19(tsx@4.21.0)(yaml@2.8.3)
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
       zod:
         specifier: ^3.23.0
         version: 3.25.76
-    devDependencies:
-      autoprefixer:
-        specifier: ^10.4.20
-        version: 10.4.27(postcss@8.5.8)
-      postcss:
-        specifier: ^8.4.49
-        version: 8.5.8
-      tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.19(tsx@4.21.0)(yaml@2.8.3)
 
   apps/api:
     dependencies:

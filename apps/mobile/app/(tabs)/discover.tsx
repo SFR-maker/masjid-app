@@ -131,7 +131,17 @@ export default function DiscoverScreen() {
         Alert.alert('Location Required', 'Please allow location access to find nearby mosques.')
         return
       }
-      const loc = await Location.getCurrentPositionAsync({})
+      // Use Balanced accuracy + 8s timeout for fast response.
+      // Fall back to last known position if available so the UI
+      // shows something immediately while a fresh fix is acquired.
+      const last = await Location.getLastKnownPositionAsync()
+      if (last) {
+        setGpsLocation({ lat: last.coords.latitude, lng: last.coords.longitude })
+      }
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 8000,
+      })
       setGpsLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude })
       setZipLocation(null) // GPS overrides zip
       setQuery('')

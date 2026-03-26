@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@masjid/database'
 import { requireAuth, requireMosqueAdmin } from '../plugins/auth'
+import { notificationQueue } from '../workers/notification.worker'
 
 const repliesInclude = {
   replies: { orderBy: { createdAt: 'asc' as const } },
@@ -129,9 +130,24 @@ export async function messageRoutes(app: FastifyInstance) {
         data: { replyBody, repliedAt: new Date(), isRead: true },
         include: {
           fromUser: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          mosque: { select: { name: true } },
           ...repliesInclude,
         },
       })
+
+      // Bug 10 fix: push notification to the user when mosque replies to their message
+      if (message.fromUserId) {
+        const mosqueName = (message as any).mosque?.name ?? 'Mosque'
+        notificationQueue.add('admin_message_reply', {
+          type: 'event_rsvp_update', // reuse direct-user path
+          userIds: [message.fromUserId],
+          mosqueId: (req.params as any).id,
+          title: `${mosqueName} replied to your message`,
+          body: replyBody.length > 100 ? replyBody.slice(0, 97) + '…' : replyBody,
+          data: { messageId, type: 'message_reply' },
+        } as any).catch(() => {})
+      }
+
       return reply.send({ success: true, data: message })
     }
   )

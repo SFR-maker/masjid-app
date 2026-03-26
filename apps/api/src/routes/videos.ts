@@ -87,6 +87,9 @@ export async function videoRoutes(app: FastifyInstance) {
   app.get('/videos/:id', async (req, reply) => {
     const { id } = req.params as { id: string }
     const userId = req.userId
+    // Bug 8 fix: pass ?noView=1 when re-fetching after a like to avoid
+    // incrementing the view count on every like tap.
+    const { noView } = req.query as { noView?: string }
 
     const video = await prisma.video.findUnique({
       where: { id },
@@ -100,8 +103,10 @@ export async function videoRoutes(app: FastifyInstance) {
       return reply.status(404).send({ success: false, error: 'Video not found' })
     }
 
-    // Async view count increment
-    prisma.video.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {})
+    // Only increment view count when it's a real page visit, not a like-triggered refetch
+    if (!noView) {
+      prisma.video.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {})
+    }
 
     return reply.send({
       success: true,

@@ -194,9 +194,13 @@ export async function userRoutes(app: FastifyInstance) {
   })
 
   // GET /users/me/rsvps
+  // Bug 3 fix: only return positive RSVPs (GOING/MAYBE) — NOT_GOING is excluded
   app.get('/me/rsvps', { preHandler: [requireAuth] }, async (req, reply) => {
     const rsvps = await prisma.eventRsvp.findMany({
-      where: { userId: req.userId! },
+      where: {
+        userId: req.userId!,
+        status: { in: ['GOING', 'MAYBE'] },
+      },
       include: { event: { include: { mosque: { select: { name: true } } } } },
       orderBy: { event: { startTime: 'asc' } },
     })

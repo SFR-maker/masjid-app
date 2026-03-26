@@ -21,6 +21,9 @@
     "recharts": "^2.13.0",
     "zod": "^3.23.0"
   },
+  "prisma": {
+    "schema": "../../packages/database/prisma/schema.prisma"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "prisma": "^6.0.0",

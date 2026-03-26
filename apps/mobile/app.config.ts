@@ -1,76 +1,57 @@
 import { ExpoConfig, ConfigContext } from 'expo/config'
 
-const variant = process.env.APP_VARIANT ?? 'production'
-
-const bundleIdSuffix = variant === 'production' ? '' : `.${variant}`
-const nameSuffix = variant === 'production' ? '' : ` (${variant})`
-
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: `Masjid${nameSuffix}`,
+  name: 'Masjid',
   slug: 'masjid-app',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
+  icon: './assets/images/icon.png',
+  scheme: 'masjid',
   userInterfaceStyle: 'automatic',
   splash: {
-    image: './assets/splash.png',
+    image: './assets/images/splash.png',
     resizeMode: 'contain',
-    backgroundColor: '#14532d',
+    backgroundColor: '#1B4332',
   },
-  assetBundlePatterns: ['**/*'],
   ios: {
-    supportsTablet: false,
-    bundleIdentifier: `com.masjidapp.app${bundleIdSuffix}`,
-    buildNumber: '1',
+    supportsTablet: true,
+    bundleIdentifier: 'com.masjidapp.mobile',
     infoPlist: {
-      NSLocationWhenInUseUsageDescription: 'Used to find mosques near you.',
-    },
-    // App Group allows widget extensions to read AsyncStorage data
-    entitlements: {
-      'com.apple.security.application-groups': [
-        `group.com.masjidapp.app${bundleIdSuffix}`,
-      ],
+      NSLocationWhenInUseUsageDescription: 'We use your location to find nearby mosques.',
+      NSCameraUsageDescription: 'Used to upload your profile photo.',
     },
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#14532d',
+      foregroundImage: './assets/images/adaptive-icon.png',
+      backgroundColor: '#1B4332',
     },
-    package: `com.masjidapp.app${variant === 'production' ? '' : `.${variant}`}`,
-    versionCode: 1,
+    package: 'com.masjidapp.mobile',
     permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'POST_NOTIFICATIONS'],
-    ...(process.env.GOOGLE_SERVICES_JSON ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON } : {}),
-  },
-  web: {
-    bundler: 'metro',
+    intentFilters: [
+      {
+        action: 'VIEW',
+        data: [{ scheme: 'masjid' }],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ],
   },
   plugins: [
     'expo-router',
-    'expo-font',
-    'expo-secure-store',
-    [
-      'expo-notifications',
-      {
-        icon: './assets/notification-icon.png',
-        color: '#14532d',
-      },
-    ],
-    [
-      'expo-location',
-      {
-        locationWhenInUsePermission: 'Used to find mosques near you.',
-      },
-    ],
+    'expo-notifications',
+    ['expo-location', { locationWhenInUsePermission: 'Allow Masjid to find mosques near you.' }],
   ],
+  web: {
+    bundler: 'metro',
+    output: 'single',
+  },
   experiments: {
     typedRoutes: true,
-    tsconfigPaths: true,
   },
   extra: {
     eas: {
-      projectId: process.env.EAS_PROJECT_ID,
+      projectId: 'ba2f52fa-a888-42b6-80a9-d1500a0c5a70',
     },
   },
 })

@@ -37,8 +37,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
   },
+  updates: {
+    url: 'https://u.expo.dev/ba2f52fa-a888-42b6-80a9-d1500a0c5a70',
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   plugins: [
     'expo-router',
+    'expo-updates',
     'expo-notifications',
     ['expo-location', { locationWhenInUsePermission: 'Allow Masjid to find mosques near you.' }],
   ],

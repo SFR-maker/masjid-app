@@ -11,7 +11,13 @@ export default async function RootPage() {
     include: { mosqueAdmins: { select: { mosqueId: true } } },
   })
 
-  if (!user || user.mosqueAdmins.length === 0) {
+  if (!user) redirect('/sign-in')
+
+  if (user.isSuperAdmin && user.mosqueAdmins.length === 0) {
+    redirect('/admin/mosque-import')
+  }
+
+  if (user.mosqueAdmins.length === 0) {
     redirect('/onboarding')
   }
 

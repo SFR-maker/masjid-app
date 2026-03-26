@@ -1,6 +1,7 @@
 import { useEffect, Component, ReactNode } from 'react'
 import { setupAdhanChannel } from '../hooks/useAdhanScheduler'
-import { View, ActivityIndicator, Text, ScrollView } from 'react-native'
+import { usePushNotificationSetup, setupQuranPlayerCategory } from '../hooks/useNotifications'
+import { View, ActivityIndicator, Text, ScrollView, Platform } from 'react-native'
 import { Stack } from 'expo-router'
 import NowPlayingBar from '../components/NowPlayingBar'
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo'
@@ -8,7 +9,7 @@ import { useApiTokenSync } from '../lib/api'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as SecureStore from 'expo-secure-store'
 import * as SplashScreen from 'expo-splash-screen'
-import { Platform } from 'react-native'
+import * as Notifications from 'expo-notifications'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -17,6 +18,7 @@ import { LanguageProvider } from '../contexts/LanguageContext'
 import { useFonts } from 'expo-font'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import { toggleQuranPlayback, nextQuranAyah, prevQuranAyah } from '../lib/quranAudio'
 import '../lib/i18n'
 import '../global.css'
 
@@ -86,17 +88,37 @@ export default function RootLayout() {
 
 function RootNavigator() {
   useApiTokenSync()
+  // ── Push notifications: register device token with backend on sign-in ──
+  usePushNotificationSetup()
   const { isLoaded } = useAuth()
   const [fontsLoaded] = useFonts({ ...Ionicons.font })
-  // Bug 9 fix: re-key the entire navigator on language change so all screens re-render
   const { i18n } = useTranslation()
 
   useEffect(() => {
     if (isLoaded && fontsLoaded && Platform.OS !== 'web') SplashScreen.hideAsync()
   }, [isLoaded, fontsLoaded])
 
+  // ── One-time setup for notification channels and categories ───────────────
   useEffect(() => {
     setupAdhanChannel().catch(console.warn)
+    setupQuranPlayerCategory().catch(console.warn)
+  }, [])
+
+  // ── Quran media notification action handler ───────────────────────────────
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (response.notification.request.content.data?.type !== 'quran_player') return
+      const action = response.actionIdentifier
+      if (action === 'quran_pause' || action === 'quran_play') {
+        toggleQuranPlayback().catch(() => {})
+      } else if (action === 'quran_next') {
+        nextQuranAyah().catch(() => {})
+      } else if (action === 'quran_prev') {
+        prevQuranAyah().catch(() => {})
+      }
+    })
+    return () => sub.remove()
   }, [])
 
   if (!isLoaded || !fontsLoaded) return (

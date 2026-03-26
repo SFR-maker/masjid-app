@@ -26,12 +26,23 @@
         "backgroundColor": "#1B4332"
       },
       "package": "com.masjidapp.mobile",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "POST_NOTIFICATIONS"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
-          "data": [{ "scheme": "masjid" }],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "data": [
+            {
+              "scheme": "masjid"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -51,6 +62,11 @@
     },
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ba2f52fa-a888-42b6-80a9-d1500a0c5a70"
+      }
     }
   }
 }

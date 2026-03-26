@@ -25,7 +25,11 @@
   "pnpm": {
     "overrides": {
       "expo-auth-session": "5.5.2",
-      "expo-crypto": "13.0.2"
+      "expo-crypto": "13.0.2",
+      "expo-constants": "~18.0.13",
+      "expo-linking": "~8.0.11",
+      "expo-web-browser": "~15.0.10",
+      "expo-application": "~7.0.8"
     }
   }
 }

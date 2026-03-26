@@ -8,11 +8,9 @@ const monorepoRoot = path.resolve(projectRoot, '../..')
 
 const config = getDefaultConfig(projectRoot)
 
-// Follow pnpm symlinks (packages in apps/mobile/node_modules are symlinked to the pnpm store)
-config.resolver.unstable_enableSymlinks = true
-
 // Watch the pnpm virtual store so Metro can read the real package files
 config.watchFolders = [
+  ...(config.watchFolders || []),
   path.resolve(monorepoRoot, 'node_modules/.pnpm'),
 ]
 

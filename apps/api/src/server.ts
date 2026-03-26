@@ -52,10 +52,11 @@ async function start() {
     credentials: true,
   })
 
+  const isRealRedis = process.env.REDIS_URL && !process.env.REDIS_URL.includes('localhost')
   await app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
-    redis,
+    ...(isRealRedis ? { redis } : {}),
     keyGenerator: (req) => (req as any).userId ?? req.ip ?? 'unknown',
   })
 

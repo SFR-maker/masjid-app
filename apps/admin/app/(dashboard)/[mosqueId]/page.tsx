@@ -285,12 +285,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ mosq
                   <div className="flex items-start gap-2.5">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        {a.priority === 'URGENT' && (
+                        {(a.priority as string) === 'URGENT' && (
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 uppercase tracking-wide">
                             Urgent
                           </span>
                         )}
-                        {a.priority === 'HIGH' && (
+                        {(a.priority as string) === 'HIGH' && (
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-200 uppercase tracking-wide">
                             High
                           </span>

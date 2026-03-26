@@ -86,7 +86,8 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ mosq
   const totalFollowers = settled(totalFollowersResult, 0)
   const newFollowersWeek = settled(newFollowersWeekResult, 0)
   const newFollowersMonth = settled(newFollowersMonthResult, 0)
-  const allAnnouncements = settled(topAnnouncementsResult, [])
+  type AnnouncementItem = { id: string; title: string; createdAt: Date; _count: { likes: number; comments: number } }
+  const allAnnouncements = settled<AnnouncementItem[]>(topAnnouncementsResult, [])
   const recentEvents = settled(recentEventsResult, [])
   const totalLikes = settled(totalLikesResult, 0)
   const totalComments = settled(totalCommentsResult, 0)

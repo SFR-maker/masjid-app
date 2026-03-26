@@ -71,10 +71,13 @@ function VideoCard({ item, isActive }: { item: any; isActive: boolean }) {
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const videoRef = useRef<Video>(null)
+  // Track whether the video has finished loading so we can retry play on ready
+  const isActiveRef = useRef(isActive)
+  isActiveRef.current = isActive
 
-  // ── AUTOPLAY FIX: imperative play/pause via useEffect ──────────────────────
-  // shouldPlay prop only sets initial state; it doesn't reliably respond to
-  // prop changes. Calling playAsync/pauseAsync directly is always reliable.
+  // ── AUTOPLAY: imperative play/pause ────────────────────────────────────────
+  // Effect fires when isActive changes; also retried in onReadyForDisplay
+  // in case the video wasn't loaded yet when the effect first ran.
   useEffect(() => {
     if (!videoRef.current || !item.streamUrl) return
     if (isActive) {
@@ -83,6 +86,14 @@ function VideoCard({ item, isActive }: { item: any; isActive: boolean }) {
       videoRef.current.pauseAsync().catch(() => {})
     }
   }, [isActive, item.streamUrl])
+
+  // Called by expo-av when the video is buffered and ready to render.
+  // If we're already the active card, kick off playback now.
+  function handleReadyForDisplay() {
+    if (isActiveRef.current && videoRef.current) {
+      videoRef.current.playAsync().catch(() => {})
+    }
+  }
 
   const catStyle = CATEGORY_COLORS[item.category] ?? { bg: 'rgba(75,85,99,0.75)', text: '#F3F4F6' }
 
@@ -139,7 +150,8 @@ function VideoCard({ item, isActive }: { item: any; isActive: boolean }) {
           resizeMode={ResizeMode.COVER}
           isLooping
           isMuted={false}
-          shouldPlay={false}  // controlled imperatively via ref
+          shouldPlay={false}
+          onReadyForDisplay={handleReadyForDisplay}
         />
       ) : (
         <Image

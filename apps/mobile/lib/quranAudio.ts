@@ -28,15 +28,16 @@ async function _updateMediaNotification(isPlaying: boolean) {
     await Notifications.scheduleNotificationAsync({
       identifier: QURAN_NOTIF_ID,
       content: {
-        title: surahName || 'Quran',
+        title: `🎵 ${surahName || 'Quran'}`,
         body: ayahLabel ? `${reciterName} · ${ayahLabel}` : (reciterName || 'Playing'),
         sticky: true,
         autoDismiss: false,
+        vibrate: [],                   // No buzz — media control notification
+        priority: Notifications.AndroidNotificationPriority.LOW,  // No banner popup
+        color: '#14532D',
         categoryIdentifier: isPlaying ? 'quran_playing' : 'quran_paused',
         data: { type: 'quran_player' },
-        // Android-specific: attach to the silent media channel
-        ...(Platform.OS === 'android' ? { android: { channelId: 'quran_player' } } : {}),
-      } as any,
+      },
       trigger: null,
     })
   } catch {}

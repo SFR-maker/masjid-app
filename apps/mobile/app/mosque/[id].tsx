@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, FlatList, TouchableOpacity, Linking, ActivityIndicator, Alert,
   Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native'
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
 import { useLocalSearchParams, router, Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'

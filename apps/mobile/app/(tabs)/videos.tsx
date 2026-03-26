@@ -119,8 +119,8 @@ function VideoCard({ item, isVisible }: { item: any; isVisible: boolean }) {
       <View style={[styles.rail, { bottom: insets.bottom + 80 }]}>
         {/* Like */}
         <TouchableOpacity style={styles.railItem} onPress={() => likeMutation.mutate()}>
-          <AntDesign
-            name={item.userLiked ? 'heart' : 'hearto'}
+          <Ionicons
+            name={item.userLiked ? 'heart' : 'heart-outline'}
             size={28}
             color={item.userLiked ? '#EF4444' : '#fff'}
           />

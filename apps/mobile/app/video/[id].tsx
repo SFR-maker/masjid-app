@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { AntDesign } from '@expo/vector-icons'
+import { Ionicons } from '@expo/vector-icons'
 import { api } from '../../lib/api'
 
 export default function VideoScreen() {
@@ -83,8 +83,8 @@ export default function VideoScreen() {
             <Text style={styles.statsText}>{video.viewCount ?? 0} views</Text>
             {/* Bug 8 fix: vector icon, not PNG/emoji */}
             <Pressable onPress={() => likeMutation.mutate()} style={styles.likeBtn}>
-              <AntDesign
-                name={video.userLiked ? 'heart' : 'hearto'}
+              <Ionicons
+                name={video.userLiked ? 'heart' : 'heart-outline'}
                 size={16}
                 color={video.userLiked ? '#EF4444' : '#374151'}
               />

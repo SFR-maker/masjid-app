@@ -39,7 +39,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: pnpm --filter @masjid/database run generate
+        run: pnpm --filter @masjid/database run db:generate
 
       - name: Typecheck
         run: pnpm --filter @masjid/api typecheck

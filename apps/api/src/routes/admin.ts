@@ -148,7 +148,7 @@ export async function adminRoutes(app: FastifyInstance) {
       where: { googlePlaceId: { in: placeIds } },
       select: { googlePlaceId: true, id: true, name: true },
     })
-    const placeIdMap = new Map(existingByPlaceId.map((e) => [e.googlePlaceId!, e]))
+    const placeIdMap = new Map<string, { id: string; name: string }>(existingByPlaceId.map((e) => [e.googlePlaceId!, e]))
 
     // Bounding-box query to find nearby mosques without a placeId (possible duplicates)
     const lats = places.map((p: any) => p.geometry?.location?.lat as number).filter((v: number) => v != null)

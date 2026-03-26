@@ -102,11 +102,13 @@ function StatusBadge({ status }: { status: ImportStatus | 'imported' }) {
 function AssignAdminModal({
   mosqueId,
   mosqueName,
+  currentOwner,
   adminFetch,
   onClose,
 }: {
   mosqueId: string
   mosqueName: string
+  currentOwner?: { name: string | null; email: string } | null
   adminFetch: ReturnType<typeof useAdminFetch>
   onClose: () => void
 }) {
@@ -155,11 +157,22 @@ function AssignAdminModal({
       >
         {/* Header */}
         <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">Assign Admin</h2>
+          <h2 className="text-lg font-bold text-gray-900">
+            {currentOwner ? 'Change Owner' : 'Assign Admin'}
+          </h2>
           <p className="text-sm text-gray-500 mt-0.5 truncate" title={mosqueName}>
             {mosqueName}
           </p>
         </div>
+
+        {/* Current owner warning */}
+        {currentOwner && role === 'OWNER' && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+            <span className="font-semibold">Current owner:</span> {currentOwner.name ?? currentOwner.email}
+            {currentOwner.name && <span className="text-amber-600 ml-1">({currentOwner.email})</span>}
+            <p className="text-xs text-amber-600 mt-1">Assigning a new owner will remove them from this role.</p>
+          </div>
+        )}
 
         {success ? (
           <>
@@ -266,7 +279,7 @@ function AssignAdminModal({
                 disabled={!selectedUser || assignMutation.isPending}
                 className="flex-1 py-2.5 bg-green-800 text-white text-sm font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
-                {assignMutation.isPending ? 'Assigning…' : 'Assign Admin'}
+                {assignMutation.isPending ? 'Saving…' : currentOwner && role === 'OWNER' ? 'Replace Owner' : 'Assign Admin'}
               </button>
             </div>
           </>
@@ -384,7 +397,7 @@ function UnownedMosquesTab({
   onAssign,
 }: {
   adminFetch: ReturnType<typeof useAdminFetch>
-  onAssign: (mosqueId: string, mosqueName: string) => void
+  onAssign: (mosqueId: string, mosqueName: string, currentOwner?: { name: string | null; email: string } | null) => void
 }) {
   const queryClient = useQueryClient()
   const [syncingId, setSyncingId] = useState<string | null>(null)
@@ -550,7 +563,7 @@ function AllMosquesTab({
   onAssign,
 }: {
   adminFetch: ReturnType<typeof useAdminFetch>
-  onAssign: (mosqueId: string, mosqueName: string) => void
+  onAssign: (mosqueId: string, mosqueName: string, currentOwner?: { name: string | null; email: string } | null) => void
 }) {
   const [searchText, setSearchText] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState('')
@@ -649,14 +662,12 @@ function AllMosquesTab({
                     )}
                   </div>
                 </div>
-                {!m.owner && (
-                  <button
-                    onClick={() => onAssign(m.id, m.name)}
-                    className="px-3 py-1.5 bg-green-800 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors shrink-0"
-                  >
-                    Assign Owner →
-                  </button>
-                )}
+                <button
+                  onClick={() => onAssign(m.id, m.name, m.owner)}
+                  className="px-3 py-1.5 bg-green-800 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors shrink-0"
+                >
+                  {m.owner ? 'Change Owner →' : 'Assign Owner →'}
+                </button>
               </div>
             ))}
           </div>
@@ -686,7 +697,7 @@ export default function MosqueImportPage() {
   const [isDuplicateError, setIsDuplicateError] = useState<Set<string>>(new Set())
 
   // Assign admin modal
-  const [assignTarget, setAssignTarget] = useState<{ mosqueId: string; mosqueName: string } | null>(null)
+  const [assignTarget, setAssignTarget] = useState<{ mosqueId: string; mosqueName: string; currentOwner?: { name: string | null; email: string } | null } | null>(null)
 
   // ── Search mutation ──────────────────────────────────────────────────────
   const searchMutation = useMutation({
@@ -858,7 +869,7 @@ export default function MosqueImportPage() {
       {activeTab === 'all' && (
         <AllMosquesTab
           adminFetch={adminFetch}
-          onAssign={(mosqueId, mosqueName) => setAssignTarget({ mosqueId, mosqueName })}
+          onAssign={(mosqueId, mosqueName, currentOwner) => setAssignTarget({ mosqueId, mosqueName, currentOwner })}
         />
       )}
 
@@ -866,6 +877,7 @@ export default function MosqueImportPage() {
         <AssignAdminModal
           mosqueId={assignTarget.mosqueId}
           mosqueName={assignTarget.mosqueName}
+          currentOwner={assignTarget.currentOwner}
           adminFetch={adminFetch}
           onClose={() => setAssignTarget(null)}
         />
@@ -1170,6 +1182,7 @@ export default function MosqueImportPage() {
         <AssignAdminModal
           mosqueId={assignTarget.mosqueId}
           mosqueName={assignTarget.mosqueName}
+          currentOwner={assignTarget.currentOwner}
           adminFetch={adminFetch}
           onClose={() => setAssignTarget(null)}
         />

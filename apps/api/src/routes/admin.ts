@@ -335,11 +335,25 @@ export async function adminRoutes(app: FastifyInstance) {
     if (!mosque) return reply.status(404).send({ success: false, error: 'Mosque not found' })
     if (!user) return reply.status(404).send({ success: false, error: 'User not found' })
 
-    const admin = await prisma.mosqueAdmin.upsert({
-      where: { userId_mosqueId: { userId, mosqueId } },
-      create: { userId, mosqueId, role },
-      update: { role },
-    })
+    let admin
+    if (role === 'OWNER') {
+      // Replace any existing owner atomically — remove old OWNER, assign new one
+      await prisma.$transaction([
+        prisma.mosqueAdmin.deleteMany({ where: { mosqueId, role: 'OWNER', NOT: { userId } } }),
+        prisma.mosqueAdmin.upsert({
+          where: { userId_mosqueId: { userId, mosqueId } },
+          create: { userId, mosqueId, role },
+          update: { role },
+        }),
+      ])
+      admin = await prisma.mosqueAdmin.findUnique({ where: { userId_mosqueId: { userId, mosqueId } } })
+    } else {
+      admin = await prisma.mosqueAdmin.upsert({
+        where: { userId_mosqueId: { userId, mosqueId } },
+        create: { userId, mosqueId, role },
+        update: { role },
+      })
+    }
 
     return reply.send({ success: true, data: { admin, mosque, user } })
   })

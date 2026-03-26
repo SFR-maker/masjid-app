@@ -12,7 +12,8 @@ async function uploadToCloudinary(file: File): Promise<{ url: string; size: numb
   if (!CLOUDINARY_CLOUD) throw new Error('Cloudinary is not configured (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME missing)')
 
   const isImage = file.type.startsWith('image/')
-  const resourceType = isImage ? 'image' : 'raw'
+  const isPdf = file.type === 'application/pdf'
+  const resourceType = (isImage || isPdf) ? 'image' : 'raw'
 
   const fd = new FormData()
   fd.append('file', file)

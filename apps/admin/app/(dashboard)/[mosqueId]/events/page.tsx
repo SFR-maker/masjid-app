@@ -394,9 +394,38 @@ export default function EventsPage() {
     setForm(DEFAULT_FORM)
   }
 
-  const events = data?.data?.items ?? []
+  const allEvents = data?.data?.items ?? []
   const isEditing = !!editingId
   const isBusy = createMutation.isPending || updateMutation.isPending
+
+  // Admin Bug 3 fix: local sort & filter state
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'upcoming'>('upcoming')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'past' | 'cancelled'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const now = new Date()
+  const events = allEvents
+    .filter((e: any) => {
+      if (filterStatus === 'upcoming') return !e.isCancelled && new Date(e.startTime) >= now
+      if (filterStatus === 'past') return !e.isCancelled && new Date(e.startTime) < now
+      if (filterStatus === 'cancelled') return e.isCancelled
+      return true
+    })
+    .filter((e: any) =>
+      searchQuery === '' || e.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a: any, b: any) => {
+      if (sortOrder === 'newest') return new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      if (sortOrder === 'oldest') return new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      // 'upcoming': soonest first (past events at the bottom)
+      const aTime = new Date(a.startTime).getTime()
+      const bTime = new Date(b.startTime).getTime()
+      const aFuture = aTime >= now.getTime()
+      const bFuture = bTime >= now.getTime()
+      if (aFuture && !bFuture) return -1
+      if (!aFuture && bFuture) return 1
+      return aTime - bTime
+    })
 
   return (
     <div className="p-8 max-w-3xl">
@@ -494,6 +523,38 @@ export default function EventsPage() {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Admin Bug 3: Sort & filter controls */}
+      {!showForm && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search events…"
+            className="border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800 flex-1 min-w-[180px]"
+          />
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value as any)}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+          >
+            <option value="all">All</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="past">Past</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select
+            value={sortOrder}
+            onChange={e => setSortOrder(e.target.value as any)}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+          >
+            <option value="upcoming">Soonest first</option>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
         </div>
       )}
 

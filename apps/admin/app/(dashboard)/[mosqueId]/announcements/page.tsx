@@ -582,9 +582,23 @@ export default function AnnouncementsPage() {
     setShowForm(true)
   }
 
-  const announcements = data?.data?.items ?? []
+  const allAnnouncements = data?.data?.items ?? []
   const polls = pollsData?.data?.items ?? []
   const isScheduled = form.publishAt && new Date(form.publishAt) > new Date()
+
+  // Admin Bug 3 fix: sort & filter state for announcements
+  const [annSort, setAnnSort] = useState<'newest' | 'oldest'>('newest')
+  const [annSearch, setAnnSearch] = useState('')
+  const [annPriority, setAnnPriority] = useState<'all' | 'NORMAL' | 'HIGH' | 'URGENT'>('all')
+
+  const announcements = allAnnouncements
+    .filter((a: any) => annPriority === 'all' || a.priority === annPriority)
+    .filter((a: any) => annSearch === '' || a.title.toLowerCase().includes(annSearch.toLowerCase()))
+    .sort((a: any, b: any) =>
+      annSort === 'newest'
+        ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
 
   return (
     <div className="p-8 max-w-3xl">
@@ -849,6 +863,37 @@ export default function AnnouncementsPage() {
               <p className="text-red-500 text-sm">Failed to save announcement. Please try again.</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Admin Bug 3: sort/filter bar for announcements */}
+      {activeTab === 'announcements' && !showForm && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <input
+            type="text"
+            value={annSearch}
+            onChange={e => setAnnSearch(e.target.value)}
+            placeholder="Search announcements…"
+            className="border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800 flex-1 min-w-[180px]"
+          />
+          <select
+            value={annPriority}
+            onChange={e => setAnnPriority(e.target.value as any)}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+          >
+            <option value="all">All priorities</option>
+            <option value="NORMAL">Normal</option>
+            <option value="HIGH">High</option>
+            <option value="URGENT">Urgent</option>
+          </select>
+          <select
+            value={annSort}
+            onChange={e => setAnnSort(e.target.value as any)}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
         </div>
       )}
 

@@ -60,7 +60,8 @@ function StatCard({ label, value, sub, href, accentColor, icon }: StatCardProps)
 
 export default async function DashboardPage({ params }: { params: Promise<{ mosqueId: string }> }) {
   const { mosqueId } = await params
-  const [mosque, upcomingRsvps, recentAnnouncements, upcomingEvents] = await Promise.all([
+  // Admin Bug 4 fix: fetch unread DM count separately so we display unread, not total
+  const [mosque, upcomingRsvps, recentAnnouncements, upcomingEvents, unreadMessagesCount] = await Promise.all([
     prisma.mosqueProfile.findUnique({
       where: { id: mosqueId },
       include: {
@@ -86,6 +87,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ mosq
       where: { mosqueId, isPublished: true, isCancelled: false, startTime: { gte: new Date() } },
       orderBy: { startTime: 'asc' },
       take: 5,
+    }),
+    // Admin Bug 4 fix: count only UNREAD messages for the community inbox stat
+    prisma.directMessage.count({
+      where: { mosqueId, isRead: false },
     }),
   ])
 
@@ -142,7 +147,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ mosq
       </div>
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard
           label="Followers"
           value={mosque._count.follows}
@@ -170,6 +175,15 @@ export default async function DashboardPage({ params }: { params: Promise<{ mosq
           href={`/${mosqueId}/videos`}
           accentColor="#7C5CBF"
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>}
+        />
+        {/* Admin Bug 4 fix: unread inbox count — clearly labelled as "unread" */}
+        <StatCard
+          label="Unread Messages"
+          value={unreadMessagesCount}
+          sub={unreadMessagesCount === 0 ? 'inbox clear' : 'need a reply'}
+          href={`/${mosqueId}/messages`}
+          accentColor="#0EA5E9"
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
         />
       </div>
 

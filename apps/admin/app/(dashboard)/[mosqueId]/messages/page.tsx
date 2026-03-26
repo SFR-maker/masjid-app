@@ -432,11 +432,19 @@ export default function MessagesPage() {
 
   async function generateInviteLink(groupId: string) {
     setGeneratingLink(true)
+    setInviteLink(null)
     try {
+      // Admin Bug 2 fix: explicit error handling with descriptive messages
+      const apiBase = process.env.NEXT_PUBLIC_API_URL
+      if (!apiBase) {
+        alert('Configuration error: NEXT_PUBLIC_API_URL is not set. Please add it to your .env.local file.')
+        return
+      }
       const res = await adminFetch(`/mosques/${mosqueId}/groups/${groupId}/invite-link`, { method: 'POST' })
-      const json = await res.json()
+      let json: any = {}
+      try { json = await res.json() } catch {}
       if (!res.ok) {
-        alert(`API error ${res.status}: ${json?.error ?? JSON.stringify(json)}`)
+        alert(`API error ${res.status}: ${json?.error ?? 'Could not generate invite link. Check API is running.'}`)
         return
       }
       if (json.data?.token) {
@@ -461,7 +469,14 @@ export default function MessagesPage() {
         alert(`Unexpected response: ${JSON.stringify(json)}`)
       }
     } catch (e) {
-      alert(`Error: ${e instanceof Error ? e.message : 'Could not reach API'}`)
+      const msg = e instanceof Error ? e.message : 'Unknown error'
+      alert(
+        `Failed to generate invite link: ${msg}.\n\n` +
+        `Check that:\n` +
+        `1. NEXT_PUBLIC_API_URL is set correctly in .env.local\n` +
+        `2. The API server is running and reachable\n` +
+        `3. CORS allows requests from the admin domain`
+      )
     } finally {
       setGeneratingLink(false)
     }

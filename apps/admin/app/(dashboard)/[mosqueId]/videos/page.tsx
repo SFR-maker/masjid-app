@@ -24,7 +24,23 @@ export default function VideosPage() {
     queryKey: ['admin-videos', mosqueId],
     queryFn: () => adminFetch(`/mosques/${mosqueId}/videos?limit=50`).then((r) => r.json()),
   })
-  const videos = data?.data?.items ?? []
+  const allVideos = data?.data?.items ?? []
+
+  // Admin Bug 3 fix: sort & filter
+  const [videoSort, setVideoSort] = useState<'newest' | 'oldest'>('newest')
+  const [videoSearch, setVideoSearch] = useState('')
+  const [videoCategory, setVideoCategory] = useState('all')
+  const [videoStatus, setVideoStatus] = useState<'all' | 'READY' | 'PROCESSING' | 'ERROR'>('all')
+
+  const videos = allVideos
+    .filter((v: any) => videoCategory === 'all' || v.category === videoCategory)
+    .filter((v: any) => videoStatus === 'all' || v.status === videoStatus)
+    .filter((v: any) => videoSearch === '' || v.title.toLowerCase().includes(videoSearch.toLowerCase()))
+    .sort((a: any, b: any) =>
+      videoSort === 'newest'
+        ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
@@ -171,6 +187,43 @@ export default function VideosPage() {
           </div>
         </div>
       )}
+
+      {/* Admin Bug 3: sort/filter bar for videos */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <input
+          type="text"
+          value={videoSearch}
+          onChange={e => setVideoSearch(e.target.value)}
+          placeholder="Search videos…"
+          className="border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800 flex-1 min-w-[180px]"
+        />
+        <select
+          value={videoCategory}
+          onChange={e => setVideoCategory(e.target.value)}
+          className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+        >
+          <option value="all">All categories</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select
+          value={videoStatus}
+          onChange={e => setVideoStatus(e.target.value as any)}
+          className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+        >
+          <option value="all">All statuses</option>
+          <option value="READY">Ready</option>
+          <option value="PROCESSING">Processing</option>
+          <option value="ERROR">Error</option>
+        </select>
+        <select
+          value={videoSort}
+          onChange={e => setVideoSort(e.target.value as any)}
+          className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
+        >
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
 
       {/* Video list */}
       <div className="space-y-3">

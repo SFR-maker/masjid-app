@@ -313,6 +313,12 @@ importers:
       '@prisma/client':
         specifier: ^6.0.0
         version: 6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3)
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.15
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
     devDependencies:
       prisma:
         specifier: ^6.0.0
@@ -320,9 +326,6 @@ importers:
       ts-node:
         specifier: ^10.9.0
         version: 10.9.2(@types/node@22.19.15)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
 
   packages/types:
     devDependencies:

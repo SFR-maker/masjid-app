@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "prayer_schedules" ALTER COLUMN "fajrAdhan" DROP NOT NULL,
+ALTER COLUMN "dhuhrAdhan" DROP NOT NULL,
+ALTER COLUMN "asrAdhan" DROP NOT NULL,
+ALTER COLUMN "maghribAdhan" DROP NOT NULL,
+ALTER COLUMN "ishaAdhan" DROP NOT NULL;

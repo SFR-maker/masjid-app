@@ -1,0 +1,966 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────
+
+model User {
+  id           String  @id @default(cuid())
+  clerkId      String  @unique
+  email        String  @unique
+  name         String?
+  avatarUrl    String?
+  bio          String?
+  isSuperAdmin       Boolean @default(false)
+  isVerified         Boolean @default(false)
+  madhabPreference   String  @default("STANDARD")
+  birthdate          DateTime?
+  gender             String?
+  isOpenToVolunteer  Boolean  @default(false)
+  isOpenToMarriage   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  mosqueAdmins         MosqueAdmin[]
+  follows              UserFollow[]
+  rsvps                EventRsvp[]
+  notifications        Notification[]
+  notificationPrefs    NotificationPreference[]
+  chatConversations    ChatConversation[]
+  donations            Donation[]
+  volunteerSignups     VolunteerSignup[]
+  videoLikes           VideoLike[]
+  videoViews           VideoView[]
+  announcementLikes    AnnouncementLike[]
+  announcementComments AnnouncementComment[]
+  reports              Report[]
+  verificationRequests VerificationRequest[]
+  directMessages       DirectMessage[]
+  serviceRequests      ServiceRequest[]
+  pollVotes            PollVote[]
+  groupChatMemberships GroupChatMember[]
+  groupChatMessages    GroupChatMessage[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// MOSQUES
+// ─────────────────────────────────────────
+
+model MosqueProfile {
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique
+  description      String?
+  address          String?
+  city             String
+  state            String
+  zipCode          String?
+  country          String    @default("US")
+  latitude         Float?
+  longitude        Float?
+  phone            String?
+  email            String?
+  website          String?
+  logoUrl          String?
+  bannerUrl        String?
+  imamName         String?
+  hasWomensPrayer  Boolean   @default(false)
+  hasYouthPrograms Boolean   @default(false)
+  hasParking       Boolean   @default(false)
+  isAccessible     Boolean   @default(false)
+  languages        String[]  @default([])
+  khutbahLanguages String[]  @default([])
+  // Capacity
+  capacityMen      Int?
+  capacityWomen    Int?
+  // Location details
+  parkingInfo      String?
+  directions       String?
+  amenities        String[]  @default([])
+  // Images
+  mainImageUrl     String?
+  isVerified       Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  verifiedAt       DateTime?
+  donationUrl      String?
+  stripeAccountId  String?
+  // Social media
+  facebookUrl      String?
+  twitterUrl       String?
+  instagramUrl     String?
+  youtubeUrl       String?
+  // Import metadata
+  googlePlaceId    String?   @unique
+  importedAt       DateTime?
+  lastSyncedAt     DateTime?
+  importSource     String?   // "google_places" | "manual"
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  admins                 MosqueAdmin[]
+  follows                UserFollow[]
+  services               MosqueService[]
+  prayerSchedules        PrayerSchedule[]
+  jumuahSchedules        JumuahSchedule[]
+  taraweehSchedules      TaraweehSchedule[]
+  eidSchedules           EidSchedule[]
+  events                 Event[]
+  announcements          Announcement[]
+  videos                 Video[]
+  donationCampaigns      DonationCampaign[]
+  volunteerOpportunities VolunteerOpportunity[]
+  notifications          Notification[]
+  verificationRequests   VerificationRequest[]
+  photos                 MosquePhoto[]
+  programs               MosqueProgram[]
+  directMessages         DirectMessage[]
+  serviceRequests        ServiceRequest[]
+  polls                  Poll[]
+  documents              MosqueDocument[]
+  groupChats             GroupChat[]
+
+  @@index([latitude, longitude])
+  @@index([city, state])
+  @@index([slug])
+  @@map("mosque_profiles")
+}
+
+model MosquePhoto {
+  id        String   @id @default(cuid())
+  mosqueId  String
+  url       String
+  caption   String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@map("mosque_photos")
+}
+
+model MosqueProgram {
+  id          String   @id @default(cuid())
+  mosqueId    String
+  name        String
+  description String?
+  schedule    String?
+  ageGroup    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@index([mosqueId])
+  @@map("mosque_programs")
+}
+
+enum MosqueServiceType {
+  QURAN_CLASSES
+  WOMENS_HALAQA
+  ISLAMIC_SCHOOL
+  SPECIAL_NEEDS
+  MARRIAGE_SERVICES
+  JANAZAH_SERVICES
+  FACILITY_RENTAL
+  YOUTH_PROGRAMS
+  OTHER
+}
+
+model MosqueService {
+  id           String           @id @default(cuid())
+  mosqueId     String
+  type         MosqueServiceType
+  name         String
+  description  String?
+  schedule     String?
+  contact      String?
+  registration String?
+  notes        String?
+  capacity     Int?
+  pricing      String?
+  isActive     Boolean          @default(true)
+  order        Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  mosque   MosqueProfile    @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  requests ServiceRequest[]
+
+  @@map("mosque_services")
+}
+
+enum ServiceRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ServiceRequest {
+  id         String               @id @default(cuid())
+  serviceId  String
+  mosqueId   String
+  userId     String?
+  name       String
+  phone      String?
+  message    String
+  status     ServiceRequestStatus @default(PENDING)
+  adminNote  String?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  service MosqueService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  mosque  MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  user    User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([mosqueId, createdAt])
+  @@map("service_requests")
+}
+
+model DirectMessage {
+  id         String   @id @default(cuid())
+  mosqueId   String
+  fromUserId String
+  subject        String?
+  body           String
+  isRead         Boolean  @default(false)
+  replyBody      String?
+  repliedAt      DateTime?
+  quranSurah     Int?
+  quranAyah      Int?
+  quranSurahName String?
+  quranArabic    String?
+  quranEnglish   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  mosque   MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  fromUser User          @relation(fields: [fromUserId], references: [id], onDelete: Cascade)
+  replies  MessageReply[]
+
+  @@index([mosqueId, createdAt])
+  @@map("direct_messages")
+}
+
+model MessageReply {
+  id        String   @id @default(cuid())
+  messageId String
+  body      String
+  fromAdmin Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  message DirectMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId, createdAt])
+  @@map("message_replies")
+}
+
+model MosqueDocument {
+  id        String   @id @default(cuid())
+  mosqueId  String
+  name      String
+  fileUrl   String
+  fileSize  Int?
+  mimeType  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@index([mosqueId])
+  @@map("mosque_documents")
+}
+
+model GroupChat {
+  id          String   @id @default(cuid())
+  mosqueId    String
+  name        String
+  inviteToken String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mosque   MosqueProfile      @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  members  GroupChatMember[]
+  messages GroupChatMessage[]
+
+  @@index([mosqueId])
+  @@map("group_chats")
+}
+
+model GroupChatMember {
+  id          String   @id @default(cuid())
+  groupChatId String
+  userId      String
+  joinedAt    DateTime @default(now())
+
+  groupChat GroupChat @relation(fields: [groupChatId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupChatId, userId])
+  @@index([userId])
+  @@map("group_chat_members")
+}
+
+model GroupChatMessage {
+  id          String   @id @default(cuid())
+  groupChatId String
+  fromAdmin   Boolean  @default(false)
+  fromUserId  String?
+  body        String
+  createdAt   DateTime @default(now())
+
+  groupChat GroupChat @relation(fields: [groupChatId], references: [id], onDelete: Cascade)
+  fromUser  User?     @relation(fields: [fromUserId], references: [id], onDelete: SetNull)
+
+  @@index([groupChatId, createdAt])
+  @@map("group_chat_messages")
+}
+
+enum MosqueAdminRole {
+  OWNER
+  ADMIN
+  EDITOR
+}
+
+model MosqueAdmin {
+  id        String          @id @default(cuid())
+  userId    String
+  mosqueId  String
+  role      MosqueAdminRole @default(ADMIN)
+  createdAt DateTime        @default(now())
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mosqueId])
+  @@map("mosque_admins")
+}
+
+model UserFollow {
+  id         String   @id @default(cuid())
+  userId     String
+  mosqueId   String
+  isFavorite Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mosqueId])
+  @@map("user_follows")
+}
+
+// ─────────────────────────────────────────
+// PRAYER TIMES
+// ─────────────────────────────────────────
+
+model PrayerSchedule {
+  id            String   @id @default(cuid())
+  mosqueId      String
+  date          DateTime @db.Date
+  fajrAdhan     String?
+  fajrIqamah    String?
+  sunriseTime   String?
+  dhuhrAdhan    String?
+  dhuhrIqamah   String?
+  asrAdhan      String?
+  asrIqamah     String?
+  maghribAdhan  String?
+  maghribIqamah String?
+  ishaAdhan     String?
+  ishaIqamah    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@unique([mosqueId, date])
+  @@index([mosqueId, date])
+  @@map("prayer_schedules")
+}
+
+model JumuahSchedule {
+  id          String   @id @default(cuid())
+  mosqueId    String
+  khutbahTime String
+  iqamahTime  String
+  language    String   @default("English")
+  imam        String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@map("jumuah_schedules")
+}
+
+model TaraweehSchedule {
+  id          String   @id @default(cuid())
+  mosqueId    String
+  date        String?  // Ramadan date e.g. "2025-03-15"
+  startTime   String
+  endTime     String?
+  rakaat      Int?
+  imam        String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@map("taraweeh_schedules")
+}
+
+model EidSchedule {
+  id        String   @id @default(cuid())
+  mosqueId  String
+  eidType   String
+  year      Int
+  date      DateTime @db.Date
+  time1     String?
+  time2     String?
+  time3     String?
+  location  String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@unique([mosqueId, eidType, year])
+  @@map("eid_schedules")
+}
+
+// ─────────────────────────────────────────
+// EVENTS
+// ─────────────────────────────────────────
+
+enum EventCategory {
+  GENERAL
+  HALAQA
+  YOUTH
+  SISTERS
+  JUMU_AH
+  EID
+  RAMADAN
+  FUNDRAISER
+  JANAZAH
+  COMMUNITY
+  EDUCATIONAL
+  OTHER
+}
+
+model Event {
+  id           String        @id @default(cuid())
+  mosqueId     String
+  title        String
+  description  String?
+  category     EventCategory @default(GENERAL)
+  startTime    DateTime
+  endTime      DateTime?
+  location     String?
+  imageUrl       String?
+  videoUrl       String?
+  isOnline       Boolean       @default(false)
+  onlineUrl      String?
+  maxAttendees   Int?
+  requiresRsvp   Boolean       @default(true)
+  isPublished    Boolean       @default(true)
+  isCancelled    Boolean       @default(false)
+  isPrivate      Boolean       @default(false)
+  quranSurah     Int?
+  quranAyah      Int?
+  quranAyahEnd   Int?
+  quranSurahName String?
+  quranArabic    String?
+  quranEnglish   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  rsvps  EventRsvp[]
+
+  @@index([mosqueId, startTime])
+  @@map("events")
+}
+
+enum RsvpStatus {
+  GOING
+  NOT_GOING
+  MAYBE
+}
+
+model EventRsvp {
+  id        String     @id @default(cuid())
+  eventId   String
+  userId    String
+  status    RsvpStatus @default(GOING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_rsvps")
+}
+
+// ─────────────────────────────────────────
+// ANNOUNCEMENTS
+// ─────────────────────────────────────────
+
+enum AnnouncementPriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+model Announcement {
+  id          String               @id @default(cuid())
+  mosqueId    String
+  title       String
+  body        String
+  priority    AnnouncementPriority @default(NORMAL)
+  imageUrl        String?
+  videoUrl        String?
+  isPinned        Boolean              @default(false)
+  isPublished     Boolean              @default(true)
+  publishAt       DateTime?
+  expiresAt       DateTime?
+  quranSurah      Int?
+  quranAyah       Int?
+  quranAyahEnd    Int?
+  quranSurahName  String?
+  quranArabic     String?
+  quranEnglish    String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  mosque   MosqueProfile         @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  likes    AnnouncementLike[]
+  comments AnnouncementComment[]
+
+  @@index([mosqueId, createdAt])
+  @@map("announcements")
+}
+
+model AnnouncementLike {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  createdAt      DateTime     @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@map("announcement_likes")
+}
+
+model AnnouncementComment {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  text           String
+  quranSurah     Int?
+  quranAyah      Int?
+  quranAyahEnd   Int?
+  quranSurahName String?
+  quranArabic    String?
+  quranEnglish   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId, createdAt])
+  @@map("announcement_comments")
+}
+
+// ─────────────────────────────────────────
+// VIDEOS
+// ─────────────────────────────────────────
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  ERROR
+}
+
+enum VideoCategory {
+  GENERAL
+  LECTURE
+  QURAN
+  DUA
+  KHUTBAH
+  EDUCATIONAL
+  EVENT
+  OTHER
+}
+
+model Video {
+  id            String        @id @default(cuid())
+  mosqueId      String
+  title         String
+  description   String?
+  category      VideoCategory @default(GENERAL)
+  muxUploadId   String?       @unique
+  muxAssetId    String?       @unique
+  muxPlaybackId String?       @unique
+  thumbnailUrl  String?
+  duration      Int?
+  status        VideoStatus   @default(PROCESSING)
+  isPublished   Boolean       @default(false)
+  viewCount     Int           @default(0)
+  likeCount     Int           @default(0)
+  tags          String[]      @default([])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  likes  VideoLike[]
+  views  VideoView[]
+
+  @@index([mosqueId, createdAt])
+  @@map("videos")
+}
+
+model VideoLike {
+  id        String   @id @default(cuid())
+  videoId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, userId])
+  @@map("video_likes")
+}
+
+model VideoView {
+  id        String   @id @default(cuid())
+  videoId   String
+  userId    String?
+  watchTime Int?
+  createdAt DateTime @default(now())
+
+  video Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([videoId])
+  @@index([userId])
+  @@map("video_views")
+}
+
+// ─────────────────────────────────────────
+// DONATIONS
+// ─────────────────────────────────────────
+
+enum DonationCategory {
+  GENERAL
+  ZAKAT
+  SADAQAH
+  BUILDING_FUND
+  RAMADAN
+  EID
+  YOUTH_PROGRAMS
+  EDUCATION
+  OTHER
+}
+
+model DonationCampaign {
+  id          String           @id @default(cuid())
+  mosqueId    String
+  title       String
+  description String?
+  category    DonationCategory @default(GENERAL)
+  goalAmount  Decimal?         @db.Decimal(10, 2)
+  imageUrl    String?
+  isActive    Boolean          @default(true)
+  endsAt      DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  mosque    MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  donations Donation[]
+
+  @@map("donation_campaigns")
+}
+
+model Donation {
+  id                    String           @id @default(cuid())
+  userId                String?
+  mosqueId              String
+  campaignId            String?
+  amount                Decimal          @db.Decimal(10, 2)
+  currency              String           @default("USD")
+  category              DonationCategory @default(GENERAL)
+  isAnonymous           Boolean          @default(false)
+  stripePaymentIntentId String?          @unique
+  status                String           @default("completed")
+  createdAt             DateTime         @default(now())
+
+  user     User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  campaign DonationCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([mosqueId])
+  @@index([campaignId])
+  @@index([userId])
+  @@map("donations")
+}
+
+// ─────────────────────────────────────────
+// POLLS
+// ─────────────────────────────────────────
+
+model Poll {
+  id          String    @id @default(cuid())
+  mosqueId    String
+  question    String
+  isPublished Boolean   @default(true)
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  mosque  MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  options PollOption[]
+  votes   PollVote[]
+
+  @@index([mosqueId, createdAt])
+  @@map("polls")
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  pollId String
+  text   String
+  order  Int    @default(0)
+
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  pollId    String
+  optionId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@map("poll_votes")
+}
+
+// ─────────────────────────────────────────
+// VOLUNTEERS
+// ─────────────────────────────────────────
+
+model VolunteerOpportunity {
+  id            String    @id @default(cuid())
+  mosqueId      String
+  title         String
+  description   String?
+  date          DateTime?
+  duration      String?
+  maxVolunteers Int?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  mosque  MosqueProfile     @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  signups VolunteerSignup[]
+
+  @@map("volunteer_opportunities")
+}
+
+model VolunteerSignup {
+  id            String   @id @default(cuid())
+  opportunityId String
+  userId        String
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  opportunity VolunteerOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, userId])
+  @@map("volunteer_signups")
+}
+
+// ─────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────
+
+enum NotificationType {
+  PRAYER_REMINDER
+  EVENT_REMINDER
+  ANNOUNCEMENT
+  NEW_VIDEO
+  RSVP_CONFIRMED
+  MOSQUE_VERIFIED
+  GENERAL
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  mosqueId  String?
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mosque MosqueProfile? @relation(fields: [mosqueId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  enabled   Boolean          @default(true)
+  mosqueId  String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, mosqueId])
+  @@map("notification_preferences")
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("push_tokens")
+}
+
+// ─────────────────────────────────────────
+// AI CHATBOT
+// ─────────────────────────────────────────
+
+model ChatConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@map("chat_conversations")
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           ChatRole
+  content        String
+  sources        Json?
+  tokensUsed     Int?
+  createdAt      DateTime @default(now())
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("chat_messages")
+}
+
+// ─────────────────────────────────────────
+// TRUST & SAFETY
+// ─────────────────────────────────────────
+
+enum ReportType {
+  INAPPROPRIATE_CONTENT
+  MISINFORMATION
+  SPAM
+  FAKE_MOSQUE
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  reporterId String
+  type       ReportType
+  status     ReportStatus @default(PENDING)
+  targetType String
+  targetId   String
+  reason     String
+  notes      String?
+  resolvedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("reports")
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model VerificationRequest {
+  id          String             @id @default(cuid())
+  mosqueId    String
+  requesterId String
+  status      VerificationStatus @default(PENDING)
+  documents   Json
+  notes       String?
+  adminNotes  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime           @default(now())
+
+  mosque    MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  requester User          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@map("verification_requests")
+}

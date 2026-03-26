@@ -52,7 +52,10 @@ async function start() {
     credentials: true,
   })
 
-  const isRealRedis = process.env.REDIS_URL && !process.env.REDIS_URL.includes('localhost')
+  const isRealRedis =
+    process.env.REDIS_URL &&
+    !process.env.REDIS_URL.includes('localhost') &&
+    !process.env.REDIS_URL.includes('.internal')
   await app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',

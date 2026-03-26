@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/clerk-expo'
 import { Redirect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUnreadNotificationCount, usePushNotificationSetup } from '../../hooks/useNotifications'
 import { useTheme } from '../../contexts/ThemeContext'
 
@@ -11,9 +12,15 @@ export default function TabsLayout() {
   const { isSignedIn } = useAuth()
   const { colors } = useTheme()
   const { t } = useTranslation()
+  const insets = useSafeAreaInsets()
   usePushNotificationSetup()
 
   if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />
+
+  // Bug 5 fix: Use safe area bottom inset so the tab bar clears the home
+  // indicator on notched iPhones and Android gesture nav bars.
+  const tabBarPaddingBottom = insets.bottom > 0 ? insets.bottom : 8
+  const tabBarHeight = 52 + tabBarPaddingBottom
 
   return (
     <Tabs
@@ -25,8 +32,8 @@ export default function TabsLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.tabBarBorder,
           backgroundColor: colors.tabBar,
-          paddingBottom: 4,
-          height: 60,
+          paddingBottom: tabBarPaddingBottom,
+          height: tabBarHeight,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}

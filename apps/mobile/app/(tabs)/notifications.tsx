@@ -111,7 +111,9 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               onPress={() => {
                 const d = item.data ?? {}
-                if (d.pollId) router.push(`/poll/${d.pollId}` as any)
+                // Bug 2 fix: admin message replies route to the messages screen
+                if (d.messageId || item.type === 'MESSAGE_REPLY') router.push('/messages' as any)
+                else if (d.pollId) router.push(`/poll/${d.pollId}` as any)
                 else if (d.announcementId) router.push(`/announcement/${d.announcementId}` as any)
                 else if (d.eventId) router.push(`/event/${d.eventId}` as any)
                 else if (item.mosqueId) router.push(`/mosque/${item.mosqueId}` as any)

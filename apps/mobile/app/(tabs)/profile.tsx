@@ -35,6 +35,22 @@ export default function ProfileScreen() {
     staleTime: 60_000,
   })
 
+  // Bug 2 fix: show badge for threads that have an admin reply (new response)
+  const { data: messagesData } = useQuery({
+    queryKey: ['messages-unread-count'],
+    queryFn: async () => {
+      const res = await api.get('/users/me/messages')
+      const items: any[] = res.data?.items ?? []
+      // Count threads where admin has replied (fromAdmin reply exists)
+      return items.filter((m: any) =>
+        Array.isArray(m.replies) && m.replies.some((r: any) => r.fromAdmin)
+      ).length
+    },
+    refetchInterval: 30000,
+    staleTime: 15_000,
+  })
+  const unreadMessagesCount = messagesData ?? 0
+
   const madhabPreference = meData?.data?.madhabPreference ?? 'STANDARD'
 
   const madhabMutation = useMutation({
@@ -143,7 +159,7 @@ export default function ProfileScreen() {
   const resourceItems = [
     { icon: 'bookmark', label: t('profile_followed_mosques'), badge: followedMosques.length, onPress: () => router.push('/(tabs)/discover') },
     { icon: 'calendar', label: t('profile_my_rsvps'), onPress: () => router.push('/rsvps') },
-    { icon: 'mail', label: t('profile_messages'), onPress: () => router.push('/messages') },
+    { icon: 'mail', label: t('profile_messages'), badge: unreadMessagesCount, onPress: () => router.push('/messages') },
     { icon: 'book', label: t('profile_quran'), onPress: () => router.push('/quran') },
     { icon: 'chatbubble-ellipses', label: t('profile_islamic_ai'), onPress: () => router.push('/chat') },
     { icon: 'compass', label: t('profile_qibla'), onPress: () => router.push('/qibla') },

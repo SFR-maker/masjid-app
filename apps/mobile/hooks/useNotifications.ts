@@ -15,6 +15,16 @@ if (Platform.OS !== 'web') {
       shouldShowList: true,
     }),
   })
+
+  // Bug 12 fix: Android 8+ requires a notification channel
+  if (Platform.OS === 'android') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'Masjid App',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#14532D',
+    }).catch(() => {})
+  }
 }
 
 export function useUnreadNotificationCount() {
@@ -38,7 +48,9 @@ export function usePushNotificationSetup() {
       const { status } = await Notifications.requestPermissionsAsync()
       if (status !== 'granted') return
 
-      const projectId = process.env.EXPO_PUBLIC_PROJECT_ID
+      // Bug 12 fix: fall back to the hardcoded Expo project ID from app.config.ts
+      // so push token registration works even without the env var set
+      const projectId = process.env.EXPO_PUBLIC_PROJECT_ID ?? 'ba2f52fa-a888-42b6-80a9-d1500a0c5a70'
       if (!projectId) return
 
       const token = await Notifications.getExpoPushTokenAsync({ projectId })

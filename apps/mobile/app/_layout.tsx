@@ -16,6 +16,7 @@ import { ThemeProvider } from '../contexts/ThemeContext'
 import { LanguageProvider } from '../contexts/LanguageContext'
 import { useFonts } from 'expo-font'
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import '../lib/i18n'
 import '../global.css'
 
@@ -87,6 +88,8 @@ function RootNavigator() {
   useApiTokenSync()
   const { isLoaded } = useAuth()
   const [fontsLoaded] = useFonts({ ...Ionicons.font })
+  // Bug 9 fix: re-key the entire navigator on language change so all screens re-render
+  const { i18n } = useTranslation()
 
   useEffect(() => {
     if (isLoaded && fontsLoaded && Platform.OS !== 'web') SplashScreen.hideAsync()
@@ -104,7 +107,8 @@ function RootNavigator() {
 
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }}>
+      {/* Bug 9 fix: key forces full remount of all screens when language changes */}
+      <Stack key={i18n.language} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="mosque/[id]" options={{ presentation: 'card', headerShown: false }} />

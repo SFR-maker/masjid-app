@@ -227,4 +227,52 @@ export async function videoRoutes(app: FastifyInstance) {
     await prisma.video.update({ where: { id: videoId }, data: { likeCount: { increment: 1 } } })
     return reply.send({ success: true, liked: true })
   })
+
+  // GET /videos/:id/comments — public, guests can read
+  app.get('/videos/:id/comments', async (req, reply) => {
+    const { id: videoId } = req.params as { id: string }
+    const { limit = '50', cursor } = req.query as any
+
+    const comments = await prisma.videoComment.findMany({
+      where: { videoId },
+      take: Math.min(100, Number(limit) || 50),
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: { select: { id: true, name: true, avatarUrl: true } },
+      },
+    })
+
+    return reply.send({
+      success: true,
+      data: {
+        items: comments,
+        cursor: comments[comments.length - 1]?.id,
+        hasMore: comments.length === Number(limit),
+      },
+    })
+  })
+
+  // POST /videos/:id/comments — requires auth
+  app.post('/videos/:id/comments', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { id: videoId } = req.params as { id: string }
+    const userId = req.userId!
+
+    const { text } = z
+      .object({ text: z.string().min(2).max(1000) })
+      .parse(req.body)
+
+    // Verify video exists
+    const video = await prisma.video.findUnique({ where: { id: videoId }, select: { id: true, isPublished: true } })
+    if (!video || !video.isPublished) {
+      return reply.status(404).send({ success: false, error: 'Video not found' })
+    }
+
+    const comment = await prisma.videoComment.create({
+      data: { videoId, userId, text: text.trim() },
+      include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+    })
+
+    return reply.status(201).send({ success: true, data: comment })
+  })
 }

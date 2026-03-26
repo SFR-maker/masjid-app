@@ -40,6 +40,7 @@ model User {
   volunteerSignups     VolunteerSignup[]
   videoLikes           VideoLike[]
   videoViews           VideoView[]
+  videoComments        VideoComment[]
   announcementLikes    AnnouncementLike[]
   announcementComments AnnouncementComment[]
   reports              Report[]
@@ -632,12 +633,27 @@ model Video {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
-  likes  VideoLike[]
-  views  VideoView[]
+  mosque   MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  likes    VideoLike[]
+  views    VideoView[]
+  comments VideoComment[]
 
   @@index([mosqueId, createdAt])
   @@map("videos")
+}
+
+model VideoComment {
+  id        String   @id @default(cuid())
+  videoId   String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+  @@map("video_comments")
 }
 
 model VideoLike {

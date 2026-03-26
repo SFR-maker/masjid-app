@@ -28,15 +28,22 @@ async function _updateMediaNotification(isPlaying: boolean) {
     await Notifications.scheduleNotificationAsync({
       identifier: QURAN_NOTIF_ID,
       content: {
-        title: `🎵 ${surahName || 'Quran'}`,
-        body: ayahLabel ? `${reciterName} · ${ayahLabel}` : (reciterName || 'Playing'),
+        // Clean title — no emoji prefix (original had '🎵 ${surahName}')
+        title: surahName || 'Quran',
+        // iOS-only: subtitle appears inline below the title for a cleaner look
+        subtitle: ayahLabel || undefined,
+        body: reciterName || 'Playing',
         sticky: true,
         autoDismiss: false,
-        vibrate: [],                   // No buzz — media control notification
-        priority: Notifications.AndroidNotificationPriority.LOW,  // No banner popup
+        vibrate: [],
+        priority: Notifications.AndroidNotificationPriority.LOW,
         color: '#14532D',
         categoryIdentifier: isPlaying ? 'quran_playing' : 'quran_paused',
         data: { type: 'quran_player' },
+        // FIX: Without channelId, Android falls back to the 'default' channel which has
+        // vibrationPattern [0,250,250,250]. The 'quran_player' channel has enableVibrate:false
+        // — routing here eliminates the buzz that fired on every ayah advance.
+        ...(Platform.OS === 'android' && { channelId: 'quran_player' }),
       },
       trigger: null,
     })

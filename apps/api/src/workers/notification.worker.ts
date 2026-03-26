@@ -1,5 +1,5 @@
 import { Worker, Queue } from 'bullmq'
-import { Expo, ExpoPushMessage } from 'expo-server-sdk'
+import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk'
 import { prisma } from '@masjid/database'
 import { redis } from '../lib/redis'
 
@@ -22,9 +22,15 @@ new Worker<NotificationJob>(
   async (job) => {
     const { type, mosqueId, title, body, data } = job.data
 
+    // prayer_reminder is handled on-device by useAdhanScheduler — skip silently
+    if (type === 'prayer_reminder') {
+      console.log('[Push] prayer_reminder skipped — scheduled on-device via useAdhanScheduler')
+      return
+    }
+
     let userIds: string[] = []
 
-    // Notification DB type mapping
+    // DB notification type mapping
     const notifType = (type === 'mosque_announcement' || type === 'mosque_poll')
       ? 'ANNOUNCEMENT' as const
       : 'EVENT_REMINDER' as const
@@ -42,11 +48,15 @@ new Worker<NotificationJob>(
       userIds = follows.map((f) => f.userId).filter((id) => !optedOutIds.has(id))
     }
 
-    if (type === 'event_rsvp_update' && job.data.userIds?.length) {
+    // FIX: event_reminder was missing — it now uses job.data.userIds just like event_rsvp_update
+    if ((type === 'event_reminder' || type === 'event_rsvp_update') && job.data.userIds?.length) {
       userIds = job.data.userIds
     }
 
-    if (!userIds.length) return
+    if (!userIds.length) {
+      console.log(`[Push] ${type} job has no recipients — skipping`)
+      return
+    }
 
     // Save in-app notifications
     await prisma.notification.createMany({
@@ -62,12 +72,12 @@ new Worker<NotificationJob>(
     })
 
     // Get push tokens
-    const tokens = await prisma.pushToken.findMany({
+    const tokenRows = await prisma.pushToken.findMany({
       where: { userId: { in: userIds } },
       select: { token: true },
     })
 
-    const messages: ExpoPushMessage[] = tokens
+    const messages: ExpoPushMessage[] = tokenRows
       .filter((t) => Expo.isExpoPushToken(t.token))
       .map((t) => ({
         to: t.token,
@@ -75,16 +85,51 @@ new Worker<NotificationJob>(
         title,
         body,
         data: data ?? {},
+        // Route to the 'default' channel on Android so notifications use correct
+        // importance/vibration settings defined in useNotifications.ts
+        channelId: 'default',
       }))
 
+    if (!messages.length) return
+
     const chunks = expo.chunkPushNotifications(messages)
+    const allTickets: ExpoPushTicket[] = []
+
+    // Build an ordered list of tokens matching messages so we can correlate tickets
+    const orderedTokens = messages.map((m) => m.to as string)
+
+    let offset = 0
     for (const chunk of chunks) {
       try {
-        await expo.sendPushNotificationsAsync(chunk)
+        const tickets = await expo.sendPushNotificationsAsync(chunk)
+        allTickets.push(...tickets)
       } catch (err) {
-        console.error('Push notification delivery error:', err)
+        console.error(`[Push] Chunk send error (offset ${offset}):`, err)
       }
+      offset += chunk.length
     }
+
+    // Remove stale tokens reported as DeviceNotRegistered
+    const staleTokens: string[] = []
+    allTickets.forEach((ticket, i) => {
+      if (ticket.status === 'error') {
+        const detail = (ticket as any).details?.error
+        console.warn(`[Push] Ticket error for token ${i}: ${(ticket as any).message} (${detail})`)
+        if (detail === 'DeviceNotRegistered' && orderedTokens[i]) {
+          staleTokens.push(orderedTokens[i])
+        }
+      }
+    })
+
+    if (staleTokens.length > 0) {
+      await prisma.pushToken.deleteMany({ where: { token: { in: staleTokens } } })
+      console.log(`[Push] Removed ${staleTokens.length} stale token(s): ${staleTokens.join(', ')}`)
+    }
+
+    console.log(
+      `[Push] ${type} delivered to ${allTickets.filter(t => t.status === 'ok').length}/${messages.length} devices` +
+      (staleTokens.length ? ` (${staleTokens.length} stale removed)` : '')
+    )
   },
   { connection: redis as any, concurrency: 5 }
 )

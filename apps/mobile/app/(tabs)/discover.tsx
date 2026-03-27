@@ -187,18 +187,26 @@ export default function DiscoverScreen() {
     queryKey: ['mosques', debouncedQuery, gpsLocation, zipLocation, cityLocation, stateFilter],
     queryFn: () => {
       const params = new URLSearchParams()
-      const geoCoords = zipLocation ?? cityLocation ?? gpsLocation
 
       if (stateFilter) {
+        // State-wide browse
         params.set('state', stateFilter)
         params.set('limit', '100')
+      } else if (zipLocation || cityLocation) {
+        // Geocoded zip or city → always use coordinates so we get distance + full radius
+        const coords = (zipLocation ?? cityLocation)!
+        params.set('lat', String(coords.lat))
+        params.set('lng', String(coords.lng))
+        params.set('radius', String(RADIUS_KM))
+        params.set('limit', '100')
       } else if (debouncedQuery.trim()) {
-        // Text search takes priority over geo — typing overrides location filter
+        // Mosque name / abbreviation text search — no geocoded location was found
         params.set('q', debouncedQuery.trim())
         params.set('limit', '50')
-      } else if (geoCoords) {
-        params.set('lat', String(geoCoords.lat))
-        params.set('lng', String(geoCoords.lng))
+      } else if (gpsLocation) {
+        // Near Me GPS (no text query)
+        params.set('lat', String(gpsLocation.lat))
+        params.set('lng', String(gpsLocation.lng))
         params.set('radius', String(RADIUS_KM))
         params.set('limit', '100')
       } else {

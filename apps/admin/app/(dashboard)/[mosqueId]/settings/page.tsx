@@ -90,7 +90,7 @@ export default function SettingsPage() {
       if (json?.data?.url) {
         window.location.href = json.data.url
       } else {
-        alert(json?.error ?? 'Could not start Stripe onboarding. Please try again.')
+        alert(json?.error ?? json?.message ?? 'Could not start Stripe onboarding. Please try again.')
         setConnectLoading(false)
       }
     } catch {

@@ -5,7 +5,7 @@ import { requireAuth, requireMosqueAdmin } from '../plugins/auth'
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY
-  if (!key) throw new Error('STRIPE_SECRET_KEY not configured')
+  if (!key) return null
   return new Stripe(key)
 }
 
@@ -16,6 +16,11 @@ export async function stripeConnectRoutes(app: FastifyInstance) {
     '/mosques/:id/connect/onboard',
     { preHandler: [requireMosqueAdmin((req) => (req.params as any).id)] },
     async (req, reply) => {
+      const stripe = getStripe()
+      if (!stripe) {
+        return reply.status(503).send({ error: 'Stripe payments are not configured on this server.' })
+      }
+
       const { id: mosqueId } = req.params as { id: string }
       const { returnUrl, refreshUrl } = req.body as { returnUrl: string; refreshUrl: string }
 
@@ -23,7 +28,6 @@ export async function stripeConnectRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'returnUrl and refreshUrl are required' })
       }
 
-      const stripe = getStripe()
       const mosque = await prisma.mosqueProfile.findUnique({
         where: { id: mosqueId },
         select: { id: true, name: true, email: true, stripeAccountId: true },
@@ -32,35 +36,40 @@ export async function stripeConnectRoutes(app: FastifyInstance) {
 
       let accountId = mosque.stripeAccountId
 
-      // Create a new Express account if not already linked
-      if (!accountId) {
-        const account = await stripe.accounts.create({
-          type: 'express',
-          business_type: 'non_profit',
-          email: mosque.email ?? undefined,
-          business_profile: {
-            name: mosque.name,
-            product_description: 'Islamic community mosque accepting donations',
-            url: `https://masjid.app/mosque/${mosqueId}`,
-          },
-          metadata: { mosqueId },
+      try {
+        // Create a new Express account if not already linked
+        if (!accountId) {
+          const account = await stripe.accounts.create({
+            type: 'express',
+            business_type: 'non_profit',
+            email: mosque.email ?? undefined,
+            business_profile: {
+              name: mosque.name,
+              product_description: 'Islamic community mosque accepting donations',
+              url: `https://masjid.app/mosque/${mosqueId}`,
+            },
+            metadata: { mosqueId },
+          })
+          accountId = account.id
+          await prisma.mosqueProfile.update({
+            where: { id: mosqueId },
+            data: { stripeAccountId: accountId },
+          })
+        }
+
+        // Generate an Account Link for the onboarding flow
+        const accountLink = await stripe.accountLinks.create({
+          account: accountId,
+          refresh_url: refreshUrl,
+          return_url: returnUrl,
+          type: 'account_onboarding',
         })
-        accountId = account.id
-        await prisma.mosqueProfile.update({
-          where: { id: mosqueId },
-          data: { stripeAccountId: accountId },
-        })
+
+        return reply.send({ success: true, data: { url: accountLink.url } })
+      } catch (err: any) {
+        const message = err?.raw?.message ?? err?.message ?? 'Stripe onboarding failed'
+        return reply.status(502).send({ error: message })
       }
-
-      // Generate an Account Link for the onboarding flow
-      const accountLink = await stripe.accountLinks.create({
-        account: accountId,
-        refresh_url: refreshUrl,
-        return_url: returnUrl,
-        type: 'account_onboarding',
-      })
-
-      return reply.send({ success: true, data: { url: accountLink.url } })
     }
   )
 
@@ -87,6 +96,7 @@ export async function stripeConnectRoutes(app: FastifyInstance) {
       let detailsSubmitted = false
       try {
         const stripe = getStripe()
+        if (!stripe) throw new Error('Stripe not configured')
         const account = await stripe.accounts.retrieve(mosque.stripeAccountId)
         chargesEnabled = account.charges_enabled
         detailsSubmitted = account.details_submitted
@@ -134,6 +144,9 @@ export async function stripeConnectRoutes(app: FastifyInstance) {
       }
 
       const stripe = getStripe()
+      if (!stripe) {
+        return reply.status(503).send({ error: 'Stripe payments are not configured on this server.' })
+      }
       const loginLink = await stripe.accounts.createLoginLink(mosque.stripeAccountId)
       return reply.send({ success: true, data: { url: loginLink.url } })
     }

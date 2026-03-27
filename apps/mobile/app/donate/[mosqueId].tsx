@@ -13,17 +13,15 @@ import { useTheme } from '../../contexts/ThemeContext'
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 250]
 
-const CATEGORY_LABELS: Record<string, string> = {
-  GENERAL: 'General',
-  ZAKAT: 'Zakat',
-  SADAQAH: 'Sadaqah',
-  BUILDING_FUND: 'Building Fund',
-  RAMADAN: 'Ramadan',
-  EID: 'Eid',
-  YOUTH_PROGRAMS: 'Youth Programs',
-  EDUCATION: 'Education',
-  OTHER: 'Other',
-}
+const DONATION_TYPES = [
+  { key: 'GENERAL',            label: 'General',            icon: '🕌' },
+  { key: 'ZAKAT',              label: 'Zakat',              icon: '🌙' },
+  { key: 'SADAQAH',            label: 'Sadaqah',            icon: '💚' },
+  { key: 'SPECIAL_EVENT',      label: 'Special Event',      icon: '🎉' },
+  { key: 'MOSQUE_MAINTENANCE', label: 'Mosque Maintenance', icon: '🔧' },
+  { key: 'MEMBERSHIP_DUES',    label: 'Membership Dues',    icon: '🪪' },
+  { key: 'SUBSCRIPTION',       label: 'Subscription',       icon: '🔄' },
+] as const
 
 export default function DonateScreen() {
   const { mosqueId } = useLocalSearchParams<{ mosqueId: string }>()
@@ -34,6 +32,7 @@ export default function DonateScreen() {
   const [customAmount, setCustomAmount] = useState('')
   const [useCustom, setUseCustom] = useState(false)
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
+  const [selectedDonationType, setSelectedDonationType] = useState<string>('GENERAL')
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -70,7 +69,7 @@ export default function DonateScreen() {
         currency: 'usd',
         campaignId: selectedCampaign ?? undefined,
         isAnonymous,
-        category: selectedCampaign ? undefined : 'GENERAL',
+        category: selectedDonationType,
       })
 
       const { clientSecret, publishableKey } = res.data
@@ -220,6 +219,37 @@ export default function DonateScreen() {
           />
         </TouchableOpacity>
 
+        {/* Donation type picker */}
+        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16, marginBottom: 12 }}>
+          Donation type
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+          {DONATION_TYPES.map((type) => {
+            const isSelected = selectedDonationType === type.key
+            return (
+              <TouchableOpacity
+                key={type.key}
+                onPress={() => setSelectedDonationType(type.key)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  paddingHorizontal: 14, paddingVertical: 10,
+                  borderRadius: 20, borderWidth: 2,
+                  borderColor: isSelected ? colors.primary : colors.surfaceSecondary,
+                  backgroundColor: isSelected ? colors.primaryLight : colors.surface,
+                }}
+              >
+                <Text style={{ fontSize: 14 }}>{type.icon}</Text>
+                <Text style={{
+                  fontSize: 13, fontWeight: '600',
+                  color: isSelected ? colors.primary : colors.textSecondary,
+                }}>
+                  {type.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
         {/* Campaign picker */}
         {campaigns.length > 0 && (
           <>
@@ -313,13 +343,13 @@ export default function DonateScreen() {
           <Text style={{ color: colors.primary, fontSize: 28, fontWeight: '900' }}>
             ${((finalAmount || 0) / 100).toFixed(2)}
           </Text>
-          {selectedCampaign && campaigns.find((c) => c.id === selectedCampaign) ? (
-            <Text style={{ color: colors.primary, fontSize: 12, marginTop: 2 }}>
-              → {campaigns.find((c) => c.id === selectedCampaign)?.title}
-            </Text>
-          ) : (
-            <Text style={{ color: colors.primary, fontSize: 12, marginTop: 2 }}>→ General Fund</Text>
-          )}
+          <Text style={{ color: colors.primary, fontSize: 12, marginTop: 2 }}>
+            {DONATION_TYPES.find((t) => t.key === selectedDonationType)?.icon}{' '}
+            {DONATION_TYPES.find((t) => t.key === selectedDonationType)?.label}
+            {selectedCampaign && campaigns.find((c) => c.id === selectedCampaign)
+              ? ` · ${campaigns.find((c) => c.id === selectedCampaign)?.title}`
+              : ''}
+          </Text>
         </View>
 
         {/* Donate button */}

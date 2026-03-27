@@ -75,12 +75,33 @@ function VideoCard({ item, isActive, isScreenFocused }: { item: any; isActive: b
   const queryClient = useQueryClient()
   const { isSignedIn } = useAuth()
   const videoRef = useRef<Video>(null)
-  const shouldPlay = isActive && isScreenFocused
+  const [manuallyPaused, setManuallyPaused] = useState(false)
+  const shouldPlay = isActive && isScreenFocused && !manuallyPaused
   const shouldPlayRef = useRef(shouldPlay)
   shouldPlayRef.current = shouldPlay
   const playStartRef = useRef<number | null>(null)
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
+
+  // Pause icon flash animation
+  const pauseIconOpacity = useRef(new Animated.Value(0)).current
+  function flashIcon() {
+    pauseIconOpacity.stopAnimation()
+    Animated.sequence([
+      Animated.timing(pauseIconOpacity, { toValue: 1, duration: 80, useNativeDriver: true }),
+      Animated.delay(600),
+      Animated.timing(pauseIconOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start()
+  }
+
+  function handleTap() {
+    setManuallyPaused((p) => { flashIcon(); return !p })
+  }
+
+  // Reset manual pause when this card becomes inactive (e.g. swiped away)
+  useEffect(() => {
+    if (!isActive) setManuallyPaused(false)
+  }, [isActive])
 
   // ── AUTOPLAY: imperative play/pause ────────────────────────────────────────
   useEffect(() => {
@@ -187,6 +208,33 @@ function VideoCard({ item, isActive, isScreenFocused }: { item: any; isActive: b
           style={StyleSheet.absoluteFill}
           contentFit="cover"
         />
+      )}
+
+      {/* Tap-to-pause/resume overlay */}
+      <TouchableOpacity
+        style={StyleSheet.absoluteFill}
+        activeOpacity={1}
+        onPress={handleTap}
+      />
+
+      {/* Pause/play icon flash */}
+      <Animated.View
+        style={[styles.pauseIconWrap, { opacity: pauseIconOpacity }]}
+        pointerEvents="none"
+      >
+        <Ionicons
+          name={manuallyPaused ? 'pause-circle' : 'play-circle'}
+          size={72}
+          color="rgba(255,255,255,0.88)"
+        />
+      </Animated.View>
+
+      {/* Persistent pause indicator in corner */}
+      {manuallyPaused && (
+        <View style={styles.pausedBadge} pointerEvents="none">
+          <Ionicons name="pause" size={12} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Paused</Text>
+        </View>
       )}
 
       {/* Gradient */}
@@ -613,6 +661,23 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+  pauseIconWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pausedBadge: {
+    position: 'absolute',
+    top: 60,
+    right: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
 
   // ── Header ──────────────────────────────────────────────────────────────────

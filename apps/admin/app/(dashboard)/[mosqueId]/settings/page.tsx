@@ -87,8 +87,14 @@ export default function SettingsPage() {
         body: JSON.stringify({ returnUrl, refreshUrl }),
       })
       const json = await res.json()
-      if (json?.data?.url) window.location.href = json.data.url
-    } finally {
+      if (json?.data?.url) {
+        window.location.href = json.data.url
+      } else {
+        alert(json?.error ?? 'Could not start Stripe onboarding. Please try again.')
+        setConnectLoading(false)
+      }
+    } catch {
+      alert('Could not connect to Stripe. Please try again.')
       setConnectLoading(false)
     }
   }
@@ -98,7 +104,13 @@ export default function SettingsPage() {
     try {
       const res = await adminFetch(`/mosques/${mosqueId}/connect/dashboard`)
       const json = await res.json()
-      if (json?.data?.url) window.open(json.data.url, '_blank')
+      if (json?.data?.url) {
+        window.open(json.data.url, '_blank')
+      } else {
+        alert(json?.error ?? 'Could not open Stripe dashboard.')
+      }
+    } catch {
+      alert('Could not open Stripe dashboard. Please try again.')
     } finally {
       setDashboardLoading(false)
     }

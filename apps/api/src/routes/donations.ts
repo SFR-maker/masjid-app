@@ -6,7 +6,8 @@ import { requireAuth, requireMosqueAdmin } from '../plugins/auth'
 
 const DONATION_CATEGORIES = [
   'GENERAL','ZAKAT','SADAQAH','BUILDING_FUND','RAMADAN','EID',
-  'YOUTH_PROGRAMS','EDUCATION','OTHER',
+  'YOUTH_PROGRAMS','EDUCATION','SPECIAL_EVENT','MOSQUE_MAINTENANCE',
+  'MEMBERSHIP_DUES','SUBSCRIPTION','OTHER',
 ] as const
 
 function getStripe() {

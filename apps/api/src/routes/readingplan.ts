@@ -21,19 +21,20 @@ export async function readingPlanRoutes(app: FastifyInstance) {
     const today = new Date()
     const startDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
 
-    // Delete existing plan if any
-    await prisma.quranReadingPlan.deleteMany({ where: { userId } })
-
-    const plan = await prisma.quranReadingPlan.create({
-      data: {
-        userId,
-        type,
-        startDate,
-        currentJuz: 1,
-        completedJuzs: [],
-        isCompleted: false,
-      },
-    })
+    // Delete existing plan if any, then create new one atomically
+    const [, plan] = await prisma.$transaction([
+      prisma.quranReadingPlan.deleteMany({ where: { userId } }),
+      prisma.quranReadingPlan.create({
+        data: {
+          userId,
+          type,
+          startDate,
+          currentJuz: 1,
+          completedJuzs: [],
+          isCompleted: false,
+        },
+      }),
+    ])
 
     return reply.status(201).send({ success: true, data: plan })
   })

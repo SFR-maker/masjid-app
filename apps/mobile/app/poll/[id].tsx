@@ -1,4 +1,4 @@
-import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native'
+import { View, Text, ActivityIndicator, TouchableOpacity, ScrollView, RefreshControl } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -11,7 +11,7 @@ export default function PollScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { colors } = useTheme()
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isRefetching, isFetching } = useQuery({
     queryKey: ['poll', id],
     queryFn: () => api.get(`/polls/${id}`),
     enabled: !!id,
@@ -32,7 +32,17 @@ export default function PollScreen() {
         <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.3 }}>Poll</Text>
       </View>
 
-      <View style={{ flex: 1, paddingHorizontal: 0, paddingTop: 8 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: 8 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching || isFetching}
+            onRefresh={refetch}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {isLoading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color={colors.primary} />
@@ -49,7 +59,7 @@ export default function PollScreen() {
             <PollCard poll={poll} queryKey={['poll', id]} />
           </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }

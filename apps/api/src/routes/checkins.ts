@@ -36,7 +36,7 @@ export async function checkInRoutes(app: FastifyInstance) {
     const userId = req.userId!
     const { mosqueId, type } = z
       .object({ mosqueId: z.string(), type: z.enum(['JUMUAH', 'PRAYER']).default('JUMUAH') })
-      .parse(req.body)
+      .parse(req.query)
 
     const today = new Date()
     const dateOnly = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))

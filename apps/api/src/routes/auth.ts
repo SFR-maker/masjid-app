@@ -5,7 +5,7 @@ import { prisma } from '@masjid/database'
 export async function authRoutes(app: FastifyInstance) {
   // Clerk webhook — syncs users to our database
   app.post('/webhook', async (req, reply) => {
-    const webhookSecret = process.env.CLERK_WEBHOOK_SECRET!
+    const webhookSecret = process.env.CLERK_WEBHOOK_SECRET
     const svix = new Webhook(webhookSecret)
 
     const headers = {

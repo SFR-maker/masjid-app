@@ -569,6 +569,15 @@ export default function VideosScreen() {
         renderItem={({ item, index }) => (
           <VideoCard item={item} isActive={index === visibleIndex} isScreenFocused={isScreenFocused} />
         )}
+        ListEmptyComponent={
+          <View style={{ width: SCREEN_W, height: SCREEN_H, justifyContent: 'center', alignItems: 'center' }}>
+            <Ionicons name="search-outline" size={52} color="rgba(255,255,255,0.2)" />
+            <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 17, fontWeight: '700', marginTop: 16 }}>No videos found</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, marginTop: 6, textAlign: 'center', paddingHorizontal: 40 }}>
+              {searchText.trim() ? `No results for "${searchText}"` : `No ${selectedCategory} videos yet`}
+            </Text>
+          </View>
+        }
         pagingEnabled
         snapToInterval={SCREEN_H}
         snapToAlignment="start"

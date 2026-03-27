@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import * as Notifications from 'expo-notifications'
-import { Platform } from 'react-native'
+import { AppState, Platform } from 'react-native'
 import { useAuth } from '@clerk/clerk-expo'
 import { api } from '../lib/api'
 
@@ -55,13 +55,20 @@ export async function setupQuranPlayerCategory() {
 }
 
 export function useUnreadNotificationCount() {
+  const [isActive, setIsActive] = useState(AppState.currentState === 'active')
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => setIsActive(state === 'active'))
+    return () => sub.remove()
+  }, [])
+
   return useQuery({
     queryKey: ['notifications-unread-count'],
     queryFn: async () => {
       const data = await api.get<any>('/notifications?limit=50')
       return (data.data?.items ?? []).filter((n: any) => !n.isRead).length
     },
-    refetchInterval: 30000,
+    refetchInterval: isActive ? 30_000 : false,
   })
 }
 

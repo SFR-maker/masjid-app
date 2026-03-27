@@ -107,12 +107,20 @@ export default function DiscoverScreen() {
   const { colors } = useTheme()
   const { isSignedIn } = useAuth()
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [loadingGps, setLoadingGps] = useState(false)
   const [zipLocation, setZipLocation] = useState<{ lat: number; lng: number; zip: string } | null>(null)
   const [cityLocation, setCityLocation] = useState<{ lat: number; lng: number; displayName: string } | null>(null)
   const [stateFilter, setStateFilter] = useState<string | null>(null) // e.g. "TX"
   const [geocoding, setGeocoding] = useState(false)
+
+  // Debounce raw text query for the React Query key (avoids refetch on every keystroke
+  // for mosque-name searches that bypass geocoding entirely)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300)
+    return () => clearTimeout(timer)
+  }, [query])
 
   useEffect(() => {
     const trimmed = query.trim()
@@ -176,7 +184,7 @@ export default function DiscoverScreen() {
   }, [query])
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['mosques', query, gpsLocation, zipLocation, cityLocation, stateFilter],
+    queryKey: ['mosques', debouncedQuery, gpsLocation, zipLocation, cityLocation, stateFilter],
     queryFn: () => {
       const params = new URLSearchParams()
       const geoCoords = zipLocation ?? cityLocation ?? gpsLocation
@@ -188,8 +196,8 @@ export default function DiscoverScreen() {
         params.set('lat', String(geoCoords.lat))
         params.set('lng', String(geoCoords.lng))
         params.set('radius', String(RADIUS_KM))
-      } else if (query.trim()) {
-        params.set('q', query.trim())
+      } else if (debouncedQuery.trim()) {
+        params.set('q', debouncedQuery.trim())
         params.set('limit', '50')
       } else {
         params.set('limit', '50')

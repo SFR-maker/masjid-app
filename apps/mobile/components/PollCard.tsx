@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { formatDistanceToNow, isPast } from 'date-fns'
 import { useAuth } from '@clerk/clerk-expo'
+import { router } from 'expo-router'
 import { api } from '../lib/api'
 import { useTheme } from '../contexts/ThemeContext'
 
@@ -103,8 +104,12 @@ export function PollCard({ poll, queryKey }: PollProps) {
       shadowRadius: 12,
       elevation: 2,
     }}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 10 }}>
+      {/* Header — tappable to open full poll detail */}
+      <TouchableOpacity
+        onPress={() => router.push(`/poll/${poll.id}` as any)}
+        activeOpacity={0.75}
+        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 10 }}
+      >
         <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: GREEN_LIGHT, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ fontSize: 16 }}>📊</Text>
         </View>
@@ -122,7 +127,7 @@ export function PollCard({ poll, queryKey }: PollProps) {
             </Text>
           </View>
         ) : null}
-      </View>
+      </TouchableOpacity>
 
       {/* Divider */}
       <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 14 }} />

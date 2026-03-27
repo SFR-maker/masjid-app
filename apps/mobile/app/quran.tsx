@@ -504,6 +504,9 @@ export default function QuranScreen() {
           data={ayahs}
           keyExtractor={item => String(item.numberInSurah)}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 }}
+          windowSize={5}
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
           onScrollToIndexFailed={({ index, averageItemLength }) => {
             // Fallback: scroll to estimated offset if index is out of rendered range
             flatListRef.current?.scrollToOffset({ offset: index * averageItemLength, animated: true })

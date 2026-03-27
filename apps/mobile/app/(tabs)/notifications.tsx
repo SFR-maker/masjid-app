@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { formatDistanceToNow } from 'date-fns'
@@ -23,7 +23,7 @@ export default function NotificationsScreen() {
   const { colors } = useTheme()
   const queryClient = useQueryClient()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => api.get('/notifications?limit=50'),
     staleTime: 15_000,
@@ -98,6 +98,9 @@ export default function NotificationsScreen() {
           data={notifications}
           keyExtractor={(item: any) => item.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+          }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingVertical: 80, paddingHorizontal: 32 }}>
               <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>

@@ -24,6 +24,7 @@ export function ReadingPlanWidget() {
   const { isSignedIn } = useAuth()
   const queryClient = useQueryClient()
   const [showSetup, setShowSetup] = useState(false)
+  const [showManage, setShowManage] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['reading-plan'],
@@ -43,6 +44,14 @@ export function ReadingPlanWidget() {
   const markJuz = useMutation({
     mutationFn: (juz: number) => api.patch('/reading-plan/progress', { juz }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reading-plan'] }),
+  })
+
+  const deletePlan = useMutation({
+    mutationFn: () => api.delete('/reading-plan'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reading-plan'] })
+      setShowManage(false)
+    },
   })
 
   if (!isSignedIn || isLoading) return null
@@ -119,44 +128,120 @@ export function ReadingPlanWidget() {
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, flexDirection: 'column', gap: 10 }]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Text style={{ fontSize: 20 }}>📖</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>
-            {plan.type === 'MONTHLY' ? '30-Day Plan' : '1-Year Plan'} · Juz {currentJuz}/30
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
-            {JUZ_NAMES[currentJuz] ?? `Juz ${currentJuz}`}
-          </Text>
+    <>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, flexDirection: 'column', gap: 10 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Text style={{ fontSize: 20 }}>📖</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>
+              {plan.type === 'MONTHLY' ? '30-Day Plan' : '1-Year Plan'} · Juz {currentJuz}/30
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
+              {JUZ_NAMES[currentJuz] ?? `Juz ${currentJuz}`}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowManage(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="ellipsis-horizontal" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
         </View>
-        <Text style={{ color: colors.textTertiary, fontSize: 12, fontWeight: '600' }}>
-          {completedCount}/30
-        </Text>
+
+        {/* Progress bar */}
+        <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surfaceSecondary, overflow: 'hidden' }}>
+          <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.primary, width: `${progress * 100}%` }} />
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ color: colors.textTertiary, fontSize: 11 }}>{completedCount}/30 juz complete</Text>
+        </View>
+
+        {/* Mark current juz done */}
+        {!plan.completedJuzs?.includes(currentJuz) && (
+          <TouchableOpacity
+            onPress={() => markJuz.mutate(currentJuz)}
+            disabled={markJuz.isPending}
+            style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+              backgroundColor: colors.primaryLight, borderRadius: 10, paddingVertical: 9,
+            }}
+          >
+            <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>
+              {markJuz.isPending ? 'Saving...' : `Mark Juz ${currentJuz} as Complete`}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Progress bar */}
-      <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surfaceSecondary, overflow: 'hidden' }}>
-        <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.primary, width: `${progress * 100}%` }} />
-      </View>
+      {/* Manage plan modal */}
+      <Modal visible={showManage} transparent animationType="slide" statusBarTranslucent>
+        <View style={styles.overlay}>
+          <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>Manage Reading Plan</Text>
 
-      {/* Mark current juz done */}
-      {!plan.completedJuzs?.includes(currentJuz) && (
-        <TouchableOpacity
-          onPress={() => markJuz.mutate(currentJuz)}
-          disabled={markJuz.isPending}
-          style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            backgroundColor: colors.primaryLight, borderRadius: 10, paddingVertical: 9,
-          }}
-        >
-          <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>
-            Mark Juz {currentJuz} as Complete
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
+            <TouchableOpacity
+              onPress={() => { setShowManage(false); setShowSetup(true) }}
+              style={[styles.planOption, { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary }]}
+            >
+              <Text style={{ fontSize: 24 }}>🔄</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 15 }}>Change Goal</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>Switch between 30-day and 1-year plan</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => deletePlan.mutate()}
+              disabled={deletePlan.isPending}
+              style={[styles.planOption, { backgroundColor: '#FEF2F2', borderWidth: 1.5, borderColor: '#FECACA' }]}
+            >
+              <Text style={{ fontSize: 24 }}>🗑️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 15 }}>
+                  {deletePlan.isPending ? 'Deleting...' : 'Delete Plan'}
+                </Text>
+                <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 2 }}>Remove your current reading goal</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setShowManage(false)} style={{ alignItems: 'center', paddingVertical: 14 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Re-use setup modal for changing plan */}
+      <Modal visible={showSetup} transparent animationType="slide" statusBarTranslucent>
+        <View style={styles.overlay}>
+          <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>Choose a Reading Plan</Text>
+            <TouchableOpacity
+              onPress={() => createPlan.mutate('MONTHLY')}
+              style={[styles.planOption, { backgroundColor: colors.primary }]}
+            >
+              <Text style={{ fontSize: 28 }}>⚡</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.primaryContrast, fontWeight: '800', fontSize: 16 }}>30-Day Plan</Text>
+                <Text style={{ color: colors.primaryContrast, opacity: 0.8, fontSize: 13, marginTop: 2 }}>1 Juz per day — complete in a month</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => createPlan.mutate('YEARLY')}
+              style={[styles.planOption, { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary }]}
+            >
+              <Text style={{ fontSize: 28 }}>🌱</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 16 }}>1-Year Plan</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>~3 pages/day — gentle and sustainable</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowSetup(false)} style={{ alignItems: 'center', paddingVertical: 14 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
   )
 }
 

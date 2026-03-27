@@ -50,7 +50,7 @@ async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN'): Promise<v
 
 export async function streakRoutes(app: FastifyInstance) {
   // POST /streaks/prayer — mark a prayer as prayed today
-  app.post('/streaks/prayer', { preHandler: [requireAuth] }, async (req, reply) => {
+  app.post('/prayer', { preHandler: [requireAuth] }, async (req, reply) => {
     const userId = req.userId!
     const { prayer } = z
       .object({ prayer: z.enum(PRAYER_NAMES) })
@@ -79,14 +79,14 @@ export async function streakRoutes(app: FastifyInstance) {
   })
 
   // POST /streaks/login — record a daily login (call on app open)
-  app.post('/streaks/login', { preHandler: [requireAuth] }, async (req, reply) => {
+  app.post('/login', { preHandler: [requireAuth] }, async (req, reply) => {
     const userId = req.userId!
     await updateStreak(userId, 'LOGIN')
     return reply.send({ success: true })
   })
 
   // GET /streaks/me — return streak data + today's prayed prayers
-  app.get('/streaks/me', { preHandler: [requireAuth] }, async (req, reply) => {
+  app.get('/me', { preHandler: [requireAuth] }, async (req, reply) => {
     const userId = req.userId!
     const today = toDateOnly(new Date())
 

@@ -11,9 +11,6 @@ export async function videoRoutes(app: FastifyInstance) {
     const userId = req.userId
     const lim = Math.min(100, Number(limit) || 20)
 
-    // Global feed (no mosqueId filter): only show videos from verified mosques
-    const verifiedFilter = !mosqueId ? { mosque: { isVerified: true } } : {}
-
     const videos = await prisma.video.findMany({
       where: {
         isPublished: true,
@@ -21,7 +18,6 @@ export async function videoRoutes(app: FastifyInstance) {
         ...(mosqueId ? { mosqueId } : {}),
         ...(category ? { category } : {}),
         ...(q ? { title: { contains: q, mode: 'insensitive' } } : {}),
-        ...verifiedFilter,
       },
       take: lim,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),

@@ -66,7 +66,7 @@ export async function mosqueRoutes(app: FastifyInstance) {
       req.query as any
     const userId = req.userId
 
-    const where: any = { isActive: true }
+    const where: any = { isActive: { not: false } }
 
     if (q) {
       where.OR = [

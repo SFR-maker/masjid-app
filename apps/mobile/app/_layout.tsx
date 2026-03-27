@@ -101,10 +101,12 @@ function RootNavigator() {
     if (!isSignedIn) return
     const today = new Date().toISOString().slice(0, 10)
     const key = `login_streak_date`
-    AsyncStorage.getItem(key).then((last) => {
+    AsyncStorage.getItem(key).then(async (last) => {
       if (last !== today) {
-        api.post('/streaks/login', {}).catch(() => {})
-        AsyncStorage.setItem(key, today)
+        await AsyncStorage.setItem(key, today)
+        api.post('/streaks/login', {})
+          .then(() => queryClient.invalidateQueries({ queryKey: ['streaks'] }))
+          .catch(() => {})
       }
     })
   }, [isSignedIn])

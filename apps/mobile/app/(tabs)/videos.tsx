@@ -9,7 +9,8 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, Dimensions,
   StatusBar, StyleSheet, Share, TextInput, ScrollView,
-  Animated, Keyboard,
+  Animated, Keyboard, Modal, KeyboardAvoidingView, Platform,
+  ActivityIndicator,
 } from 'react-native'
 import { Video, ResizeMode } from 'expo-av'
 import { Image } from 'expo-image'
@@ -17,7 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons, Feather } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { useAuth } from '@clerk/clerk-expo'
 import { api } from '../../lib/api'
 import { PersonalizationOptInModal, usePersonalizationState } from '../../components/PersonalizationOptIn'
@@ -69,23 +70,26 @@ function LikeButton({ liked, count, onPress }: { liked: boolean; count: number; 
 }
 
 // ── Single full-screen video card ─────────────────────────────────────────────
-function VideoCard({ item, isActive }: { item: any; isActive: boolean }) {
+function VideoCard({ item, isActive, isScreenFocused }: { item: any; isActive: boolean; isScreenFocused: boolean }) {
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
+  const { isSignedIn } = useAuth()
   const videoRef = useRef<Video>(null)
-  const isActiveRef = useRef(isActive)
-  isActiveRef.current = isActive
+  const shouldPlay = isActive && isScreenFocused
+  const shouldPlayRef = useRef(shouldPlay)
+  shouldPlayRef.current = shouldPlay
   const playStartRef = useRef<number | null>(null)
+  const [showComments, setShowComments] = useState(false)
+  const [commentText, setCommentText] = useState('')
 
   // ── AUTOPLAY: imperative play/pause ────────────────────────────────────────
   useEffect(() => {
     if (!videoRef.current || !item.streamUrl) return
-    if (isActive) {
+    if (shouldPlay) {
       playStartRef.current = Date.now()
       videoRef.current.playAsync().catch(() => {})
     } else {
       videoRef.current.pauseAsync().catch(() => {})
-      // Send watch time when scrolling away
       if (playStartRef.current !== null) {
         const watchTime = Math.round((Date.now() - playStartRef.current) / 1000)
         playStartRef.current = null
@@ -94,14 +98,30 @@ function VideoCard({ item, isActive }: { item: any; isActive: boolean }) {
         }
       }
     }
-  }, [isActive, item.streamUrl, item.id])
+  }, [shouldPlay, item.streamUrl, item.id])
 
   function handleReadyForDisplay() {
-    if (isActiveRef.current && videoRef.current) {
+    if (shouldPlayRef.current && videoRef.current) {
       playStartRef.current = Date.now()
       videoRef.current.playAsync().catch(() => {})
     }
   }
+
+  const { data: commentsData, isLoading: commentsLoading } = useQuery({
+    queryKey: ['video-comments', item.id],
+    queryFn: () => api.get(`/videos/${item.id}/comments`),
+    enabled: showComments,
+    staleTime: 30_000,
+  })
+  const comments: any[] = commentsData?.data?.items ?? []
+
+  const postComment = useMutation({
+    mutationFn: () => api.post(`/videos/${item.id}/comments`, { text: commentText.trim() }),
+    onSuccess: () => {
+      setCommentText('')
+      queryClient.invalidateQueries({ queryKey: ['video-comments', item.id] })
+    },
+  })
 
   const catStyle = CATEGORY_COLORS[item.category] ?? { bg: 'rgba(75,85,99,0.75)', text: '#F3F4F6' }
 
@@ -190,9 +210,9 @@ function VideoCard({ item, isActive }: { item: any; isActive: boolean }) {
           <Text style={styles.railLabel}>Share</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.railItem} onPress={() => router.push(`/video/${item.id}`)}>
+        <TouchableOpacity style={styles.railItem} onPress={() => setShowComments(true)}>
           <Ionicons name="chatbubble-outline" size={24} color="#fff" />
-          <Text style={styles.railLabel}>More</Text>
+          <Text style={styles.railLabel}>Comments</Text>
         </TouchableOpacity>
       </View>
 
@@ -226,6 +246,71 @@ function VideoCard({ item, isActive }: { item: any; isActive: boolean }) {
           </View>
         )}
       </View>
+
+      {/* Comments bottom sheet */}
+      <Modal visible={showComments} transparent animationType="slide" onRequestClose={() => setShowComments(false)} statusBarTranslucent>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { Keyboard.dismiss(); setShowComments(false) }} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: SCREEN_H * 0.72, paddingBottom: insets.bottom + 8 }}>
+            {/* Handle */}
+            <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            </View>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16, paddingHorizontal: 20, paddingBottom: 12 }}>
+              Comments {comments.length > 0 ? `(${comments.length})` : ''}
+            </Text>
+            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+
+            <ScrollView style={{ maxHeight: SCREEN_H * 0.52 }} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
+              {commentsLoading ? (
+                <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
+              ) : comments.length === 0 ? (
+                <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 24, fontSize: 14 }}>
+                  No comments yet. Be the first!
+                </Text>
+              ) : (
+                comments.map((c: any) => (
+                  <View key={c.id} style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                      {c.user?.avatarUrl
+                        ? <Image source={{ uri: c.user.avatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} contentFit="cover" />
+                        : <Text style={{ fontSize: 13 }}>👤</Text>
+                      }
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600', marginBottom: 2 }}>{c.user?.name ?? 'Anonymous'}</Text>
+                      <Text style={{ color: '#fff', fontSize: 14, lineHeight: 20 }}>{c.text}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {isSignedIn && (
+              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 }}
+                  placeholder="Add a comment..."
+                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  maxLength={1000}
+                />
+                <TouchableOpacity
+                  onPress={() => postComment.mutate()}
+                  disabled={postComment.isPending || commentText.trim().length < 2}
+                  style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: commentText.trim().length >= 2 ? '#3B82F6' : 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  {postComment.isPending
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Ionicons name="send" size={16} color="#fff" />
+                  }
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   )
 }
@@ -343,9 +428,18 @@ export default function VideosScreen() {
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [searchText, setSearchText] = useState('')
+  const [isScreenFocused, setIsScreenFocused] = useState(true)
   const { isSignedIn } = useAuth()
   const { state: personalizationState, loading: personalizationLoading, accept, decline } = usePersonalizationState()
   const [showOptIn, setShowOptIn] = useState(false)
+
+  // Pause video when navigating away from this tab
+  useFocusEffect(
+    useCallback(() => {
+      setIsScreenFocused(true)
+      return () => setIsScreenFocused(false)
+    }, [])
+  )
 
   // Show opt-in prompt once for signed-in users whose preference is unknown
   useEffect(() => {
@@ -425,7 +519,7 @@ export default function VideosScreen() {
         data={videos}
         keyExtractor={(v: any) => v.id}
         renderItem={({ item, index }) => (
-          <VideoCard item={item} isActive={index === visibleIndex} />
+          <VideoCard item={item} isActive={index === visibleIndex} isScreenFocused={isScreenFocused} />
         )}
         pagingEnabled
         snapToInterval={SCREEN_H}

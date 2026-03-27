@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity } from 'react-native'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@clerk/clerk-expo'
 import { router } from 'expo-router'
 import { useTheme } from '../contexts/ThemeContext'
@@ -14,6 +14,7 @@ const PRAYER_ICONS: Record<string, string> = {
 export function StreakWidget() {
   const { colors } = useTheme()
   const { isSignedIn } = useAuth()
+  const queryClient = useQueryClient()
 
   const todayKey = format(new Date(), 'yyyy-MM-dd')
 
@@ -22,6 +23,31 @@ export function StreakWidget() {
     queryFn: () => api.get<any>('/streaks/me'),
     enabled: !!isSignedIn,
     staleTime: 1000 * 60 * 5,
+  })
+
+  const markMutation = useMutation({
+    mutationFn: (prayer: string) => api.post('/streaks/prayer', { prayer }),
+    onMutate: (prayer) => {
+      queryClient.setQueryData(['streaks', todayKey], (old: any) => {
+        if (!old) return old
+        const prev: string[] = old.data?.todayPrayed ?? []
+        if (prev.includes(prayer)) return old
+        return { ...old, data: { ...old.data, todayPrayed: [...prev, prayer] } }
+      })
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
+  })
+
+  const unmarkMutation = useMutation({
+    mutationFn: (prayer: string) => api.delete(`/streaks/prayer?prayer=${prayer}`),
+    onMutate: (prayer) => {
+      queryClient.setQueryData(['streaks', todayKey], (old: any) => {
+        if (!old) return old
+        const prev: string[] = old.data?.todayPrayed ?? []
+        return { ...old, data: { ...old.data, todayPrayed: prev.filter((p) => p !== prayer) } }
+      })
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
   })
 
   if (!isSignedIn) return null
@@ -146,7 +172,15 @@ export function StreakWidget() {
         {PRAYER_ORDER.map((prayer) => {
           const done = todayPrayed.includes(prayer)
           return (
-            <View key={prayer} style={{ alignItems: 'center', gap: 4 }}>
+            <TouchableOpacity
+              key={prayer}
+              onPress={(e) => {
+                e.stopPropagation?.()
+                done ? unmarkMutation.mutate(prayer) : markMutation.mutate(prayer)
+              }}
+              activeOpacity={0.7}
+              style={{ alignItems: 'center', gap: 4 }}
+            >
               <View style={{
                 width: 36,
                 height: 36,
@@ -169,7 +203,7 @@ export function StreakWidget() {
               }}>
                 {prayer.slice(0, 3)}
               </Text>
-            </View>
+            </TouchableOpacity>
           )
         })}
       </View>

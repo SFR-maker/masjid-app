@@ -48,7 +48,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-router',
     'expo-updates',
     'expo-notifications',
-    '@stripe/stripe-react-native',
+    ['@stripe/stripe-react-native', { merchantIdentifier: 'merchant.com.masjidapp.mobile', enableGooglePay: true }],
     ['expo-location', { locationWhenInUsePermission: 'Allow Masjid to find mosques near you.' }],
     // Bug 11 fix: enable Android foreground service so Quran audio continues
     // playing when the app is backgrounded or the screen is locked.

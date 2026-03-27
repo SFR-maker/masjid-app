@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { useTheme } from '../../contexts/ThemeContext'
 import { MADHAB_KEY } from './prayer'
+import { TIME_FORMAT_KEY, useTimeFormat } from '../../hooks/useTimeFormat'
 
 export default function ProfileScreen() {
   const { signOut: clerkSignOut } = useClerk()
@@ -96,6 +97,27 @@ export default function ProfileScreen() {
       })
     }
   }, [meData])
+
+  const { is24h } = useTimeFormat()
+
+  function handleTimeFormatChange() {
+    const next = is24h ? '12h' : '24h'
+    const label = next === '24h' ? '24-hour clock' : '12-hour (AM/PM)'
+    Alert.alert(
+      'Time Format',
+      `Switch to ${label}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Switch',
+          onPress: async () => {
+            await AsyncStorage.setItem(TIME_FORMAT_KEY, next)
+            queryClient.setQueryData(['time-format'], next)
+          },
+        },
+      ]
+    )
+  }
 
   function handleMadhabChange() {
     const next = madhabPreference === 'STANDARD' ? 'HANAFI' : 'STANDARD'
@@ -433,6 +455,22 @@ export default function ProfileScreen() {
               ? <ActivityIndicator size="small" color={colors.primary} />
               : <Ionicons name="chevron-forward" size={15} color={colors.textTertiary} />
             }
+          </TouchableOpacity>
+
+          {/* Time Format */}
+          <TouchableOpacity
+            onPress={handleTimeFormatChange}
+            activeOpacity={0.75}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}
+          >
+            <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 13 }}>
+              <Ionicons name="time-outline" size={17} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '500' }}>Time Format</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>{is24h ? '24-hour clock' : '12-hour (AM/PM)'} — tap to change</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={15} color={colors.textTertiary} />
           </TouchableOpacity>
 
           {/* Appearance — Dark mode */}

@@ -7,6 +7,7 @@ import * as Location from 'expo-location'
 import { api } from '../lib/api'
 import { useSelectedMosque } from '../hooks/useSelectedMosque'
 import { useTheme } from '../contexts/ThemeContext'
+import { useTimeFormat } from '../hooks/useTimeFormat'
 
 const PRAYER_KEYS = ['fajrAdhan', 'dhuhrAdhan', 'asrAdhan', 'maghribAdhan', 'ishaAdhan']
 const PRAYER_NAMES = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']
@@ -50,6 +51,7 @@ interface PrayerTimesWidgetProps {
 
 export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: PrayerTimesWidgetProps = {}) {
   const { colors } = useTheme()
+  const { formatTime } = useTimeFormat()
   const { mosqueId: storedId, mosqueName: storedName } = useSelectedMosque()
   const mosqueId = overrideMosqueId ?? storedId
   const mosqueName = overrideMosqueName ?? storedName
@@ -143,7 +145,7 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
           <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 }}>NEXT PRAYER</Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
             <Text style={{ color: colors.primaryContrast, fontSize: 28, fontWeight: '800', letterSpacing: -0.5 }}>{next.name}</Text>
-            <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.8)' : 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: '600' }}>{next.time}</Text>
+            <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.8)' : 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: '600' }}>{formatTime(next.time)}</Text>
           </View>
           {countdown ? (
             <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.65)' : 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600', marginTop: 4 }}>
@@ -201,7 +203,7 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
           <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 }}>NEXT PRAYER</Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
             <Text style={{ color: colors.primaryContrast, fontSize: 28, fontWeight: '800', letterSpacing: -0.5 }}>{next.name}</Text>
-            <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.8)' : 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: '600' }}>{next.time}</Text>
+            <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.8)' : 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: '600' }}>{formatTime(next.time)}</Text>
           </View>
           {countdown ? (
             <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.65)' : 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600', marginTop: 4 }}>

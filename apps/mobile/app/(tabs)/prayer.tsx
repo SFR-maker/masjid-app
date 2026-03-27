@@ -13,6 +13,7 @@ import { useAdhanScheduler } from '../../hooks/useAdhanScheduler'
 import { usePrayerWidgetSync } from '../../hooks/usePrayerWidgetSync'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useTranslation } from 'react-i18next'
+import { useTimeFormat } from '../../hooks/useTimeFormat'
 
 const PRAYER_SOURCE_KEY = 'prayer_source'
 export const MADHAB_KEY = 'madhab_preference'  // shared with profile.tsx
@@ -42,14 +43,6 @@ function toHijri(date: Date): { day: number; month: string; year: number } {
   return { day: hDay, month: MONTHS[hMonth - 1] ?? '', year: hYear }
 }
 
-function to12Hour(time: string | undefined): string | undefined {
-  if (!time) return undefined
-  const [h, m] = time.split(':').map(Number)
-  if (isNaN(h) || isNaN(m)) return time
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const hour = h % 12 || 12
-  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`
-}
 
 const PRAYERS = [
   { key: 'fajr',    name: 'Fajr',    arabicName: 'الفجر', icon: '🌙', aladhanKey: 'Fajr' },
@@ -82,6 +75,7 @@ const LOCATION_SOURCE = '__location__'
 
 export default function PrayerScreen() {
   const { colors } = useTheme()
+  const { formatTime } = useTimeFormat()
   const [selectedDate, setSelectedDate] = useState(new Date())
   // source is either LOCATION_SOURCE or a mosque id string
   const [source, setSource] = useState<string>(LOCATION_SOURCE)
@@ -659,16 +653,16 @@ export default function PrayerScreen() {
                         <View style={{ flexDirection: 'row', gap: 20, alignItems: 'flex-end' }}>
                           <View style={{ alignItems: 'center' }}>
                             <Text style={{ color: colors.textTertiary, fontSize: 9, fontWeight: '700', marginBottom: 3, letterSpacing: 0.5 }}>ADHAN</Text>
-                            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{to12Hour(adhan) ?? '—'}</Text>
+                            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{formatTime(adhan) ?? '—'}</Text>
                           </View>
                           <View style={{ width: 1, height: 30, backgroundColor: colors.border }} />
                           <View style={{ alignItems: 'center' }}>
                             <Text style={{ color: colors.primary, fontSize: 9, fontWeight: '700', marginBottom: 3, letterSpacing: 0.5 }}>IQAMAH</Text>
-                            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 15 }}>{to12Hour(iqamah)}</Text>
+                            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 15 }}>{formatTime(iqamah)}</Text>
                           </View>
                         </View>
                       ) : (
-                        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, letterSpacing: -0.2 }}>{to12Hour(adhan) ?? '—'}</Text>
+                        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, letterSpacing: -0.2 }}>{formatTime(adhan) ?? '—'}</Text>
                       )}
 
                       {/* Mark as Prayed button — today only, signed-in users */}
@@ -708,7 +702,7 @@ export default function PrayerScreen() {
                           <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15, letterSpacing: -0.1 }}>Sunrise</Text>
                           <Text style={{ color: colors.textTertiary, fontSize: 13, fontWeight: '500', textAlign: 'left', writingDirection: 'ltr' }}>الشروق</Text>
                         </View>
-                        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, letterSpacing: -0.2 }}>{to12Hour(aladhanTimings.Sunrise) ?? '—'}</Text>
+                        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, letterSpacing: -0.2 }}>{formatTime(aladhanTimings.Sunrise) ?? '—'}</Text>
                       </View>
                     )]
                   }
@@ -739,13 +733,13 @@ export default function PrayerScreen() {
                       <View>
                         <Text style={{ color: colors.isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '600', marginBottom: 2 }}>KHUTBAH</Text>
                         <Text style={{ color: colors.primaryContrast, fontWeight: 'bold', fontSize: 20 }}>
-                          {to12Hour(j.khutbahTime) ?? j.khutbahTime ?? '—'}
+                          {formatTime(j.khutbahTime) ?? j.khutbahTime ?? '—'}
                         </Text>
                       </View>
                       <View>
                         <Text style={{ color: colors.isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '600', marginBottom: 2 }}>IQAMAH</Text>
                         <Text style={{ color: colors.primaryContrast, fontWeight: 'bold', fontSize: 20 }}>
-                          {to12Hour(j.iqamahTime) ?? j.iqamahTime ?? '—'}
+                          {formatTime(j.iqamahTime) ?? j.iqamahTime ?? '—'}
                         </Text>
                       </View>
                     </View>
@@ -788,14 +782,14 @@ export default function PrayerScreen() {
                       <View>
                         <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '600', marginBottom: 2 }}>START</Text>
                         <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 20 }}>
-                          {to12Hour(t.startTime) ?? t.startTime ?? '—'}
+                          {formatTime(t.startTime) ?? t.startTime ?? '—'}
                         </Text>
                       </View>
                       {t.endTime && (
                         <View>
                           <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '600', marginBottom: 2 }}>END</Text>
                           <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 20 }}>
-                            {to12Hour(t.endTime) ?? t.endTime}
+                            {formatTime(t.endTime) ?? t.endTime}
                           </Text>
                         </View>
                       )}

@@ -177,14 +177,32 @@ export default function PrayerScreen() {
   // Sync prayer data to AsyncStorage for widget/lockscreen extensions
   usePrayerWidgetSync(activeMosqueId)
 
-  // Get user GPS location
+  // Get user GPS location — last-known first (instant), then refresh in background
   const fetchLocation = async () => {
     setLocationLoading(true)
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync()
+      // Check permission without showing dialog if already denied
+      let { status } = await Location.getForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        const req = await Location.requestForegroundPermissionsAsync()
+        status = req.status
+      }
       if (status !== 'granted') return
-      const loc = await Location.getCurrentPositionAsync({})
-      setUserCoords(loc.coords)
+
+      // Fast path: last known position is usually instant
+      const last = await Location.getLastKnownPositionAsync()
+      if (last) {
+        setUserCoords(last.coords)
+        setLocationLoading(false)
+      }
+
+      // Background refresh with balanced accuracy (much faster than high/default)
+      const fresh = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      })
+      setUserCoords(fresh.coords)
+    } catch {
+      // silently ignore — last-known may already be set
     } finally {
       setLocationLoading(false)
     }

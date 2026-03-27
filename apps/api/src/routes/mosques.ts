@@ -203,7 +203,7 @@ export async function mosqueRoutes(app: FastifyInstance) {
       ...body,
       latitude: body.latitude ?? null,
       longitude: body.longitude ?? null,
-      admins: { create: { userId: req.userId!, role: 'OWNER' } },
+      admins: { create: { userId: req.userId!, role: 'OWNER' as const } },
     }
 
     let mosque

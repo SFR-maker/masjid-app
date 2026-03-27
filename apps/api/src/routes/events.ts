@@ -251,6 +251,7 @@ export async function eventRoutes(app: FastifyInstance) {
       where: { eventId: id },
       include: { user: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { createdAt: 'desc' },
+      take: 200,
     })
     const counts = { GOING: 0, MAYBE: 0, NOT_GOING: 0 }
     for (const r of rsvps) counts[r.status as keyof typeof counts]++

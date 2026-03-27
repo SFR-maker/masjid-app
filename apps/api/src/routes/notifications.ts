@@ -14,13 +14,16 @@ export async function notificationRoutes(app: FastifyInstance) {
   app.get('/', { preHandler: [requireAuth] }, async (req, reply) => {
     const { limit = '30', cursor } = req.query as any
 
-    const notifications = await prisma.notification.findMany({
-      where: { userId: req.userId! },
-      take: Math.min(100, Number(limit) || 20),
-      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      orderBy: { createdAt: 'desc' },
-      include: { mosque: { select: { name: true, logoUrl: true } } },
-    })
+    const [notifications, unreadCount] = await Promise.all([
+      prisma.notification.findMany({
+        where: { userId: req.userId! },
+        take: Math.min(100, Number(limit) || 20),
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { createdAt: 'desc' },
+        include: { mosque: { select: { name: true, logoUrl: true } } },
+      }),
+      prisma.notification.count({ where: { userId: req.userId!, isRead: false } }),
+    ])
 
     return reply.send({
       success: true,
@@ -33,7 +36,7 @@ export async function notificationRoutes(app: FastifyInstance) {
         })),
         cursor: notifications[notifications.length - 1]?.id,
         hasMore: notifications.length === Number(limit),
-        unreadCount: notifications.filter((n) => !n.isRead).length,
+        unreadCount,
       },
     })
   })

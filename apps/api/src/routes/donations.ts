@@ -160,13 +160,16 @@ export async function donationRoutes(app: FastifyInstance) {
       const sig = req.headers['stripe-signature'] as string
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
+      if (!webhookSecret) {
+        app.log.error('STRIPE_WEBHOOK_SECRET is not configured — rejecting webhook to prevent forged events')
+        return reply.status(500).send({ error: 'Webhook secret not configured' })
+      }
+
       let event: Stripe.Event
       try {
         const stripe = getStripe()
         const rawBody = (req as any).rawBody ?? JSON.stringify(req.body)
-        event = webhookSecret
-          ? stripe.webhooks.constructEvent(rawBody, sig, webhookSecret)
-          : (req.body as Stripe.Event)
+        event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret)
       } catch {
         return reply.status(400).send({ error: 'Webhook signature verification failed' })
       }

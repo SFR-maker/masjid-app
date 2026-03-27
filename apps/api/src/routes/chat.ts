@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import Anthropic from '@anthropic-ai/sdk'
+import { z } from 'zod'
 import { prisma } from '@masjid/database'
 import { requireAuth } from '../plugins/auth'
 
@@ -64,11 +65,7 @@ export async function chatRoutes(app: FastifyInstance) {
   // POST /chat/conversations/:id/messages — send message
   app.post('/conversations/:id/messages', { preHandler: [requireAuth] }, async (req, reply) => {
     const { id: conversationId } = req.params as { id: string }
-    const { content } = req.body as { content: string }
-
-    if (!content?.trim() || content.length > 2000) {
-      return reply.status(400).send({ success: false, error: 'Message must be 1–2000 characters' })
-    }
+    const { content } = z.object({ content: z.string().min(1).max(2000) }).parse(req.body)
 
     const conversation = await prisma.chatConversation.findFirst({
       where: { id: conversationId, userId: req.userId! },

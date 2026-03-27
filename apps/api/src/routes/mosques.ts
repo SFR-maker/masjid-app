@@ -199,15 +199,25 @@ export async function mosqueRoutes(app: FastifyInstance) {
       slug = `${baseSlug}-${attempt}`
     }
 
-    const mosque = await prisma.mosqueProfile.create({
-      data: {
-        ...body,
-        slug,
-        latitude: body.latitude ?? null,
-        longitude: body.longitude ?? null,
-        admins: { create: { userId: req.userId!, role: 'OWNER' } },
-      },
-    })
+    const createData = {
+      ...body,
+      latitude: body.latitude ?? null,
+      longitude: body.longitude ?? null,
+      admins: { create: { userId: req.userId!, role: 'OWNER' } },
+    }
+
+    let mosque
+    try {
+      mosque = await prisma.mosqueProfile.create({ data: { ...createData, slug } })
+    } catch (err: any) {
+      // Concurrent request claimed the same slug — retry once with a random suffix
+      if (err?.code === 'P2002') {
+        slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`
+        mosque = await prisma.mosqueProfile.create({ data: { ...createData, slug } })
+      } else {
+        throw err
+      }
+    }
 
     return reply.status(201).send({ success: true, data: mosque })
   })

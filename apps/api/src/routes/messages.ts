@@ -64,7 +64,7 @@ export async function messageRoutes(app: FastifyInstance) {
 
       const messages = await prisma.directMessage.findMany({
         where: { mosqueId },
-        take: Number(limit),
+        take: Math.min(100, Number(limit) || 30),
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
         orderBy: { createdAt: 'desc' },
         include: {
@@ -90,15 +90,20 @@ export async function messageRoutes(app: FastifyInstance) {
     '/mosques/:id/messages/:messageId',
     { preHandler: [requireMosqueAdmin((req) => (req.params as any).id)] },
     async (req, reply) => {
-      const { messageId } = req.params as { id: string; messageId: string }
-      const message = await prisma.directMessage.update({
-        where: { id: messageId },
-        data: { isRead: true },
+      const { id: mosqueId, messageId } = req.params as { id: string; messageId: string }
+      // Verify message belongs to this mosque before marking as read
+      const message = await prisma.directMessage.findFirst({
+        where: { id: messageId, mosqueId },
         include: {
           fromUser: { select: { id: true, name: true, email: true, avatarUrl: true } },
           ...repliesInclude,
         },
       })
+      if (!message) return reply.status(404).send({ success: false, error: 'Not found' })
+      if (!message.isRead) {
+        await prisma.directMessage.update({ where: { id: messageId }, data: { isRead: true } })
+        message.isRead = true
+      }
       return reply.send({ success: true, data: message })
     }
   )
@@ -218,16 +223,18 @@ export async function messageRoutes(app: FastifyInstance) {
     { preHandler: [requireMosqueAdmin((req) => (req.params as any).id)] },
     async (req, reply) => {
       const { groupId } = req.params as { id: string; groupId: string }
-      const group = await prisma.groupChat.findUniqueOrThrow({
+      const group = await prisma.groupChat.findUnique({
         where: { id: groupId },
         include: {
           ...groupMembersInclude,
           messages: {
             orderBy: { createdAt: 'asc' },
+            take: 50,
             include: { fromUser: { select: { id: true, name: true, avatarUrl: true } } },
           },
         },
       })
+      if (!group) return reply.status(404).send({ success: false, error: 'Group not found' })
       return reply.send({ success: true, data: group })
     }
   )

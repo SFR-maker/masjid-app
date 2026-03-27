@@ -95,8 +95,10 @@ export default function PrayerScreen() {
   // Track which prayers the user has marked as prayed today
   const [prayedToday, setPrayedToday] = useState<Set<string>>(new Set())
 
+  const todayKey = format(new Date(), 'yyyy-MM-dd')
+
   const { data: streakData } = useQuery({
-    queryKey: ['streaks'],
+    queryKey: ['streaks', todayKey],
     queryFn: () => api.get<any>('/streaks/me'),
     enabled: !!isSignedIn,
     staleTime: 1000 * 60 * 5,
@@ -115,6 +117,19 @@ export default function PrayerScreen() {
     },
     onError: (_, prayer) => {
       setPrayedToday((prev) => { const s = new Set(prev); s.delete(prayer); return s })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['streaks'] })
+    },
+  })
+
+  const { mutate: unmarkPrayed } = useMutation({
+    mutationFn: (prayer: string) => api.delete(`/streaks/prayer?prayer=${prayer}`),
+    onMutate: (prayer) => {
+      setPrayedToday((prev) => { const s = new Set(prev); s.delete(prayer); return s })
+    },
+    onError: (_, prayer) => {
+      setPrayedToday((prev) => new Set([...prev, prayer]))
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['streaks'] })
@@ -641,21 +656,23 @@ export default function PrayerScreen() {
                       {/* Mark as Prayed button — today only, signed-in users */}
                       {canPray && (
                         <TouchableOpacity
-                          onPress={() => { if (!hasPrayed) markPrayed(prayerKey) }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          onPress={() => hasPrayed ? unmarkPrayed(prayerKey) : markPrayed(prayerKey)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           style={{
                             marginLeft: 14,
-                            width: 30, height: 30, borderRadius: 15,
+                            width: 32, height: 32, borderRadius: 16,
                             alignItems: 'center', justifyContent: 'center',
-                            backgroundColor: hasPrayed ? colors.primary : 'transparent',
-                            borderWidth: hasPrayed ? 0 : 1.5,
-                            borderColor: hasPrayed ? 'transparent' : colors.border,
+                            backgroundColor: hasPrayed
+                              ? colors.primary
+                              : colors.isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
+                            borderWidth: 1.5,
+                            borderColor: hasPrayed ? colors.primary : colors.isDark ? 'rgba(255,255,255,0.15)' : '#CBD5E1',
                           }}
                         >
                           <Ionicons
                             name="checkmark"
-                            size={16}
-                            color={hasPrayed ? '#fff' : colors.textTertiary}
+                            size={17}
+                            color={hasPrayed ? '#fff' : colors.isDark ? 'rgba(255,255,255,0.3)' : '#94A3B8'}
                           />
                         </TouchableOpacity>
                       )}

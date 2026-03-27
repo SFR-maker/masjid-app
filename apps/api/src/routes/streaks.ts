@@ -81,6 +81,22 @@ export async function streakRoutes(app: FastifyInstance) {
     return reply.send({ success: true, todayCount })
   })
 
+  // DELETE /streaks/prayer?prayer=FAJR — unmark a prayer for today
+  app.delete('/prayer', { preHandler: [requireAuth] }, async (req, reply) => {
+    const userId = req.userId!
+    const { prayer } = z
+      .object({ prayer: z.enum(PRAYER_NAMES) })
+      .parse(req.query)
+
+    const today = toDateOnly(new Date())
+
+    await prisma.prayerLog.deleteMany({
+      where: { userId, prayer, date: today },
+    })
+
+    return reply.send({ success: true })
+  })
+
   // POST /streaks/login — record a daily login (call on app open)
   app.post('/login', { preHandler: [requireAuth] }, async (req, reply) => {
     const userId = req.userId!

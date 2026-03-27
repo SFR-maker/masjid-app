@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/clerk-expo'
 import { router } from 'expo-router'
 import { useTheme } from '../contexts/ThemeContext'
 import { api } from '../lib/api'
+import { format } from 'date-fns'
 
 const PRAYER_ORDER = ['FAJR', 'DHUHR', 'ASR', 'MAGHRIB', 'ISHA']
 const PRAYER_ICONS: Record<string, string> = {
@@ -14,8 +15,10 @@ export function StreakWidget() {
   const { colors } = useTheme()
   const { isSignedIn } = useAuth()
 
+  const todayKey = format(new Date(), 'yyyy-MM-dd')
+
   const { data } = useQuery({
-    queryKey: ['streaks'],
+    queryKey: ['streaks', todayKey],
     queryFn: () => api.get<any>('/streaks/me'),
     enabled: !!isSignedIn,
     staleTime: 1000 * 60 * 5,

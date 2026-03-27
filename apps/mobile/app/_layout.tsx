@@ -99,7 +99,8 @@ function RootNavigator() {
   // ── Login streak: call once per calendar day when signed in ──────────────
   useEffect(() => {
     if (!isSignedIn) return
-    const today = new Date().toISOString().slice(0, 10)
+    const d = new Date()
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const key = `login_streak_date`
     AsyncStorage.getItem(key).then(async (last) => {
       if (last !== today) {

@@ -131,13 +131,10 @@ export async function mosqueRoutes(app: FastifyInstance) {
     })
 
     if (lat && lng) {
-      // Mosques with known coords: filter by radius and sort by distance
-      // Mosques without coords: always include them at the end
-      const withCoords = results
+      // Only include mosques with known coordinates within the radius, sorted by distance
+      results = results
         .filter((m) => m.distanceKm !== undefined && m.distanceKm <= Number(radius))
         .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
-      const withoutCoords = results.filter((m) => m.distanceKm === undefined)
-      results = [...withCoords, ...withoutCoords]
     }
 
     return reply.send({

@@ -70,7 +70,7 @@ function LikeButton({ liked, count, onPress }: { liked: boolean; count: number; 
 }
 
 // ── Single full-screen video card ─────────────────────────────────────────────
-function VideoCard({ item, isActive, isScreenFocused }: { item: any; isActive: boolean; isScreenFocused: boolean }) {
+function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any; isActive: boolean; isScreenFocused: boolean; personalize: boolean }) {
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const { isSignedIn } = useAuth()
@@ -146,10 +146,12 @@ function VideoCard({ item, isActive, isScreenFocused }: { item: any; isActive: b
 
   const catStyle = CATEGORY_COLORS[item.category] ?? { bg: 'rgba(75,85,99,0.75)', text: '#F3F4F6' }
 
+  const likeQueryKey = ['videos-feed', personalize]
+
   const likeMutation = useMutation({
     mutationFn: () => api.post(`/videos/${item.id}/like`, {}),
     onMutate: () => {
-      queryClient.setQueryData(['videos-feed'], (old: any) => {
+      queryClient.setQueryData(likeQueryKey, (old: any) => {
         if (!old) return old
         return {
           ...old,
@@ -165,7 +167,7 @@ function VideoCard({ item, isActive, isScreenFocused }: { item: any; isActive: b
       })
     },
     onError: () => {
-      queryClient.setQueryData(['videos-feed'], (old: any) => {
+      queryClient.setQueryData(likeQueryKey, (old: any) => {
         if (!old) return old
         return {
           ...old,
@@ -179,6 +181,9 @@ function VideoCard({ item, isActive, isScreenFocused }: { item: any; isActive: b
           },
         }
       })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['videos-feed'] })
     },
   })
 
@@ -567,7 +572,7 @@ export default function VideosScreen() {
         data={videos}
         keyExtractor={(v: any) => v.id}
         renderItem={({ item, index }) => (
-          <VideoCard item={item} isActive={index === visibleIndex} isScreenFocused={isScreenFocused} />
+          <VideoCard item={item} isActive={index === visibleIndex} isScreenFocused={isScreenFocused} personalize={personalize} />
         )}
         ListEmptyComponent={
           <View style={{ width: SCREEN_W, height: SCREEN_H, justifyContent: 'center', alignItems: 'center' }}>

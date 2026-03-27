@@ -196,6 +196,7 @@ export default function DiscoverScreen() {
         params.set('lat', String(geoCoords.lat))
         params.set('lng', String(geoCoords.lng))
         params.set('radius', String(RADIUS_KM))
+        params.set('limit', '100')
       } else if (debouncedQuery.trim()) {
         params.set('q', debouncedQuery.trim())
         params.set('limit', '50')

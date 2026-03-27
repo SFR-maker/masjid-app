@@ -116,6 +116,7 @@ export default function NotificationsScreen() {
                 const d = item.data ?? {}
                 // Bug 2 fix: admin message replies route to the messages screen
                 if (d.messageId || item.type === 'MESSAGE_REPLY') router.push('/messages' as any)
+                else if (d.type === 'ayah_of_day' || item.type === 'AYAH_OF_DAY') router.push('/quran' as any)
                 else if (d.pollId) router.push(`/poll/${d.pollId}` as any)
                 else if (d.announcementId) router.push(`/announcement/${d.announcementId}` as any)
                 else if (d.eventId) router.push(`/event/${d.eventId}` as any)

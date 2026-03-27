@@ -3,8 +3,6 @@ import {
   View, Text, ScrollView, FlatList, TouchableOpacity, Linking, ActivityIndicator, Alert,
   Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native'
-import * as FileSystem from 'expo-file-system/legacy'
-import * as Sharing from 'expo-sharing'
 import { useLocalSearchParams, router, Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -1121,7 +1119,6 @@ function PollsTab({ mosqueId }: { mosqueId: string }) {
 
 function DocumentsTab({ mosqueId }: { mosqueId: string }) {
   const { colors } = useTheme()
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['mosque-documents', mosqueId],
@@ -1155,41 +1152,17 @@ function DocumentsTab({ mosqueId }: { mosqueId: string }) {
     return 'file'
   }
 
-  // Bug 1 fix: download file using expo-file-system then share/open with expo-sharing
   async function handleDownload(doc: any) {
-    if (downloadingId) return
-    setDownloadingId(doc.id)
+    if (!doc.fileUrl) return
     try {
-      const ext = fileExtension(doc.mimeType)
-      const safeName = (doc.name ?? 'document').replace(/[^a-zA-Z0-9_\-]/g, '_')
-      const localUri = `${FileSystem.cacheDirectory}${safeName}.${ext}`
-
-      const downloadResumable = FileSystem.createDownloadResumable(
-        doc.fileUrl,
-        localUri,
-        {},
-        (progress) => {
-          // progress updates available but we just show spinner
-        }
-      )
-
-      const result = await downloadResumable.downloadAsync()
-      if (!result?.uri) throw new Error('Download failed')
-
-      const canShare = await Sharing.isAvailableAsync()
-      if (canShare) {
-        await Sharing.shareAsync(result.uri, {
-          mimeType: doc.mimeType ?? 'application/octet-stream',
-          dialogTitle: doc.name ?? 'Open document',
-          UTI: doc.mimeType === 'application/pdf' ? 'com.adobe.pdf' : undefined,
-        })
+      const supported = await Linking.canOpenURL(doc.fileUrl)
+      if (supported) {
+        await Linking.openURL(doc.fileUrl)
       } else {
-        Alert.alert('Downloaded', `"${doc.name}" saved to your device.`)
+        Alert.alert('Cannot open', 'No app available to open this file.')
       }
-    } catch (err: any) {
-      Alert.alert('Download failed', err?.message ?? 'Could not download the file. Please try again.')
-    } finally {
-      setDownloadingId(null)
+    } catch {
+      Alert.alert('Error', 'Could not open the file. Please try again.')
     }
   }
 
@@ -1212,44 +1185,35 @@ function DocumentsTab({ mosqueId }: { mosqueId: string }) {
 
   return (
     <View style={{ gap: 10 }}>
-      {docs.map((doc: any) => {
-        const isDownloading = downloadingId === doc.id
-        return (
-          <TouchableOpacity
-            key={doc.id}
-            onPress={() => handleDownload(doc)}
-            disabled={!!downloadingId}
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: 16,
-              padding: 14,
-              borderWidth: 1,
-              borderColor: colors.border,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              opacity: downloadingId && !isDownloading ? 0.6 : 1,
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 26 }}>{fileIcon(doc.mimeType)}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }} numberOfLines={2}>
-                {doc.name}
-              </Text>
-              <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>
-                {doc.fileSize ? formatBytes(doc.fileSize) + ' · ' : ''}
-                {new Date(doc.createdAt).toLocaleDateString()}
-              </Text>
-            </View>
-            {isDownloading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Ionicons name="download-outline" size={20} color={colors.primary} />
-            )}
-          </TouchableOpacity>
-        )
-      })}
+      {docs.map((doc: any) => (
+        <TouchableOpacity
+          key={doc.id}
+          onPress={() => handleDownload(doc)}
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: 16,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: colors.border,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ fontSize: 26 }}>{fileIcon(doc.mimeType)}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }} numberOfLines={2}>
+              {doc.name}
+            </Text>
+            <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>
+              {doc.fileSize ? formatBytes(doc.fileSize) + ' · ' : ''}
+              {new Date(doc.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
+          <Ionicons name="open-outline" size={20} color={colors.primary} />
+        </TouchableOpacity>
+      ))}
     </View>
   )
 }

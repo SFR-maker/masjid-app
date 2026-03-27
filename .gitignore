@@ -11,3 +11,4 @@ dist
 .expo
 ios/
 android/
+com-masjidapp-mobile-firebase-adminsdk-*.json

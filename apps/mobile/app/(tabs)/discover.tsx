@@ -5,6 +5,7 @@ import {
   ActivityIndicator, Alert, SectionList,
 } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@clerk/clerk-expo'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as Location from 'expo-location'
@@ -13,6 +14,9 @@ import { api } from '../../lib/api'
 import { MosqueListItem } from '../../components/MosqueListItem'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { MosqueListItem as TMosqueListItem } from '@masjid/types'
+
+// Queries that look like mosque names should skip geocoding and go straight to text search
+const MOSQUE_NAME_RE = /\b(masjid|masjed|mosque|islamic|muslim|al-|center|centre|jamia|jamaat|dar|bayt|icna|isna)\b/i
 
 const RADIUS_KM = 32   // 20 miles ≈ 32.2 km
 const ZIP_RE = /^\d{5}$/
@@ -102,6 +106,7 @@ function buildSections(items: TMosqueListItem[]): Section[] {
 
 export default function DiscoverScreen() {
   const { colors } = useTheme()
+  const { isSignedIn } = useAuth()
   const [query, setQuery] = useState('')
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [loadingGps, setLoadingGps] = useState(false)
@@ -136,6 +141,15 @@ export default function DiscoverScreen() {
       setCityLocation(null)
       setStateFilter(stateAbbr)
       setGpsLocation(null)
+      return
+    }
+
+    // Mosque name — skip geocoding, send as text search
+    if (MOSQUE_NAME_RE.test(trimmed)) {
+      setZipLocation(null)
+      setCityLocation(null)
+      setStateFilter(null)
+      setGeocoding(false)
       return
     }
 
@@ -177,6 +191,9 @@ export default function DiscoverScreen() {
         params.set('radius', String(RADIUS_KM))
       } else if (query.trim()) {
         params.set('q', query.trim())
+        params.set('limit', '50')
+      } else {
+        params.set('limit', '50')
       }
 
       return api.get(`/mosques?${params.toString()}`)
@@ -185,9 +202,31 @@ export default function DiscoverScreen() {
     enabled: !geocoding,
   })
 
+  // Always fetch followed mosques so they pin to the top regardless of search/geo filter
+  const { data: followsData } = useQuery({
+    queryKey: ['my-follows'],
+    queryFn: () => api.get('/users/me/follows'),
+    enabled: !!isSignedIn,
+    staleTime: 60_000,
+  })
+  const followedMosques: TMosqueListItem[] = useMemo(() =>
+    (followsData?.data?.items ?? []).map((m: any) => ({
+      ...m,
+      isFollowing: true,
+    })),
+    [followsData]
+  )
+
   const rawItems: TMosqueListItem[] = data?.data?.items ?? []
-  const sections = useMemo(() => buildSections(rawItems), [rawItems])
-  const hasEngagement = rawItems.some((m) => m.isFollowing || m.isFavorite)
+  const mergedItems = useMemo(() => {
+    const followedIds = new Set(followedMosques.map((m) => m.id))
+    return [
+      ...followedMosques,
+      ...rawItems.filter((m) => !followedIds.has(m.id)),
+    ]
+  }, [followedMosques, rawItems])
+  const sections = useMemo(() => buildSections(mergedItems), [mergedItems])
+  const hasEngagement = mergedItems.some((m) => m.isFollowing || m.isFavorite)
 
   async function handleNearMeToggle() {
     if (gpsLocation) {
@@ -343,7 +382,7 @@ export default function DiscoverScreen() {
             Make sure the API is running and try again
           </Text>
         </View>
-      ) : rawItems.length === 0 ? (
+      ) : mergedItems.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
           <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <Text style={{ fontSize: 34 }}>🕌</Text>
@@ -387,7 +426,7 @@ export default function DiscoverScreen() {
         />
       ) : (
         <FlatList
-          data={rawItems}
+          data={mergedItems}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
           renderItem={({ item }) => (

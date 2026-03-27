@@ -69,14 +69,21 @@ export async function mosqueRoutes(app: FastifyInstance) {
     const where: any = {}
 
     if (q) {
-      where.OR = [
-        { name: { contains: q, mode: 'insensitive' } },
-        { city: { contains: q, mode: 'insensitive' } },
-        { state: { contains: q, mode: 'insensitive' } },
-        { zipCode: { contains: q, mode: 'insensitive' } },
-        { address: { contains: q, mode: 'insensitive' } },
-        { imamName: { contains: q, mode: 'insensitive' } },
+      const words = (q as string).trim().split(/\s+/).filter(Boolean)
+      const searchFields = (term: string) => [
+        { name: { contains: term, mode: 'insensitive' as const } },
+        { city: { contains: term, mode: 'insensitive' as const } },
+        { state: { contains: term, mode: 'insensitive' as const } },
+        { zipCode: { contains: term, mode: 'insensitive' as const } },
+        { address: { contains: term, mode: 'insensitive' as const } },
+        { imamName: { contains: term, mode: 'insensitive' as const } },
       ]
+      if (words.length > 1) {
+        // All words must appear somewhere — enables "islamic irving" to match "Islamic Center of Irving"
+        where.AND = words.map((word) => ({ OR: searchFields(word) }))
+      } else {
+        where.OR = searchFields(q as string)
+      }
     }
     if (city) where.city = { contains: city, mode: 'insensitive' }
     if (state) where.state = { equals: state, mode: 'insensitive' }

@@ -24,7 +24,7 @@ import {
 import { useTheme } from '../../contexts/ThemeContext'
 import { useQuranAudioStore } from '../../lib/quranAudioStore'
 
-const TABS = ['Info', 'Events', 'Announcements', 'Polls', 'Services', 'Documents']
+const TABS = ['Info', 'Events', 'Announcements', 'Videos', 'Polls', 'Services', 'Documents']
 const SCREEN_W = Dimensions.get('window').width
 
 export default function MosqueProfileScreen() {
@@ -260,6 +260,7 @@ export default function MosqueProfileScreen() {
           {activeTab === 'Info' && <InfoTab mosque={mosque} />}
           {activeTab === 'Events' && <EventsTab mosqueId={id} />}
           {activeTab === 'Announcements' && <AnnouncementsTab mosqueId={id} />}
+          {activeTab === 'Videos' && <VideosTab mosqueId={id} />}
           {activeTab === 'Polls' && <PollsTab mosqueId={id} />}
           {activeTab === 'Services' && <ServicesTab mosqueId={id} />}
           {activeTab === 'Documents' && <DocumentsTab mosqueId={id} />}
@@ -779,6 +780,111 @@ function EventsTab({ mosqueId }: { mosqueId: string }) {
       ) : (
         <View>{listEvents.map((e: any) => <EventCard key={e.id} item={e} />)}</View>
       )}
+    </View>
+  )
+}
+
+const VIDEO_CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
+  LECTURE:     { bg: 'rgba(59,130,246,0.15)', text: '#3B82F6' },
+  QURAN:       { bg: 'rgba(16,185,129,0.15)', text: '#10B981' },
+  KHUTBAH:     { bg: 'rgba(139,92,246,0.15)', text: '#8B5CF6' },
+  EDUCATIONAL: { bg: 'rgba(245,158,11,0.15)', text: '#F59E0B' },
+  DUA:         { bg: 'rgba(236,72,153,0.15)', text: '#EC4899' },
+  EVENT:       { bg: 'rgba(239,68,68,0.15)',  text: '#EF4444' },
+  GENERAL:     { bg: 'rgba(107,114,128,0.15)', text: '#6B7280' },
+  OTHER:       { bg: 'rgba(107,114,128,0.15)', text: '#6B7280' },
+}
+
+function VideosTab({ mosqueId }: { mosqueId: string }) {
+  const { colors } = useTheme()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['mosque-videos', mosqueId],
+    queryFn: () => api.get(`/videos?mosqueId=${mosqueId}&limit=30`),
+    staleTime: 30_000,
+  })
+  const videos: any[] = data?.data?.items ?? []
+
+  if (isLoading) {
+    return (
+      <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    )
+  }
+
+  if (!videos.length) {
+    return (
+      <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+        <Text style={{ fontSize: 32, marginBottom: 10 }}>🎬</Text>
+        <Text style={{ color: colors.textTertiary, fontSize: 14 }}>No videos yet</Text>
+      </View>
+    )
+  }
+
+  function formatDuration(secs?: number | null) {
+    if (!secs) return null
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m}:${String(s).padStart(2, '0')}`
+  }
+
+  return (
+    <View style={{ gap: 12 }}>
+      {videos.map((video: any) => {
+        const catStyle = VIDEO_CATEGORY_COLORS[video.category] ?? VIDEO_CATEGORY_COLORS.GENERAL
+        const dur = formatDuration(video.duration)
+        return (
+          <TouchableOpacity
+            key={video.id}
+            onPress={() => router.push(`/video/${video.id}` as any)}
+            activeOpacity={0.85}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 12,
+              backgroundColor: colors.surface,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 10,
+            }}
+          >
+            {/* Thumbnail */}
+            <View style={{ width: 100, height: 68, borderRadius: 10, overflow: 'hidden', backgroundColor: colors.surfaceSecondary, position: 'relative' }}>
+              <Image
+                source={{ uri: video.thumbnailUrl ?? 'https://placehold.co/200x136/0F172A/1E293B?text=+' }}
+                style={{ width: 100, height: 68 }}
+                contentFit="cover"
+              />
+              {dur && (
+                <View style={{ position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{dur}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Info */}
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
+                {video.title}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 }}>
+                <View style={{ backgroundColor: catStyle.bg, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <Text style={{ color: catStyle.text, fontSize: 10, fontWeight: '700' }}>
+                    {video.category}
+                  </Text>
+                </View>
+                {video.viewCount > 0 && (
+                  <Text style={{ color: colors.textTertiary, fontSize: 11 }}>
+                    {video.viewCount.toLocaleString()} views
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <Ionicons name="play-circle-outline" size={22} color={colors.textTertiary} />
+          </TouchableOpacity>
+        )
+      })}
     </View>
   )
 }

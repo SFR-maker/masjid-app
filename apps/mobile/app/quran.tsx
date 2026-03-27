@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { useQuranAudioStore } from '../lib/quranAudioStore'
 import {
@@ -169,13 +169,13 @@ async function fetchSurahCombined(number: number, reciter: string, translation: 
 
 export default function QuranScreen() {
   const { colors } = useTheme()
+  const { surah: surahParam, ayah: ayahParam } = useLocalSearchParams<{ surah?: string; ayah?: string }>()
 
   // If audio is already playing/paused (e.g. user tapped NowPlayingBar), restore that context
   const _initStore = useQuranAudioStore.getState()
   const _audioActive = _initStore.isPlaying || _initStore.isPaused
-  const [selectedSurah, setSelectedSurah] = useState<number | null>(
-    _audioActive && _initStore.playingSurahNumber ? _initStore.playingSurahNumber : null
-  )
+  const initialSurah = surahParam ? Number(surahParam) : (_audioActive && _initStore.playingSurahNumber ? _initStore.playingSurahNumber : null)
+  const [selectedSurah, setSelectedSurah] = useState<number | null>(initialSurah)
   const [reciter, setReciter] = useState(
     _audioActive && _initStore.playingReciterId ? _initStore.playingReciterId : RECITERS[0].id
   )
@@ -249,6 +249,17 @@ export default function QuranScreen() {
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ayahs.length, readingMode])
+
+  // Scroll to the ayah from notification params once content is ready
+  useEffect(() => {
+    if (!ayahParam || !ayahs.length) return
+    const index = Number(ayahParam) - 1
+    if (index < 0 || index >= ayahs.length) return
+    const t = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.2 })
+    }, 600)
+    return () => clearTimeout(t)
+  }, [ayahParam, ayahs])
 
   // Update global surah info and stop audio when surah/reciter changes.
   // Skip stopQuranAudio() on initial mount so that tapping NowPlayingBar

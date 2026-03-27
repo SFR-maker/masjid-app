@@ -64,11 +64,17 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
 
   // Get location for Aladhan fallback
   useEffect(() => {
-    Location.getForegroundPermissionsAsync().then(({ status }) => {
-      if (status !== 'granted') return
-      Location.getLastKnownPositionAsync().then((pos) => {
-        if (pos) setCoords(pos.coords)
-      })
+    Location.getForegroundPermissionsAsync().then(async ({ status }) => {
+      if (status !== 'granted') {
+        // Request permission silently — won't show dialog if already denied
+        const { status: newStatus } = await Location.requestForegroundPermissionsAsync()
+        if (newStatus !== 'granted') return
+      }
+      // Try last known first (fast), then fall back to current position
+      const last = await Location.getLastKnownPositionAsync()
+      if (last) { setCoords(last.coords); return }
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+      if (current) setCoords(current.coords)
     })
   }, [])
 
@@ -82,7 +88,7 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
   const mosqueSchedule = data?.data
   const mosqueLocation = data?.mosqueLocation
 
-  // Aladhan fallback when mosque has no schedule
+  // Aladhan fallback when mosque has no schedule, or when no mosque is selected at all
   const aladhanCoords = mosqueLocation ?? coords
   const needsAladhan = !mosqueSchedule && !!aladhanCoords
 
@@ -101,18 +107,46 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
   const aladhanTimings = aladhanData?.data?.timings
 
   // Build a unified schedule: mosque times first, Aladhan as fallback
-  const schedule = mosqueSchedule ?? (aladhanTimings ? {
+  const aladhanSchedule = aladhanTimings ? {
     fajrAdhan:    aladhanTimings.Fajr,
     dhuhrAdhan:   aladhanTimings.Dhuhr,
     asrAdhan:     aladhanTimings.Asr,
     maghribAdhan: aladhanTimings.Maghrib,
     ishaAdhan:    aladhanTimings.Isha,
-  } : null)
+  } : null
+  const schedule = mosqueSchedule ?? aladhanSchedule
 
   const next = getNextPrayer(schedule, now)
   const countdown = next && next.diffMs > 0 ? formatCountdown(next.diffMs) : ''
 
   if (!mosqueId) {
+    // If we have GPS-based prayer times, show the countdown even without a mosque
+    if (next) {
+      return (
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/prayer')}
+          activeOpacity={0.88}
+          style={{
+            backgroundColor: colors.primary, borderRadius: 20, padding: 18,
+            shadowColor: colors.primary, shadowOpacity: 0.35, shadowOffset: { width: 0, height: 6 }, shadowRadius: 16, elevation: 5,
+          }}
+        >
+          <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.65)' : 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>
+            YOUR LOCATION
+          </Text>
+          <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 }}>NEXT PRAYER</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
+            <Text style={{ color: colors.primaryContrast, fontSize: 28, fontWeight: '800', letterSpacing: -0.5 }}>{next.name}</Text>
+            <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.8)' : 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: '600' }}>{next.time}</Text>
+          </View>
+          {countdown ? (
+            <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.65)' : 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600', marginTop: 4 }}>
+              {countdown}
+            </Text>
+          ) : null}
+        </TouchableOpacity>
+      )
+    }
     return (
       <TouchableOpacity
         onPress={() => router.push('/(tabs)/discover')}

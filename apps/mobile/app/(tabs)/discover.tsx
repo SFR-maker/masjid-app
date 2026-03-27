@@ -192,14 +192,15 @@ export default function DiscoverScreen() {
       if (stateFilter) {
         params.set('state', stateFilter)
         params.set('limit', '100')
+      } else if (debouncedQuery.trim()) {
+        // Text search takes priority over geo — typing overrides location filter
+        params.set('q', debouncedQuery.trim())
+        params.set('limit', '50')
       } else if (geoCoords) {
         params.set('lat', String(geoCoords.lat))
         params.set('lng', String(geoCoords.lng))
         params.set('radius', String(RADIUS_KM))
         params.set('limit', '100')
-      } else if (debouncedQuery.trim()) {
-        params.set('q', debouncedQuery.trim())
-        params.set('limit', '50')
       } else {
         params.set('limit', '50')
       }

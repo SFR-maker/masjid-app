@@ -10,11 +10,11 @@ if (Platform.OS !== 'web') {
     handleNotification: async (notification) => {
       const isQuranPlayer = notification.request.content.data?.type === 'quran_player'
       return {
-        shouldShowAlert: !isQuranPlayer,
-        shouldPlaySound: !isQuranPlayer,
-        shouldSetBadge: !isQuranPlayer,
-        shouldShowBanner: !isQuranPlayer,
-        shouldShowList: !isQuranPlayer,
+        shouldShowAlert: true,
+        shouldPlaySound: !isQuranPlayer,  // no sound for media controls
+        shouldSetBadge: !isQuranPlayer,   // no badge bump for media controls
+        shouldShowBanner: !isQuranPlayer, // no heads-up popup for media controls
+        shouldShowList: true,             // always keep in notification shade
       }
     },
   })

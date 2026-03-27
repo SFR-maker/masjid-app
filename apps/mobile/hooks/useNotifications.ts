@@ -7,13 +7,16 @@ import { api } from '../lib/api'
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async (notification) => {
+      const isQuranPlayer = notification.request.content.data?.type === 'quran_player'
+      return {
+        shouldShowAlert: !isQuranPlayer,
+        shouldPlaySound: !isQuranPlayer,
+        shouldSetBadge: !isQuranPlayer,
+        shouldShowBanner: !isQuranPlayer,
+        shouldShowList: !isQuranPlayer,
+      }
+    },
   })
 
   if (Platform.OS === 'android') {

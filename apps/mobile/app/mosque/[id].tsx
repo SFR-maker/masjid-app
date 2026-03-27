@@ -40,7 +40,7 @@ export default function MosqueProfileScreen() {
   const quranIsActive = useQuranAudioStore(s => s.isPlaying || s.isPaused)
   const MINI_PLAYER_HEIGHT = 52 // matches NowPlayingBar paddingVertical*2 + content height
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['mosque', id],
     queryFn: () => api.get(`/mosques/${id}`),
     staleTime: 30_000,
@@ -107,7 +107,24 @@ export default function MosqueProfileScreen() {
     )
   }
 
-  if (!mosque) return null
+  if (isError || !mosque) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 16 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="chevron-back" size={26} color={colors.text} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
+          <Ionicons name="business-outline" size={52} color={colors.textTertiary} />
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginTop: 16, marginBottom: 6 }}>
+            {isError ? 'Could not load mosque' : 'Mosque not found'}
+          </Text>
+          <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+            {isError ? 'Check your connection and try again.' : 'This mosque may have been removed.'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
@@ -445,9 +462,9 @@ function InfoTab({ mosque }: { mosque: any }) {
           {mosque.twitterUrl && (
             <TouchableOpacity
               onPress={() => Linking.openURL(mosque.twitterUrl)}
-              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' }}
             >
-              <Ionicons name="logo-twitter" size={22} color="#000000" />
+              <Ionicons name="logo-twitter" size={22} color={colors.isDark ? '#fff' : '#000000'} />
             </TouchableOpacity>
           )}
           {mosque.instagramUrl && (
@@ -478,7 +495,7 @@ function InfoTab({ mosque }: { mosque: any }) {
 
       {mosque.languages?.length > 0 && (
         <View style={{ marginTop: 16 }}>
-          <Text style={{ color: '#9CA3AF', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>LANGUAGES</Text>
+          <Text style={{ color: colors.textTertiary, fontSize: 11, fontWeight: '600', marginBottom: 8 }}>LANGUAGES</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {mosque.languages.map((lang: string) => <Badge key={lang} label={lang} />)}
           </View>
@@ -487,7 +504,7 @@ function InfoTab({ mosque }: { mosque: any }) {
 
       {mosque.amenities?.length > 0 && (
         <View style={{ marginTop: 16 }}>
-          <Text style={{ color: '#9CA3AF', fontSize: 11, fontWeight: '600', marginBottom: 10 }}>AMENITIES</Text>
+          <Text style={{ color: colors.textTertiary, fontSize: 11, fontWeight: '600', marginBottom: 10 }}>AMENITIES</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {mosque.amenities.map((a: string) => {
               const key = a.toLowerCase()
@@ -539,7 +556,7 @@ function InfoTab({ mosque }: { mosque: any }) {
 
       {photos.length > 0 && (
         <View style={{ marginTop: 20 }}>
-          <Text style={{ color: '#9CA3AF', fontSize: 11, fontWeight: '600', marginBottom: 10 }}>
+          <Text style={{ color: colors.textTertiary, fontSize: 11, fontWeight: '600', marginBottom: 10 }}>
             PHOTOS · {photos.length}
           </Text>
           <ScrollView
@@ -1268,7 +1285,7 @@ function ProgramsSection({ mosqueId }: { mosqueId: string }) {
 
   return (
     <View style={{ marginTop: 20 }}>
-      <Text style={{ color: '#9CA3AF', fontSize: 11, fontWeight: '600', marginBottom: 10 }}>PROGRAMS OFFERED</Text>
+      <Text style={{ color: colors.textTertiary, fontSize: 11, fontWeight: '600', marginBottom: 10 }}>PROGRAMS OFFERED</Text>
       <View style={{ gap: 10 }}>
         {programs.map((program: any) => {
           const isExpanded = expandedPrograms.has(program.id)

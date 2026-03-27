@@ -88,14 +88,17 @@ async function addEventToCalendar(event: { title: string; startTime: string; end
   }
 }
 
-const STATUS_CONFIG = {
-  GOING:     { label: 'Going',    color: '#1B4332', bg: '#D8F3DC' },
-  MAYBE:     { label: 'Maybe',    color: '#92400E', bg: '#FEF3C7' },
-  NOT_GOING: { label: "Can't go", color: '#7F1D1D', bg: '#FEE2E2' },
-} as const
+function getStatusConfig(colors: any) {
+  return {
+    GOING:     { label: 'Going',    color: colors.isDark ? '#86efac' : '#2D6A4F', bg: colors.isDark ? '#052e16' : '#D8F3DC' },
+    MAYBE:     { label: 'Maybe',    color: colors.isDark ? '#fde68a' : '#92400E', bg: colors.isDark ? '#422006' : '#FEF3C7' },
+    NOT_GOING: { label: "Can't go", color: colors.isDark ? '#fca5a5' : '#991B1B', bg: colors.isDark ? '#450a0a' : '#FEE2E2' },
+  }
+}
 
 export default function RSVPsScreen() {
   const { colors } = useTheme()
+  const STATUS_CONFIG = getStatusConfig(colors)
   const { data, isLoading } = useQuery({
     queryKey: ['user-rsvps'],
     queryFn: () => api.get('/users/me/rsvps'),
@@ -138,7 +141,7 @@ export default function RSVPsScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, gap: 12 }}>
           {rsvps.map((rsvp) => {
             const event = rsvp.event
-            const cfg = STATUS_CONFIG[rsvp.status as keyof typeof STATUS_CONFIG]
+            const cfg = STATUS_CONFIG[rsvp.status as keyof ReturnType<typeof getStatusConfig>]
             return (
               <TouchableOpacity
                 key={rsvp.id}

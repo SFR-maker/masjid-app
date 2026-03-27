@@ -119,7 +119,7 @@ export default function NotificationSettingsScreen() {
           flexDirection: 'row', alignItems: 'center',
           paddingHorizontal: 16, paddingVertical: 14,
           borderBottomWidth: hasSub ? 0 : (index < total - 1 ? 1 : 0),
-          borderBottomColor: colors.background,
+          borderBottomColor: colors.borderLight,
           borderTopLeftRadius: index === 0 ? 16 : 0,
           borderTopRightRadius: index === 0 ? 16 : 0,
           borderBottomLeftRadius: index === total - 1 && !hasSub ? 16 : 0,

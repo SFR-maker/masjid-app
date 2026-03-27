@@ -108,10 +108,10 @@ export default function DonateScreen() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
           <View style={{
             width: 88, height: 88, borderRadius: 44,
-            backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center',
             marginBottom: 24,
           }}>
-            <Ionicons name="checkmark-circle" size={52} color="#16A34A" />
+            <Ionicons name="checkmark-circle" size={52} color={colors.primary} />
           </View>
           <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800', marginBottom: 8, textAlign: 'center' }}>
             JazakAllahu Khayran!

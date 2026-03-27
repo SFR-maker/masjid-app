@@ -170,23 +170,23 @@ export default function QiblaScreen() {
             </View>
 
             <View style={{ backgroundColor: colors.primaryLight, borderRadius: 16, padding: 16, alignItems: 'center', width: '100%' }}>
-              <Text style={{ color: '#2D6A4F', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
                 Qibla Direction
               </Text>
               <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 26 }}>
                 {bearingToCardinal(qiblaAngle)}
               </Text>
-              <Text style={{ color: '#2D6A4F', fontSize: 14, marginTop: 2 }}>
+              <Text style={{ color: colors.primary, fontSize: 14, marginTop: 2 }}>
                 {Math.round(qiblaAngle)}° from North
               </Text>
-              <Text style={{ color: '#52856B', fontSize: 12, marginTop: 4 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4 }}>
                 {location.lat.toFixed(4)}°{location.lat >= 0 ? 'N' : 'S'}, {Math.abs(location.lng).toFixed(4)}°{location.lng >= 0 ? 'E' : 'W'}
               </Text>
             </View>
 
             {!hasCompass && (
-              <View style={{ backgroundColor: '#FEF3C7', borderRadius: 12, padding: 12, marginTop: 16, width: '100%' }}>
-                <Text style={{ color: '#92400E', fontSize: 12, textAlign: 'center' }}>
+              <View style={{ backgroundColor: colors.isDark ? '#422006' : '#FEF3C7', borderRadius: 12, padding: 12, marginTop: 16, width: '100%' }}>
+                <Text style={{ color: colors.isDark ? '#fde68a' : '#92400E', fontSize: 12, textAlign: 'center' }}>
                   Compass sensor not available on this device. The arrow shows the direction from North.
                 </Text>
               </View>
@@ -199,8 +199,8 @@ export default function QiblaScreen() {
             )}
 
             {Platform.OS === 'web' && (
-              <View style={{ backgroundColor: '#FEF3C7', borderRadius: 12, padding: 12, marginTop: 16, width: '100%' }}>
-                <Text style={{ color: '#92400E', fontSize: 12, textAlign: 'center' }}>
+              <View style={{ backgroundColor: colors.isDark ? '#422006' : '#FEF3C7', borderRadius: 12, padding: 12, marginTop: 16, width: '100%' }}>
+                <Text style={{ color: colors.isDark ? '#fde68a' : '#92400E', fontSize: 12, textAlign: 'center' }}>
                   Compass requires the native app. The arrow shows the direction from North.
                 </Text>
               </View>

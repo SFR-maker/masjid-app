@@ -171,7 +171,7 @@ export default function AthkarScreen() {
             }}
           >
             <Text style={{ fontSize: 16 }}>{TAB_ICONS[tab]}</Text>
-            <Text style={{ fontSize: 11, fontWeight: '600', marginTop: 2, color: activeTab === tab ? 'white' : colors.textSecondary }}>{tab}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', marginTop: 2, color: activeTab === tab ? colors.primaryContrast : colors.textSecondary }}>{tab}</Text>
           </TouchableOpacity>
         ))}
       </View>

@@ -171,8 +171,8 @@ function MainSection({ user, colors, onNavigate, onDeleteAccount }: {
                   <Text style={{ color: colors.text, fontSize: 15, fontWeight: '500', textTransform: 'capitalize' }}>{acc.provider}</Text>
                   <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 1 }}>{acc.emailAddress}</Text>
                 </View>
-                <View style={{ backgroundColor: '#D1FAE5', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ color: '#065F46', fontSize: 11, fontWeight: '600' }}>Connected</Text>
+                <View style={{ backgroundColor: colors.isDark ? '#052e16' : '#D1FAE5', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ color: colors.isDark ? '#4ade80' : '#065F46', fontSize: 11, fontWeight: '600' }}>Connected</Text>
                 </View>
               </View>
             ))}

@@ -8,7 +8,7 @@
 import { useState, useRef } from 'react'
 import {
   View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator,
-  TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert,
+  TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Share,
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -216,17 +216,26 @@ export default function VideoScreen() {
 
             <View style={styles.statsRow}>
               <Text style={[styles.statsText, { color: colors.textTertiary }]}>{video.viewCount ?? 0} views</Text>
-              <Pressable
-                onPress={() => likeMutation.mutate()}
-                style={[styles.likeBtn, { backgroundColor: colors.surfaceSecondary }]}
-              >
-                <Ionicons
-                  name={video.userLiked ? 'heart' : 'heart-outline'}
-                  size={16}
-                  color={video.userLiked ? '#EF4444' : colors.textSecondary}
-                />
-                <Text style={[styles.likeBtnText, { color: colors.text }]}>{video.likeCount ?? 0}</Text>
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable
+                  onPress={() => likeMutation.mutate()}
+                  style={[styles.likeBtn, { backgroundColor: colors.surfaceSecondary }]}
+                >
+                  <Ionicons
+                    name={video.userLiked ? 'heart' : 'heart-outline'}
+                    size={16}
+                    color={video.userLiked ? '#EF4444' : colors.textSecondary}
+                  />
+                  <Text style={[styles.likeBtnText, { color: colors.text }]}>{video.likeCount ?? 0}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => Share.share({ message: `${video.title} — ${video.mosque?.name ?? 'Mosque'}\n\nWatch on the Masjid app`, title: video.title }).catch(() => {})}
+                  style={[styles.likeBtn, { backgroundColor: colors.surfaceSecondary }]}
+                >
+                  <Ionicons name="share-outline" size={16} color={colors.textSecondary} />
+                  <Text style={[styles.likeBtnText, { color: colors.text }]}>Share</Text>
+                </Pressable>
+              </View>
             </View>
 
             {video.description ? (

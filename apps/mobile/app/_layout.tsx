@@ -1,11 +1,12 @@
-import { useEffect, Component, ReactNode } from 'react'
+import { useEffect, Component, ReactNode, useMemo } from 'react'
 import { setupAdhanChannel } from '../hooks/useAdhanScheduler'
 import { usePushNotificationSetup, setupQuranPlayerCategory } from '../hooks/useNotifications'
 import { View, ActivityIndicator, Text, ScrollView, Platform } from 'react-native'
 import { Stack } from 'expo-router'
 import NowPlayingBar from '../components/NowPlayingBar'
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo'
-import { useApiTokenSync } from '../lib/api'
+import { useApiTokenSync, api } from '../lib/api'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as SecureStore from 'expo-secure-store'
 import * as SplashScreen from 'expo-splash-screen'
@@ -19,6 +20,7 @@ import { useFonts } from 'expo-font'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { toggleQuranPlayback, nextQuranAyah, prevQuranAyah } from '../lib/quranAudio'
+import { StripeProvider } from '@stripe/stripe-react-native'
 import '../lib/i18n'
 import '../global.css'
 
@@ -72,12 +74,14 @@ export default function RootLayout() {
       tokenCache={tokenCache}
     >
       <QueryClientProvider client={queryClient}>
+        <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaProvider>
             <StatusBar style="auto" />
             <RootNavigator />
           </SafeAreaProvider>
         </GestureHandlerRootView>
+        </StripeProvider>
       </QueryClientProvider>
     </ClerkProvider>
     </LanguageProvider>
@@ -90,7 +94,20 @@ function RootNavigator() {
   useApiTokenSync()
   // ── Push notifications: register device token with backend on sign-in ──
   usePushNotificationSetup()
-  const { isLoaded } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
+
+  // ── Login streak: call once per calendar day when signed in ──────────────
+  useEffect(() => {
+    if (!isSignedIn) return
+    const today = new Date().toISOString().slice(0, 10)
+    const key = `login_streak_date`
+    AsyncStorage.getItem(key).then((last) => {
+      if (last !== today) {
+        api.post('/streaks/login', {}).catch(() => {})
+        AsyncStorage.setItem(key, today)
+      }
+    })
+  }, [isSignedIn])
   const [fontsLoaded] = useFonts({ ...Ionicons.font })
   const { i18n } = useTranslation()
 
@@ -150,6 +167,8 @@ function RootNavigator() {
         <Stack.Screen name="account-settings" options={{ presentation: 'card', headerShown: false }} />
         <Stack.Screen name="poll/[id]" options={{ presentation: 'card', headerShown: false }} />
         <Stack.Screen name="join-group/[token]" options={{ presentation: 'card', headerShown: false }} />
+        <Stack.Screen name="donate/[mosqueId]" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="donation-history" options={{ presentation: 'card', headerShown: false }} />
       </Stack>
       <NowPlayingBar />
     </>

@@ -159,6 +159,7 @@ export default function ProfileScreen() {
   const resourceItems = [
     { icon: 'bookmark', label: t('profile_followed_mosques'), badge: followedMosques.length, onPress: () => router.push('/(tabs)/discover') },
     { icon: 'calendar', label: t('profile_my_rsvps'), onPress: () => router.push('/rsvps') },
+    { icon: 'heart', label: 'Donation History', onPress: () => router.push('/donation-history') },
     { icon: 'mail', label: t('profile_messages'), badge: unreadMessagesCount, onPress: () => router.push('/messages') },
     { icon: 'book', label: t('profile_quran'), onPress: () => router.push('/quran') },
     { icon: 'chatbubble-ellipses', label: t('profile_islamic_ai'), onPress: () => router.push('/chat') },

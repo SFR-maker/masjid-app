@@ -7,8 +7,12 @@ import { mux, createMuxUploadUrl, getMuxThumbnailUrl, getMuxStreamUrl } from '..
 export async function videoRoutes(app: FastifyInstance) {
   // GET /videos — public video feed
   app.get('/videos', async (req, reply) => {
-    const { mosqueId, category, q, limit = '20', cursor } = req.query as any
+    const { mosqueId, category, q, limit = '20', cursor, personalize } = req.query as any
     const userId = req.userId
+    const lim = Math.min(100, Number(limit) || 20)
+
+    // Global feed (no mosqueId filter): only show videos from verified mosques
+    const verifiedFilter = !mosqueId ? { mosque: { isVerified: true } } : {}
 
     const videos = await prisma.video.findMany({
       where: {
@@ -17,8 +21,9 @@ export async function videoRoutes(app: FastifyInstance) {
         ...(mosqueId ? { mosqueId } : {}),
         ...(category ? { category } : {}),
         ...(q ? { title: { contains: q, mode: 'insensitive' } } : {}),
+        ...verifiedFilter,
       },
-      take: Math.min(100, Number(limit) || 20),
+      take: lim,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       orderBy: { createdAt: 'desc' },
       include: {
@@ -27,18 +32,55 @@ export async function videoRoutes(app: FastifyInstance) {
       },
     })
 
+    let items = videos.map((v) => ({
+      ...v,
+      streamUrl: v.muxPlaybackId ? getMuxStreamUrl(v.muxPlaybackId) : null,
+      userLiked: userId ? (v as any).likes?.length > 0 : false,
+      likes: undefined,
+    }))
+
+    // Personalized re-ranking: boost categories the user watches most
+    if (personalize === '1' && userId) {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      const views = await prisma.videoView.findMany({
+        where: { userId, createdAt: { gte: thirtyDaysAgo } },
+        select: { videoId: true },
+      })
+      if (views.length > 0) {
+        const viewedIds = new Set(views.map((v) => v.videoId))
+        const videoCategories = await prisma.video.findMany({
+          where: { id: { in: [...viewedIds] } },
+          select: { category: true },
+        })
+        const affinity: Record<string, number> = {}
+        for (const { category } of videoCategories) {
+          affinity[category] = (affinity[category] ?? 0) + 1
+        }
+        items.sort((a, b) => (affinity[b.category] ?? 0) - (affinity[a.category] ?? 0))
+      }
+    }
+
     return reply.send({
       success: true,
       data: {
-        items: videos.map((v) => ({
-          ...v,
-          userLiked: userId ? (v as any).likes?.length > 0 : false,
-          likes: undefined,
-        })),
+        items,
         cursor: videos[videos.length - 1]?.id,
-        hasMore: videos.length === Number(limit),
+        hasMore: videos.length === lim,
       },
     })
+  })
+
+  // POST /videos/:id/view — track video view with optional watch time
+  app.post('/videos/:id/view', async (req, reply) => {
+    const { id: videoId } = req.params as { id: string }
+    const userId = req.userId
+    const { watchTime } = (req.body as any) ?? {}
+
+    prisma.videoView.create({
+      data: { videoId, userId: userId ?? null, watchTime: watchTime ?? null },
+    }).catch(() => {})
+
+    return reply.send({ success: true })
   })
 
   // GET /mosques/:id/videos — admin list (includes non-published)

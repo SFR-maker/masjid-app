@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { format, addDays, isToday } from 'date-fns'
 import { Ionicons } from '@expo/vector-icons'
@@ -59,6 +59,24 @@ const PRAYERS = [
   { key: 'isha',    name: 'Isha',    arabicName: 'العشاء', icon: '🌃', aladhanKey: 'Isha' },
 ]
 
+// ── Islamic Calendar — key dates by Hijri month/day ─────────────────────────
+const ISLAMIC_DATES: { month: number; day: number; label: string; emoji: string; color: string }[] = [
+  { month: 1,  day: 1,  label: "Islamic New Year",      emoji: '🌙', color: '#6D28D9' },
+  { month: 1,  day: 10, label: "Day of Ashura",          emoji: '🤲', color: '#1D4ED8' },
+  { month: 3,  day: 12, label: "Mawlid al-Nabi",         emoji: '⭐', color: '#D97706' },
+  { month: 7,  day: 27, label: "Isra & Mi'raj",          emoji: '🌟', color: '#0D9488' },
+  { month: 8,  day: 15, label: "Laylat al-Bara'at",      emoji: '🤍', color: '#7C3AED' },
+  { month: 9,  day: 1,  label: "Ramadan Begins",         emoji: '🌙', color: '#059669' },
+  { month: 9,  day: 27, label: "Laylat al-Qadr",         emoji: '✨', color: '#B45309' },
+  { month: 10, day: 1,  label: "Eid al-Fitr",            emoji: '🎉', color: '#16A34A' },
+  { month: 12, day: 9,  label: "Day of Arafah",          emoji: '🕋', color: '#DC2626' },
+  { month: 12, day: 10, label: "Eid al-Adha",            emoji: '🎊', color: '#16A34A' },
+]
+
+function getIslamicEvent(hijriDay: number, hijriMonth: number) {
+  return ISLAMIC_DATES.find((d) => d.month === hijriMonth && d.day === hijriDay) ?? null
+}
+
 // Sentinel value meaning "use GPS location"
 const LOCATION_SOURCE = '__location__'
 
@@ -73,6 +91,35 @@ export default function PrayerScreen() {
   const [now, setNow] = useState(new Date())
   const { isSignedIn } = useAuth()
   const queryClient = useQueryClient()
+
+  // Track which prayers the user has marked as prayed today
+  const [prayedToday, setPrayedToday] = useState<Set<string>>(new Set())
+
+  const { data: streakData } = useQuery({
+    queryKey: ['streaks'],
+    queryFn: () => api.get<any>('/streaks/me'),
+    enabled: !!isSignedIn,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  useEffect(() => {
+    if (streakData?.data?.todayPrayed) {
+      setPrayedToday(new Set(streakData.data.todayPrayed))
+    }
+  }, [streakData])
+
+  const { mutate: markPrayed } = useMutation({
+    mutationFn: (prayer: string) => api.post('/streaks/prayer', { prayer }),
+    onMutate: (prayer) => {
+      setPrayedToday((prev) => new Set([...prev, prayer]))
+    },
+    onError: (_, prayer) => {
+      setPrayedToday((prev) => { const s = new Set(prev); s.delete(prayer); return s })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['streaks'] })
+    },
+  })
 
   // Persist & restore source selection
   useEffect(() => {
@@ -442,6 +489,10 @@ export default function PrayerScreen() {
           {weekDays.map((day) => {
             const isSelected = format(day, 'yyyy-MM-dd') === dateStr
             const isFri = day.getDay() === 5
+            const dayHijri = toHijri(day)
+            const HIJRI_MONTHS = ['Muharram','Safar',"Rabi' al-Awwal","Rabi' al-Thani",'Jumada al-Awwal','Jumada al-Thani','Rajab',"Sha'ban",'Ramadan','Shawwal',"Dhu al-Qi'dah","Dhu al-Hijjah"]
+            const hijriMonthNum = HIJRI_MONTHS.indexOf(dayHijri.month) + 1
+            const islamicEvt = getIslamicEvent(dayHijri.day, hijriMonthNum)
             return (
               <TouchableOpacity
                 key={day.toISOString()}
@@ -450,7 +501,8 @@ export default function PrayerScreen() {
                   marginRight: 8, alignItems: 'center', paddingVertical: 11, paddingHorizontal: 13,
                   borderRadius: 18, minWidth: 58,
                   backgroundColor: isSelected ? colors.primary : colors.surface,
-                  borderWidth: 1, borderColor: isSelected ? colors.primary : colors.border,
+                  borderWidth: islamicEvt && !isSelected ? 1.5 : 1,
+                  borderColor: isSelected ? colors.primary : islamicEvt ? islamicEvt.color : colors.border,
                   shadowColor: isSelected ? colors.primary : '#000',
                   shadowOpacity: isSelected ? 0.22 : 0.03,
                   shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: isSelected ? 4 : 1,
@@ -462,13 +514,35 @@ export default function PrayerScreen() {
                 <Text style={{ fontSize: 20, fontWeight: '800', marginTop: 3, letterSpacing: -0.3, color: isSelected ? colors.primaryContrast : colors.text }}>
                   {format(day, 'd')}
                 </Text>
-                {isToday(day) && (
+                {islamicEvt ? (
+                  <Text style={{ fontSize: 10, marginTop: 2 }}>{islamicEvt.emoji}</Text>
+                ) : isToday(day) ? (
                   <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 3, backgroundColor: isSelected ? `${colors.primaryContrast}B3` : colors.primary }} />
-                )}
+                ) : null}
               </TouchableOpacity>
             )
           })}
         </ScrollView>
+
+        {/* Islamic event banner for selected date */}
+        {(() => {
+          const selHijri = toHijri(selectedDate)
+          const HIJRI_MONTHS = ['Muharram','Safar',"Rabi' al-Awwal","Rabi' al-Thani",'Jumada al-Awwal','Jumada al-Thani','Rajab',"Sha'ban",'Ramadan','Shawwal',"Dhu al-Qi'dah","Dhu al-Hijjah"]
+          const selMonthNum = HIJRI_MONTHS.indexOf(selHijri.month) + 1
+          const evt = getIslamicEvent(selHijri.day, selMonthNum)
+          if (!evt) return null
+          return (
+            <View style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
+              backgroundColor: `${evt.color}18`, borderWidth: 1, borderColor: `${evt.color}40`,
+              flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 20 }}>{evt.emoji}</Text>
+              <View>
+                <Text style={{ color: evt.color, fontWeight: '800', fontSize: 13 }}>{evt.label}</Text>
+                <Text style={{ color: evt.color, fontSize: 11, opacity: 0.75 }}>{selHijri.day} {selHijri.month} {selHijri.year} AH</Text>
+              </View>
+            </View>
+          )
+        })()}
 
         {isLoading ? (
           <View style={{ alignItems: 'center', padding: 40 }}>
@@ -524,6 +598,10 @@ export default function PrayerScreen() {
                     ? (mosqueSchedule as any)[`${prayer.key}Iqamah`] as string | null
                     : null
 
+                  const prayerKey = prayer.key.toUpperCase()
+                  const hasPrayed = prayedToday.has(prayerKey)
+                  const canPray = !!isSignedIn && isToday(selectedDate)
+
                   const row = (
                     <View
                       key={prayer.key}
@@ -558,6 +636,28 @@ export default function PrayerScreen() {
                         </View>
                       ) : (
                         <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, letterSpacing: -0.2 }}>{to12Hour(adhan) ?? '—'}</Text>
+                      )}
+
+                      {/* Mark as Prayed button — today only, signed-in users */}
+                      {canPray && (
+                        <TouchableOpacity
+                          onPress={() => { if (!hasPrayed) markPrayed(prayerKey) }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={{
+                            marginLeft: 14,
+                            width: 30, height: 30, borderRadius: 15,
+                            alignItems: 'center', justifyContent: 'center',
+                            backgroundColor: hasPrayed ? colors.primary : 'transparent',
+                            borderWidth: hasPrayed ? 0 : 1.5,
+                            borderColor: hasPrayed ? 'transparent' : colors.border,
+                          }}
+                        >
+                          <Ionicons
+                            name="checkmark"
+                            size={16}
+                            color={hasPrayed ? '#fff' : colors.textTertiary}
+                          />
+                        </TouchableOpacity>
                       )}
                     </View>
                   )

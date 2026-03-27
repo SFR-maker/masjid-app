@@ -18,7 +18,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons, Feather } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
+import { useAuth } from '@clerk/clerk-expo'
 import { api } from '../../lib/api'
+import { PersonalizationOptInModal, usePersonalizationState } from '../../components/PersonalizationOptIn'
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
 
@@ -71,26 +73,32 @@ function VideoCard({ item, isActive }: { item: any; isActive: boolean }) {
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const videoRef = useRef<Video>(null)
-  // Track whether the video has finished loading so we can retry play on ready
   const isActiveRef = useRef(isActive)
   isActiveRef.current = isActive
+  const playStartRef = useRef<number | null>(null)
 
   // ── AUTOPLAY: imperative play/pause ────────────────────────────────────────
-  // Effect fires when isActive changes; also retried in onReadyForDisplay
-  // in case the video wasn't loaded yet when the effect first ran.
   useEffect(() => {
     if (!videoRef.current || !item.streamUrl) return
     if (isActive) {
+      playStartRef.current = Date.now()
       videoRef.current.playAsync().catch(() => {})
     } else {
       videoRef.current.pauseAsync().catch(() => {})
+      // Send watch time when scrolling away
+      if (playStartRef.current !== null) {
+        const watchTime = Math.round((Date.now() - playStartRef.current) / 1000)
+        playStartRef.current = null
+        if (watchTime > 2) {
+          api.post(`/videos/${item.id}/view`, { watchTime }).catch(() => {})
+        }
+      }
     }
-  }, [isActive, item.streamUrl])
+  }, [isActive, item.streamUrl, item.id])
 
-  // Called by expo-av when the video is buffered and ready to render.
-  // If we're already the active card, kick off playback now.
   function handleReadyForDisplay() {
     if (isActiveRef.current && videoRef.current) {
+      playStartRef.current = Date.now()
       videoRef.current.playAsync().catch(() => {})
     }
   }
@@ -335,6 +343,19 @@ export default function VideosScreen() {
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [searchText, setSearchText] = useState('')
+  const { isSignedIn } = useAuth()
+  const { state: personalizationState, loading: personalizationLoading, accept, decline } = usePersonalizationState()
+  const [showOptIn, setShowOptIn] = useState(false)
+
+  // Show opt-in prompt once for signed-in users whose preference is unknown
+  useEffect(() => {
+    if (isSignedIn && !personalizationLoading && personalizationState === 'unknown') {
+      const timer = setTimeout(() => setShowOptIn(true), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isSignedIn, personalizationLoading, personalizationState])
+
+  const personalize = personalizationState === 'accepted'
 
   // Reset to top whenever the displayed list changes so a card is always active
   useEffect(() => {
@@ -342,8 +363,8 @@ export default function VideosScreen() {
   }, [selectedCategory, searchText])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['videos-feed'],
-    queryFn: () => api.get('/videos?limit=40'),
+    queryKey: ['videos-feed', personalize],
+    queryFn: () => api.get(`/videos?limit=40${personalize ? '&personalize=1' : ''}`),
     staleTime: 30_000,
   })
 
@@ -360,8 +381,15 @@ export default function VideosScreen() {
   })
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) setVisibleIndex(viewableItems[0].index ?? 0)
-  }, [])
+    if (viewableItems.length > 0) {
+      const idx = viewableItems[0].index ?? 0
+      setVisibleIndex(idx)
+      // Track video view (fire-and-forget)
+      const video = videos[idx]
+      if (video?.id) api.post(`/videos/${video.id}/view`, {}).catch(() => {})
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videos])
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current
 
@@ -418,6 +446,13 @@ export default function VideosScreen() {
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
         onSearch={setSearchText}
+      />
+
+      {/* Personalization opt-in */}
+      <PersonalizationOptInModal
+        visible={showOptIn}
+        onAccept={() => { accept(); setShowOptIn(false) }}
+        onDecline={() => { decline(); setShowOptIn(false) }}
       />
     </View>
   )

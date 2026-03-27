@@ -73,12 +73,31 @@ export default function MosqueProfileScreen() {
         ? api.delete(`/mosques/${id}/favorite`)
         : api.post(`/mosques/${id}/favorite`, {}),
     onSuccess: () => {
-      // Invalidate all cached mosque detail pages so other mosques lose the star
       queryClient.invalidateQueries({ queryKey: ['mosque'] })
       queryClient.invalidateQueries({ queryKey: ['followed-mosques'] })
     },
     onError: () => Alert.alert('Error', 'Could not update favorite. Please try again.'),
   })
+
+  const isFriday = new Date().getDay() === 5
+
+  const { data: checkInData, refetch: refetchCheckIn } = useQuery({
+    queryKey: ['checkin', id],
+    queryFn: () => api.get<any>(`/checkins/${id}?type=JUMUAH`),
+    enabled: isFriday && !!isSignedIn,
+    staleTime: 30_000,
+  })
+
+  const checkInMutation = useMutation({
+    mutationFn: (isCheckedIn: boolean) =>
+      isCheckedIn
+        ? api.delete('/checkins', { mosqueId: id, type: 'JUMUAH' })
+        : api.post('/checkins', { mosqueId: id, type: 'JUMUAH' }),
+    onSuccess: () => refetchCheckIn(),
+  })
+
+  const checkInCount = checkInData?.data?.count ?? 0
+  const isCheckedIn = checkInData?.data?.isCheckedIn ?? false
 
   if (isLoading) {
     return (
@@ -177,6 +196,36 @@ export default function MosqueProfileScreen() {
             </View>
             <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}>{mosque.city}, {mosque.state}</Text>
             <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>{mosque.followersCount} followers</Text>
+
+            {/* Jumu'ah Check-in — Fridays only */}
+            {isFriday && isSignedIn && (
+              <TouchableOpacity
+                onPress={() => checkInMutation.mutate(isCheckedIn)}
+                disabled={checkInMutation.isPending}
+                style={{
+                  marginTop: 10,
+                  flexDirection: 'row', alignItems: 'center', gap: 8,
+                  backgroundColor: isCheckedIn ? colors.primary : colors.surface,
+                  borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
+                  alignSelf: 'flex-start',
+                  borderWidth: 1, borderColor: isCheckedIn ? colors.primary : colors.border,
+                  shadowColor: colors.primary, shadowOpacity: isCheckedIn ? 0.25 : 0,
+                  shadowOffset: { width: 0, height: 3 }, shadowRadius: 8, elevation: isCheckedIn ? 3 : 0,
+                }}
+              >
+                <Text style={{ fontSize: 16 }}>🕌</Text>
+                <Text style={{ color: isCheckedIn ? colors.primaryContrast : colors.text, fontWeight: '700', fontSize: 13 }}>
+                  {isCheckedIn ? "Checked in for Jumu'ah" : "Check in for Jumu'ah"}
+                </Text>
+                {checkInCount > 0 && (
+                  <View style={{ backgroundColor: isCheckedIn ? 'rgba(255,255,255,0.2)' : colors.primaryLight, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+                    <Text style={{ color: isCheckedIn ? colors.primaryContrast : colors.primary, fontSize: 12, fontWeight: '700' }}>
+                      {checkInCount} here
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
             {!mosque.hasOwner && (
               <View style={{ marginTop: 8, backgroundColor: '#FFF7ED', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#FED7AA' }}>
                 <Text style={{ color: '#92400E', fontSize: 12, fontWeight: '700', marginBottom: 2 }}>
@@ -229,7 +278,10 @@ export default function MosqueProfileScreen() {
             <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>✉️ Message {mosque.name}</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={{ backgroundColor: '#D4A017', borderRadius: 16, paddingVertical: 16, alignItems: 'center' }}>
+        <TouchableOpacity
+          style={{ backgroundColor: '#D4A017', borderRadius: 16, paddingVertical: 16, alignItems: 'center' }}
+          onPress={() => router.push(`/donate/${id}`)}
+        >
           <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 15 }}>💚 Donate to {mosque.name}</Text>
         </TouchableOpacity>
       </View>

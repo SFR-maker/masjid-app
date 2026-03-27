@@ -136,6 +136,9 @@ importers:
       ioredis:
         specifier: ^5.3.0
         version: 5.10.1
+      stripe:
+        specifier: ^21.0.1
+        version: 21.0.1(@types/node@22.19.15)
       svix:
         specifier: ^1.21.0
         version: 1.89.0
@@ -182,6 +185,9 @@ importers:
       '@react-native-community/datetimepicker':
         specifier: 8.4.4
         version: 8.4.4(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
+      '@stripe/stripe-react-native':
+        specifier: ^0.61.0
+        version: 0.61.0(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       '@tanstack/react-query':
         specifier: ^5.60.0
         version: 5.95.2(react@19.1.0)
@@ -2568,6 +2574,19 @@ packages:
   '@stripe/stripe-js@5.6.0':
     resolution: {integrity: sha512-w8CEY73X/7tw2KKlL3iOk679V9bWseE4GzNz3zlaYxcTjmcmWOathRb0emgo/QQ3eoNzmq68+2Y2gxluAv3xGw==}
     engines: {node: '>=12.16'}
+
+  '@stripe/stripe-react-native@0.61.0':
+    resolution: {integrity: sha512-2UdFpxOZXccg8yHPl4DtCD5fZtKRZ6JwBDd8rNKoMdzpArEnpHG0qUFMWJY7hxa0Nort0+xb1iooFIYDyv50hA==}
+    peerDependencies:
+      expo: '>=46.0.9'
+      react: '*'
+      react-native: '*'
+      react-native-webview: '*'
+    peerDependenciesMeta:
+      expo:
+        optional: true
+      react-native-webview:
+        optional: true
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -6058,6 +6077,15 @@ packages:
     resolution: {integrity: sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw==}
     engines: {node: '>=14.16'}
 
+  stripe@21.0.1:
+    resolution: {integrity: sha512-ocv0j7dWttswDWV2XL/kb6+yiLpDXNXL3RQAOB5OB2kr49z0cEatdQc12+zP/j5nrXk6rAsT4N3y/NUvBbK7Pw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   structured-headers@0.4.1:
     resolution: {integrity: sha512-0MP/Cxx5SzeeZ10p/bZI0S6MpgD+yxAhi1BOQ34jgnMXsCq3j1t6tQnZu+KdlL7dvJTLT3g9xN8tl10TqgFMcg==}
 
@@ -9312,6 +9340,13 @@ snapshots:
   '@standard-schema/spec@1.1.0': {}
 
   '@stripe/stripe-js@5.6.0': {}
+
+  '@stripe/stripe-react-native@0.61.0(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)':
+    dependencies:
+      react: 19.1.0
+      react-native: 0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
+    optionalDependencies:
+      expo: 54.0.33(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(bufferutil@4.1.0)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)(utf-8-validate@6.0.6)
 
   '@swc/helpers@0.5.15':
     dependencies:
@@ -13122,6 +13157,10 @@ snapshots:
   strip-json-comments@3.1.1: {}
 
   strip-json-comments@5.0.3: {}
+
+  stripe@21.0.1(@types/node@22.19.15):
+    optionalDependencies:
+      '@types/node': 22.19.15
 
   structured-headers@0.4.1: {}
 

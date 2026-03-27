@@ -9,6 +9,7 @@ import {
   previewAdhan, stopAdhanPreview,
 } from '../hooks/useAdhanScheduler'
 import { useTheme } from '../contexts/ThemeContext'
+import { setNearMeAlertsEnabled, getNearMeAlertsEnabled } from '../hooks/useNearMeAlerts'
 
 const STORAGE_KEYS: Record<string, string> = {
   PRAYER_REMINDER:  'notif_PRAYER_REMINDER',
@@ -25,9 +26,12 @@ const STORAGE_KEYS: Record<string, string> = {
 const NOTIFICATION_TYPES = [
   { type: 'PRAYER_REMINDER', label: 'Prayer Reminders', description: 'Get reminded before each prayer', icon: '🕌' },
   { type: 'EVENT_REMINDER',  label: 'Event Reminders',  description: 'Upcoming event alerts', icon: '📅' },
+  { type: 'JUMUAH_REMINDER', label: "Jumu'ah Reminders", description: "30-minute reminder every Friday", icon: '🕋' },
+  { type: 'AYAH_OF_DAY',    label: 'Ayah of the Day',  description: 'Daily morning Quran verse', icon: '📖' },
   { type: 'ANNOUNCEMENT',    label: 'Announcements',    description: 'News and updates from your mosque', icon: '📢' },
   { type: 'NEW_VIDEO',       label: 'New Videos',       description: 'When a new lecture or video is posted', icon: '🎬' },
   { type: 'RSVP_CONFIRMED',  label: 'RSVP Confirmations', description: 'When your RSVP is confirmed', icon: '✅' },
+  { type: 'RSVP_REMINDER',   label: 'Event Start Alerts', description: '1-hour reminder before events you RSVPd', icon: '⏰' },
   { type: 'GENERAL',         label: 'General Notifications', description: 'Other updates and alerts', icon: '🔔' },
 ]
 
@@ -43,13 +47,17 @@ export default function NotificationSettingsScreen() {
     ADHAN_AUDIO:     true,
     PRAYER_AT_TIME:  true,
     PRAYER_15MIN:    false,
+    NEAR_ME:         false,
+    JUMUAH_REMINDER: true,
+    AYAH_OF_DAY:     true,
+    RSVP_REMINDER:   true,
   })
   const [selectedAdhan, setSelectedAdhan] = useState<AdhanId>('mishary')
   const [previewingId, setPreviewingId] = useState<string | null>(null)
 
   useEffect(() => {
     const keys = Object.values(STORAGE_KEYS)
-    AsyncStorage.multiGet([...keys, ADHAN_SELECTION_KEY]).then((pairs) => {
+    AsyncStorage.multiGet([...keys, ADHAN_SELECTION_KEY]).then(async (pairs) => {
       const updates: Record<string, boolean> = {}
       for (const [storageKey, val] of pairs) {
         if (storageKey === ADHAN_SELECTION_KEY) {
@@ -61,13 +69,19 @@ export default function NotificationSettingsScreen() {
           if (prefKey) updates[prefKey] = val === 'true'
         }
       }
+      // Load Near Me from its own key
+      updates.NEAR_ME = await getNearMeAlertsEnabled()
       if (Object.keys(updates).length > 0) setPrefs(p => ({ ...p, ...updates }))
     })
   }, [])
 
   function toggle(key: string, value: boolean) {
     setPrefs(p => ({ ...p, [key]: value }))
-    AsyncStorage.setItem(STORAGE_KEYS[key], String(value))
+    if (key === 'NEAR_ME') {
+      setNearMeAlertsEnabled(value)
+    } else if (STORAGE_KEYS[key]) {
+      AsyncStorage.setItem(STORAGE_KEYS[key], String(value))
+    }
   }
 
   async function selectAdhan(id: AdhanId) {
@@ -176,6 +190,30 @@ export default function NotificationSettingsScreen() {
             </View>
           ))}
         </View>
+
+        {/* Near Me Alerts */}
+        <View style={{ marginTop: 20, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.surfaceSecondary }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
+            <Text style={{ fontSize: 24, width: 36 }}>📍</Text>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>Nearby Mosque Alerts</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 1 }}>
+                {prefs.NEAR_ME
+                  ? 'Notifies you when a mosque is nearby at prayer time'
+                  : 'Alert when a mosque is within 2 km at prayer time'}
+              </Text>
+            </View>
+            <Switch
+              value={prefs.NEAR_ME ?? false}
+              onValueChange={(val) => toggle('NEAR_ME', val)}
+              trackColor={{ false: colors.border, true: '#86EFAC' }}
+              thumbColor={(prefs.NEAR_ME ?? false) ? colors.primary : colors.textTertiary}
+            />
+          </View>
+        </View>
+        <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 8, marginHorizontal: 4, lineHeight: 17 }}>
+          Requires location permission. Your location is never sent to our servers — detection happens on-device only.
+        </Text>
 
         {/* Adhan Audio Toggle */}
         <View style={{ marginTop: 20, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.surfaceSecondary }}>

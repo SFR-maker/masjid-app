@@ -15,6 +15,11 @@ import { reportRoutes } from './reports'
 import { verificationRoutes } from './verification'
 import { messageRoutes } from './messages'
 import { pollRoutes } from './polls'
+import { streakRoutes } from './streaks'
+import { checkInRoutes } from './checkins'
+import { liveStreamRoutes } from './livestreams'
+import { readingPlanRoutes } from './readingplan'
+import { stripeConnectRoutes } from './stripe-connect'
 
 export async function buildRoutes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: '/auth' })
@@ -33,4 +38,9 @@ export async function buildRoutes(app: FastifyInstance) {
   app.register(verificationRoutes)
   app.register(messageRoutes)
   app.register(pollRoutes)
+  app.register(streakRoutes, { prefix: '/streaks' })
+  app.register(checkInRoutes, { prefix: '/checkins' })
+  app.register(liveStreamRoutes)
+  app.register(readingPlanRoutes, { prefix: '/reading-plan' })
+  app.register(stripeConnectRoutes)
 }

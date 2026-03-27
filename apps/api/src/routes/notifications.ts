@@ -6,6 +6,7 @@ import { requireAuth } from '../plugins/auth'
 const NOTIFICATION_TYPES = [
   'PRAYER_REMINDER','EVENT_REMINDER','ANNOUNCEMENT','NEW_VIDEO',
   'RSVP_CONFIRMED','MOSQUE_VERIFIED','GENERAL',
+  'JUMUAH_REMINDER','AYAH_OF_DAY','RSVP_REMINDER','NEAR_ME',
 ] as const
 
 export async function notificationRoutes(app: FastifyInstance) {

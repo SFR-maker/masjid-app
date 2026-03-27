@@ -18,6 +18,7 @@ import {
   startQuranPlaybackFromIndex,
 } from '../lib/quranAudio'
 import { useTheme } from '../contexts/ThemeContext'
+import { ReadingPlanWidget } from '../components/ReadingPlanWidget'
 
 const RECITERS = [
   { id: 'ar.alafasy',           name: 'Mishary Alafasy' },
@@ -328,6 +329,9 @@ export default function QuranScreen() {
               style={{ flex: 1, fontSize: 14, color: colors.text }} />
           </View>
         </View>
+
+        {/* Reading Plan */}
+        <ReadingPlanWidget />
 
         {surahsLoading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

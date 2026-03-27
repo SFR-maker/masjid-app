@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAdminFetch } from '../../../../lib/adminFetch'
 
@@ -16,7 +16,10 @@ export default function SettingsPage() {
   const { mosqueId } = useParams<{ mosqueId: string }>()
   const queryClient = useQueryClient()
   const [saved, setSaved] = useState(false)
-  const [activeTab, setActiveTab] = useState<'basic' | 'location' | 'photos' | 'amenities' | 'programs' | 'social'>('basic')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<'basic' | 'location' | 'photos' | 'amenities' | 'programs' | 'social' | 'payments'>(
+    searchParams.get('tab') === 'payments' ? 'payments' : 'basic'
+  )
   const [form, setForm] = useState({
     name: '', slug: '', description: '', address: '',
     city: '', state: '', country: 'US', zipCode: '',
@@ -62,11 +65,63 @@ export default function SettingsPage() {
     queryFn: () => adminFetch(`/mosques/${mosqueId}/programs`).then((r) => r.json()),
   })
 
+  const { data: connectData, refetch: refetchConnect } = useQuery({
+    queryKey: ['stripe-connect', mosqueId],
+    queryFn: () => adminFetch(`/mosques/${mosqueId}/connect/status`).then((r) => r.json()),
+    enabled: activeTab === 'payments',
+    staleTime: 0,
+  })
+  const connectStatus = connectData?.data
+  const [connectLoading, setConnectLoading] = useState(false)
+  const [dashboardLoading, setDashboardLoading] = useState(false)
+
+  const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? window?.location?.origin ?? 'http://localhost:3000'
+
+  async function handleConnectStripe() {
+    setConnectLoading(true)
+    try {
+      const returnUrl = `${ADMIN_URL}/${mosqueId}/settings?tab=payments&stripe=success`
+      const refreshUrl = `${ADMIN_URL}/${mosqueId}/settings?tab=payments&stripe=refresh`
+      const res = await adminFetch(`/mosques/${mosqueId}/connect/onboard`, {
+        method: 'POST',
+        body: JSON.stringify({ returnUrl, refreshUrl }),
+      })
+      const json = await res.json()
+      if (json?.data?.url) window.location.href = json.data.url
+    } finally {
+      setConnectLoading(false)
+    }
+  }
+
+  async function handleOpenDashboard() {
+    setDashboardLoading(true)
+    try {
+      const res = await adminFetch(`/mosques/${mosqueId}/connect/dashboard`)
+      const json = await res.json()
+      if (json?.data?.url) window.open(json.data.url, '_blank')
+    } finally {
+      setDashboardLoading(false)
+    }
+  }
+
+  const disconnectMutation = useMutation({
+    mutationFn: () => adminFetch(`/mosques/${mosqueId}/connect`, { method: 'DELETE' }).then((r) => r.json()),
+    onSuccess: () => refetchConnect(),
+  })
+
   useEffect(() => {
     if (programsData?.data?.items) {
       setPrograms(programsData.data.items)
     }
   }, [programsData])
+
+  // When returning from Stripe onboarding, refresh connect status
+  useEffect(() => {
+    if (searchParams.get('stripe') === 'success' || searchParams.get('stripe') === 'refresh') {
+      refetchConnect()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const createProgramMutation = useMutation({
     mutationFn: () =>
@@ -256,6 +311,7 @@ export default function SettingsPage() {
     { id: 'amenities', label: 'Amenities' },
     { id: 'programs', label: 'Programs' },
     { id: 'social', label: 'Social Media' },
+    { id: 'payments', label: '💳 Payments' },
   ]
 
   return (
@@ -812,6 +868,109 @@ export default function SettingsPage() {
               {saveMutation.isPending ? 'Saving...' : saved ? '✓ Saved' : 'Save Social Links'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Payments / Stripe Connect */}
+      {activeTab === 'payments' && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 mb-1">Stripe Payments</h2>
+            <p className="text-sm text-gray-500">
+              Connect a Stripe account so donations go directly to your mosque. Donors see your mosque name at checkout.
+            </p>
+          </div>
+
+          {!connectStatus?.connected ? (
+            /* ── Not connected ── */
+            <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
+              <div className="text-4xl mb-3">💳</div>
+              <h3 className="font-semibold text-gray-900 mb-1">No Stripe account connected</h3>
+              <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
+                Donations currently go to the platform. Connect your own Stripe account to receive funds directly.
+              </p>
+              <button
+                onClick={handleConnectStripe}
+                disabled={connectLoading}
+                className="bg-[#635BFF] hover:bg-[#4F46E5] text-white rounded-xl px-8 py-3 font-semibold text-sm disabled:opacity-60 transition-colors"
+              >
+                {connectLoading ? 'Redirecting to Stripe...' : 'Connect with Stripe'}
+              </button>
+              <p className="text-xs text-gray-400 mt-3">
+                You'll be redirected to Stripe to create a free Express account. Takes ~5 minutes.
+              </p>
+            </div>
+          ) : !connectStatus?.chargesEnabled ? (
+            /* ── Connected but onboarding incomplete ── */
+            <div className="border border-amber-200 bg-amber-50 rounded-2xl p-6">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">⚠️</span>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-amber-900 mb-1">Setup incomplete</h3>
+                  <p className="text-sm text-amber-700 mb-4">
+                    Your Stripe account is linked but you need to complete the setup before donations can be received.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleConnectStripe}
+                      disabled={connectLoading}
+                      className="bg-amber-700 hover:bg-amber-800 text-white rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
+                    >
+                      {connectLoading ? 'Loading...' : 'Complete setup →'}
+                    </button>
+                    <button
+                      onClick={() => refetchConnect()}
+                      className="border border-amber-300 text-amber-700 rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-amber-100"
+                    >
+                      Check status
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ── Fully connected ── */
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 border border-green-200 bg-green-50 rounded-2xl p-4">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl">✅</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-green-900 text-sm">Stripe account connected</p>
+                  <p className="text-xs text-green-700 font-mono mt-0.5">{connectStatus.accountId}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleOpenDashboard}
+                  disabled={dashboardLoading}
+                  className="flex items-center justify-center gap-2 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  {dashboardLoading ? 'Opening...' : '📊 Open Stripe Dashboard'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Disconnect Stripe? Donations will go to the platform until you reconnect.')) {
+                      disconnectMutation.mutate()
+                    }
+                  }}
+                  disabled={disconnectMutation.isPending}
+                  className="flex items-center justify-center gap-2 border border-red-200 rounded-xl px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                >
+                  {disconnectMutation.isPending ? 'Disconnecting...' : '🔌 Disconnect'}
+                </button>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm text-gray-600">
+                <p className="font-medium text-gray-700">How it works</p>
+                <p>• Donors pay through the app — funds transfer directly to your Stripe account</p>
+                <p>• Stripe sends automatic email receipts to donors</p>
+                <p>• View payouts and transaction history in your Stripe dashboard</p>
+                <p>• Standard Stripe fees apply (2.9% + 30¢ per transaction)</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

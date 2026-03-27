@@ -50,6 +50,10 @@ model User {
   pollVotes            PollVote[]
   groupChatMemberships GroupChatMember[]
   groupChatMessages    GroupChatMessage[]
+  prayerLogs           PrayerLog[]
+  streaks              UserStreak[]
+  checkIns             MosqueCheckIn[]
+  readingPlan          QuranReadingPlan?
 
   @@map("users")
 }
@@ -94,8 +98,9 @@ model MosqueProfile {
   isVerified       Boolean   @default(false)
   isActive         Boolean   @default(true)
   verifiedAt       DateTime?
-  donationUrl      String?
-  stripeAccountId  String?
+  donationUrl           String?
+  stripeAccountId       String?
+  stripeChargesEnabled  Boolean  @default(false)
   // Social media
   facebookUrl      String?
   twitterUrl       String?
@@ -130,6 +135,8 @@ model MosqueProfile {
   polls                  Poll[]
   documents              MosqueDocument[]
   groupChats             GroupChat[]
+  checkIns               MosqueCheckIn[]
+  liveStreams             LiveStream[]
 
   @@index([latitude, longitude])
   @@index([city, state])
@@ -837,6 +844,10 @@ enum NotificationType {
   RSVP_CONFIRMED
   MOSQUE_VERIFIED
   GENERAL
+  JUMUAH_REMINDER
+  AYAH_OF_DAY
+  RSVP_REMINDER
+  NEAR_ME
 }
 
 model Notification {
@@ -980,4 +991,128 @@ model VerificationRequest {
   requester User          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
 
   @@map("verification_requests")
+}
+
+// ─────────────────────────────────────────
+// STREAKS & PRAYER TRACKING
+// ─────────────────────────────────────────
+
+enum PrayerName {
+  FAJR
+  DHUHR
+  ASR
+  MAGHRIB
+  ISHA
+}
+
+enum StreakType {
+  PRAYER
+  LOGIN
+}
+
+model PrayerLog {
+  id        String      @id @default(cuid())
+  userId    String
+  prayer    PrayerName
+  date      DateTime    @db.Date
+  createdAt DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, prayer, date])
+  @@index([userId, date])
+  @@map("prayer_logs")
+}
+
+model UserStreak {
+  id              String     @id @default(cuid())
+  userId          String
+  type            StreakType
+  currentStreak   Int        @default(0)
+  longestStreak   Int        @default(0)
+  lastLoggedDate  DateTime?  @db.Date
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([userId])
+  @@map("user_streaks")
+}
+
+// ─────────────────────────────────────────
+// COMMUNITY CHECK-IN
+// ─────────────────────────────────────────
+
+model MosqueCheckIn {
+  id        String   @id @default(cuid())
+  userId    String
+  mosqueId  String
+  type      String   @default("JUMUAH") // JUMUAH | PRAYER
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mosqueId, type, date])
+  @@index([mosqueId, date])
+  @@map("mosque_check_ins")
+}
+
+// ─────────────────────────────────────────
+// LIVE STREAMING
+// ─────────────────────────────────────────
+
+enum LiveStreamStatus {
+  IDLE
+  LIVE
+  ENDED
+}
+
+model LiveStream {
+  id              String           @id @default(cuid())
+  mosqueId        String
+  title           String
+  muxLiveStreamId String?          @unique
+  muxPlaybackId   String?          @unique
+  muxStreamKey    String?
+  status          LiveStreamStatus @default(IDLE)
+  viewerCount     Int              @default(0)
+  startedAt       DateTime?
+  endedAt         DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  mosque MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@index([mosqueId, status])
+  @@map("live_streams")
+}
+
+// ─────────────────────────────────────────
+// QURAN READING PLAN
+// ─────────────────────────────────────────
+
+enum ReadingPlanType {
+  MONTHLY   // 1 juz/day, 30 days
+  YEARLY    // 1 juz every ~12 days
+}
+
+model QuranReadingPlan {
+  id            String          @id @default(cuid())
+  userId        String          @unique
+  type          ReadingPlanType @default(YEARLY)
+  startDate     DateTime        @db.Date
+  currentJuz    Int             @default(1)
+  completedJuzs Int[]           @default([])
+  isCompleted   Boolean         @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quran_reading_plans")
 }

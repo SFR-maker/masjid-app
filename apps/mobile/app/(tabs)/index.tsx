@@ -10,7 +10,10 @@ import { AnnouncementCard } from '../../components/AnnouncementCard'
 import { EventCard } from '../../components/EventCard'
 import { PollCard } from '../../components/PollCard'
 import { PrayerTimesWidget } from '../../components/PrayerTimesWidget'
+import { StreakWidget } from '../../components/StreakWidget'
+import { RamadanBanner } from '../../components/RamadanBanner'
 import { useTheme } from '../../contexts/ThemeContext'
+import { useNearMeAlerts } from '../../hooks/useNearMeAlerts'
 
 const VIDEO_CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   LECTURE:     { bg: '#EDE9FE', text: '#6D28D9' },
@@ -90,6 +93,7 @@ function VideoFeedCard({ item }: { item: any }) {
 export default function HomeScreen() {
   const { user } = useUser()
   const { colors } = useTheme()
+  useNearMeAlerts()
   const queryClient = useQueryClient()
   const firstName = user?.firstName ?? 'Friend'
 
@@ -159,6 +163,9 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Ramadan banner (only visible during Ramadan) */}
+        <RamadanBanner />
+
         {/* Prayer widget */}
         <View style={{ paddingHorizontal: 16, marginBottom: 18 }}>
           <PrayerTimesWidget
@@ -166,6 +173,9 @@ export default function HomeScreen() {
             overrideMosqueName={favoriteMosque?.name}
           />
         </View>
+
+        {/* Streak widget */}
+        <StreakWidget />
 
         {/* No follows prompt */}
         {!followedMosques.length && (

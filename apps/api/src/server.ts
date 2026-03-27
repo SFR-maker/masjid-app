@@ -7,6 +7,7 @@ import { authenticationPlugin } from './plugins/auth'
 import { redis } from './lib/redis'
 import './workers/notification.worker'
 import './workers/mux-poller'
+import './workers/cron.worker'
 
 const app = Fastify({
   logger: {

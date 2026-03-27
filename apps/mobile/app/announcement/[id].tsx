@@ -16,10 +16,12 @@ import { QuranPicker, QuranVerseData } from '../../components/QuranPicker'
 import { PollCard } from '../../components/PollCard'
 import { useTheme } from '../../contexts/ThemeContext'
 
-const PRIORITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  URGENT:    { bg: '#FEE2E2', text: '#7F1D1D', label: 'Urgent' },
-  IMPORTANT: { bg: '#FEF3C7', text: '#78350F', label: 'Important' },
-  NORMAL:    { bg: '#D8F3DC', text: '#1B4332', label: '' },
+function getPriorityColors(isDark: boolean): Record<string, { bg: string; text: string; label: string }> {
+  return {
+    URGENT:    { bg: isDark ? '#450a0a' : '#FEE2E2', text: isDark ? '#fca5a5' : '#7F1D1D', label: 'Urgent' },
+    IMPORTANT: { bg: isDark ? '#422006' : '#FEF3C7', text: isDark ? '#fde68a' : '#78350F', label: 'Important' },
+    NORMAL:    { bg: isDark ? '#052e16' : '#D8F3DC', text: isDark ? '#86efac' : '#1B4332', label: '' },
+  }
 }
 
 export default function AnnouncementDetailScreen() {
@@ -82,6 +84,7 @@ export default function AnnouncementDetailScreen() {
   }
   if (!item) return null
 
+  const PRIORITY_COLORS = getPriorityColors(colors.isDark)
   const priorityCfg = PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.NORMAL
 
   function handleLike() {

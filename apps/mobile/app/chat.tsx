@@ -85,8 +85,8 @@ export default function ChatScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {/* Disclaimer */}
-        <View style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: '#FFFBEB', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#FDE68A' }}>
-          <Text style={{ color: '#92400E', fontSize: 11, textAlign: 'center' }}>{DISCLAIMER}</Text>
+        <View style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: colors.isDark ? '#422006' : '#FFFBEB', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: colors.isDark ? '#854d0e' : '#FDE68A' }}>
+          <Text style={{ color: colors.isDark ? '#fde68a' : '#92400E', fontSize: 11, textAlign: 'center' }}>{DISCLAIMER}</Text>
         </View>
 
         {/* Messages */}

@@ -22,7 +22,7 @@ export default function EventDetailScreen() {
   const { isSignedIn } = useAuth()
   const queryClient = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['event', id],
     queryFn: () => api.get(`/events/${id}`),
   })
@@ -47,11 +47,11 @@ export default function EventDetailScreen() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['event', id] })
       queryClient.invalidateQueries({ queryKey: ['user-rsvps'] })
-      // Bug 16 fix: invalidate mosque events list so RSVP count refreshes on profile
-      if (event?.mosqueId) {
-        queryClient.invalidateQueries({ queryKey: ['mosque-events', event.mosqueId] })
+      // Use getQueryData to avoid stale closure over `event` variable
+      const eventData = queryClient.getQueryData<any>(['event', id])?.data
+      if (eventData?.mosqueId) {
+        queryClient.invalidateQueries({ queryKey: ['mosque-events', eventData.mosqueId] })
       }
-      // Also invalidate the home feed so counts update there
       queryClient.invalidateQueries({ queryKey: ['home-feed'] })
     },
   })
@@ -65,7 +65,26 @@ export default function EventDetailScreen() {
       </View>
     )
   }
-  if (!event) return null
+  if (isError || !event) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="chevron-back" size={26} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
+          <Ionicons name="calendar-outline" size={52} color={colors.textTertiary} />
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginTop: 16, marginBottom: 6 }}>
+            {isError ? 'Could not load event' : 'Event not found'}
+          </Text>
+          <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+            {isError ? 'Check your connection and try again.' : 'This event may have been removed.'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   const currentStatus = event.userRsvp as string | null
 
@@ -173,6 +192,7 @@ export default function EventDetailScreen() {
                       key={opt.status}
                       onPress={() => rsvpMutation.mutate(opt.status)}
                       disabled={rsvpMutation.isPending}
+                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                       style={{
                         flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
                         backgroundColor: isActive ? opt.color : colors.surface,
@@ -182,7 +202,7 @@ export default function EventDetailScreen() {
                       }}
                     >
                       <Text style={{ fontSize: 18 }}>{opt.icon}</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '600', marginTop: 4, color: isActive ? 'white' : colors.textSecondary }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', marginTop: 4, color: isActive ? colors.primaryContrast : colors.textSecondary }}>
                         {opt.label}
                       </Text>
                     </TouchableOpacity>

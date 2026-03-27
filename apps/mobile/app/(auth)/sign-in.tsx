@@ -7,12 +7,14 @@ import { useSignIn, useOAuth } from '@clerk/clerk-expo'
 import * as WebBrowser from 'expo-web-browser'
 import { Link, router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useTheme } from '../../contexts/ThemeContext'
 
 WebBrowser.maybeCompleteAuthSession()
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn()
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' })
+  const { colors } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -49,6 +51,12 @@ export default function SignInScreen() {
     }
   }, [startOAuthFlow])
 
+  const inputStyle = {
+    borderWidth: 1, borderColor: colors.border, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 12, fontSize: 16,
+    backgroundColor: colors.surfaceSecondary, marginBottom: 16, color: colors.text,
+  }
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -71,7 +79,7 @@ export default function SignInScreen() {
           {/* Form */}
           <View
             style={{
-              backgroundColor: 'white',
+              backgroundColor: colors.surface,
               borderRadius: 24,
               padding: 24,
               shadowColor: '#000',
@@ -80,7 +88,7 @@ export default function SignInScreen() {
               elevation: 8,
             }}
           >
-            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 24 }}>
+            <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 24 }}>
               Welcome back
             </Text>
 
@@ -88,39 +96,36 @@ export default function SignInScreen() {
             <TouchableOpacity
               style={{
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12,
+                borderWidth: 1, borderColor: colors.border, borderRadius: 12,
                 paddingVertical: 14, marginBottom: 20, gap: 10,
               }}
               onPress={handleGoogleSignIn}
               disabled={googleLoading}
             >
               {googleLoading ? (
-                <ActivityIndicator color="#4B5563" size="small" />
+                <ActivityIndicator color={colors.textSecondary} size="small" />
               ) : (
                 <>
                   <Text style={{ fontSize: 18 }}>G</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#1A1A1A' }}>Continue with Google</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>Continue with Google</Text>
                 </>
               )}
             </TouchableOpacity>
 
             {/* Divider */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
-              <Text style={{ color: '#9CA3AF', fontSize: 13, marginHorizontal: 12 }}>or</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              <Text style={{ color: colors.textTertiary, fontSize: 13, marginHorizontal: 12 }}>or</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             </View>
 
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#4B5563', marginBottom: 8 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>
               Email
             </Text>
             <TextInput
-              style={{
-                borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12,
-                paddingHorizontal: 16, paddingVertical: 12, fontSize: 16,
-                backgroundColor: '#F9FAFB', marginBottom: 16, color: '#1A1A1A',
-              }}
+              style={inputStyle}
               placeholder="your@email.com"
+              placeholderTextColor={colors.textTertiary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -128,16 +133,13 @@ export default function SignInScreen() {
               autoComplete="email"
             />
 
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#4B5563', marginBottom: 8 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>
               Password
             </Text>
             <TextInput
-              style={{
-                borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12,
-                paddingHorizontal: 16, paddingVertical: 12, fontSize: 16,
-                backgroundColor: '#F9FAFB', marginBottom: 24, color: '#1A1A1A',
-              }}
+              style={inputStyle}
               placeholder="••••••••"
+              placeholderTextColor={colors.textTertiary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -145,23 +147,23 @@ export default function SignInScreen() {
 
             <TouchableOpacity
               style={{
-                backgroundColor: '#1B4332', borderRadius: 12,
+                backgroundColor: colors.primary, borderRadius: 12,
                 paddingVertical: 16, alignItems: 'center', marginBottom: 16,
               }}
               onPress={handleSignIn}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color={colors.primaryContrast} />
               ) : (
-                <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>Sign In</Text>
+                <Text style={{ color: colors.primaryContrast, fontWeight: '600', fontSize: 16 }}>Sign In</Text>
               )}
             </TouchableOpacity>
 
             <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-              <Text style={{ color: '#6B7280', fontSize: 14 }}>Don't have an account? </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Don't have an account? </Text>
               <Link href="/(auth)/sign-up">
-                <Text style={{ color: '#1B4332', fontSize: 14, fontWeight: '600' }}>Sign up</Text>
+                <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Sign up</Text>
               </Link>
             </View>
           </View>

@@ -7,12 +7,14 @@ import { useSignUp, useOAuth } from '@clerk/clerk-expo'
 import * as WebBrowser from 'expo-web-browser'
 import { Link, router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useTheme } from '../../contexts/ThemeContext'
 
 WebBrowser.maybeCompleteAuthSession()
 
 export default function SignUpScreen() {
   const { signUp, setActive, isLoaded } = useSignUp()
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' })
+  const { colors } = useTheme()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -72,9 +74,9 @@ export default function SignUpScreen() {
   }
 
   const inputStyle = {
-    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12,
+    borderWidth: 1, borderColor: colors.border, borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 12, fontSize: 16,
-    backgroundColor: '#F9FAFB', marginBottom: 16, color: '#1A1A1A',
+    backgroundColor: colors.surfaceSecondary, marginBottom: 16, color: colors.text,
   }
 
   return (
@@ -91,10 +93,10 @@ export default function SignUpScreen() {
             </Text>
           </View>
 
-          <View style={{ backgroundColor: 'white', borderRadius: 24, padding: 24 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 24, padding: 24 }}>
             {!pendingVerification ? (
               <>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 20 }}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 20 }}>
                   Create account
                 </Text>
 
@@ -102,71 +104,78 @@ export default function SignUpScreen() {
                 <TouchableOpacity
                   style={{
                     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12,
+                    borderWidth: 1, borderColor: colors.border, borderRadius: 12,
                     paddingVertical: 14, marginBottom: 20, gap: 10,
                   }}
                   onPress={handleGoogleSignUp}
                   disabled={googleLoading}
                 >
                   {googleLoading ? (
-                    <ActivityIndicator color="#4B5563" size="small" />
+                    <ActivityIndicator color={colors.textSecondary} size="small" />
                   ) : (
                     <>
                       <Text style={{ fontSize: 18 }}>G</Text>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#1A1A1A' }}>Continue with Google</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>Continue with Google</Text>
                     </>
                   )}
                 </TouchableOpacity>
 
                 {/* Divider */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-                  <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
-                  <Text style={{ color: '#9CA3AF', fontSize: 13, marginHorizontal: 12 }}>or</Text>
-                  <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
+                  <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+                  <Text style={{ color: colors.textTertiary, fontSize: 13, marginHorizontal: 12 }}>or</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
                 </View>
 
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#4B5563', marginBottom: 6 }}>Full Name</Text>
-                <TextInput style={inputStyle} placeholder="Your name" value={name} onChangeText={setName} autoCapitalize="words" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>Full Name</Text>
+                <TextInput style={inputStyle} placeholder="Your name" placeholderTextColor={colors.textTertiary} value={name} onChangeText={setName} autoCapitalize="words" />
 
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#4B5563', marginBottom: 6 }}>Email</Text>
-                <TextInput style={inputStyle} placeholder="your@email.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>Email</Text>
+                <TextInput style={inputStyle} placeholder="your@email.com" placeholderTextColor={colors.textTertiary} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#4B5563', marginBottom: 6 }}>Password</Text>
-                <TextInput style={inputStyle} placeholder="••••••••" value={password} onChangeText={setPassword} secureTextEntry />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>Password</Text>
+                <TextInput style={inputStyle} placeholder="••••••••" placeholderTextColor={colors.textTertiary} value={password} onChangeText={setPassword} secureTextEntry />
 
                 <TouchableOpacity
-                  style={{ backgroundColor: '#1B4332', borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
+                  style={{ backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
                   onPress={handleSignUp}
                   disabled={loading || !name || !email || !password}
                 >
-                  {loading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>Create Account</Text>}
+                  {loading
+                    ? <ActivityIndicator color={colors.primaryContrast} />
+                    : <Text style={{ color: colors.primaryContrast, fontWeight: '600', fontSize: 16 }}>Create Account</Text>
+                  }
                 </TouchableOpacity>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-                  <Text style={{ color: '#6B7280', fontSize: 14 }}>Already have an account? </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Already have an account? </Text>
                   <Link href="/(auth)/sign-in">
-                    <Text style={{ color: '#1B4332', fontSize: 14, fontWeight: '600' }}>Sign in</Text>
+                    <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Sign in</Text>
                   </Link>
                 </View>
               </>
             ) : (
               <>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 8 }}>Verify email</Text>
-                <Text style={{ color: '#6B7280', fontSize: 14, marginBottom: 20 }}>Enter the code sent to {email}</Text>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Verify email</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 14, marginBottom: 20 }}>Enter the code sent to {email}</Text>
                 <TextInput
                   style={{ ...inputStyle, textAlign: 'center', fontSize: 28, letterSpacing: 8 }}
                   placeholder="000000"
+                  placeholderTextColor={colors.textTertiary}
                   value={code}
                   onChangeText={setCode}
                   keyboardType="number-pad"
                   maxLength={6}
                 />
                 <TouchableOpacity
-                  style={{ backgroundColor: '#1B4332', borderRadius: 12, paddingVertical: 16, alignItems: 'center' }}
+                  style={{ backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center' }}
                   onPress={handleVerify}
                   disabled={loading || code.length < 6}
                 >
-                  {loading ? <ActivityIndicator color="white" /> : <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>Verify & Continue</Text>}
+                  {loading
+                    ? <ActivityIndicator color={colors.primaryContrast} />
+                    : <Text style={{ color: colors.primaryContrast, fontWeight: '600', fontSize: 16 }}>Verify & Continue</Text>
+                  }
                 </TouchableOpacity>
               </>
             )}

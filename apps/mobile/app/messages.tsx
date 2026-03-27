@@ -128,7 +128,7 @@ export default function MessagesScreen() {
             <TouchableOpacity onPress={() => setSelectedThreadId(null)} style={{ marginRight: 12, padding: 4 }}>
               <Ionicons name="arrow-back" size={22} color={colors.text} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push(`/mosque/${selectedThread.mosque?.id}`)} style={{ flex: 1 }}>
+            <TouchableOpacity onPress={() => selectedThread.mosque?.id && router.push(`/mosque/${selectedThread.mosque.id}` as any)} disabled={!selectedThread.mosque?.id} style={{ flex: 1 }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }} numberOfLines={1}>
                 {selectedThread.mosque?.name ?? 'Mosque'}
               </Text>
@@ -456,7 +456,7 @@ export default function MessagesScreen() {
                   borderRadius: 18,
                   padding: 14,
                   borderWidth: 1,
-                  borderColor: hasReply ? '#BBF7D0' : colors.border,
+                  borderColor: hasReply ? (colors.isDark ? '#166534' : '#BBF7D0') : colors.border,
                   shadowColor: colors.primary,
                   shadowOpacity: 0.04,
                   shadowOffset: { width: 0, height: 2 },
@@ -485,9 +485,9 @@ export default function MessagesScreen() {
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
                     {hasReply ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#D1FAE5', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                        <Ionicons name="checkmark-circle" size={11} color="#059669" />
-                        <Text style={{ fontSize: 10, color: '#059669', fontWeight: '700' }}>{msg.replies.length} {msg.replies.length === 1 ? 'reply' : 'replies'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.isDark ? '#052e16' : '#D1FAE5', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Ionicons name="checkmark-circle" size={11} color={colors.isDark ? '#4ade80' : '#059669'} />
+                        <Text style={{ fontSize: 10, color: colors.isDark ? '#4ade80' : '#059669', fontWeight: '700' }}>{msg.replies.length} {msg.replies.length === 1 ? 'reply' : 'replies'}</Text>
                       </View>
                     ) : (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

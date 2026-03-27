@@ -12,5 +12,4 @@ dist
 ios/
 android/
 com-masjidapp-mobile-firebase-adminsdk-*.json
-apps/mobile/google-services.json
 apps/mobile/GoogleService-Info.plist

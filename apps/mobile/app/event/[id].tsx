@@ -100,9 +100,16 @@ export default function EventDetailScreen() {
           <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
             {event.title}
           </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 14, marginBottom: 16 }}>
-            by {event.mosque?.name}
-          </Text>
+          <TouchableOpacity
+            onPress={() => event.mosque?.id && router.push(`/mosque/${event.mosque.id}` as any)}
+            disabled={!event.mosque?.id}
+            activeOpacity={0.7}
+            style={{ alignSelf: 'flex-start', marginBottom: 16 }}
+          >
+            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
+              by {event.mosque?.name}
+            </Text>
+          </TouchableOpacity>
 
           <View style={{ gap: 10, marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>

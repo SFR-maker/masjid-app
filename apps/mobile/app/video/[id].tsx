@@ -208,7 +208,13 @@ export default function VideoScreen() {
                 <Text style={[styles.categoryText, { color: colors.primary }]}>{video.category}</Text>
               </View>
               {video.mosque && (
-                <Text style={[styles.mosqueName, { color: colors.textSecondary }]}>{video.mosque.name}</Text>
+                <TouchableOpacity
+                  onPress={() => video.mosque?.id && router.push(`/mosque/${video.mosque.id}` as any)}
+                  disabled={!video.mosque?.id}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.mosqueName, { color: colors.primary }]}>{video.mosque.name}</Text>
+                </TouchableOpacity>
               )}
             </View>
 

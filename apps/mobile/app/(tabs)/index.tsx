@@ -41,16 +41,23 @@ function VideoFeedCard({ item }: { item: any }) {
     >
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 10 }}>
-        {item.mosque?.logoUrl ? (
-          <Image source={{ uri: item.mosque.logoUrl }} style={{ width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: '#F0F0F0' }} contentFit="cover" />
-        ) : (
-          <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 14 }}>🎬</Text>
-          </View>
-        )}
-        <Text style={{ flex: 1, color: colors.text, fontWeight: '600', fontSize: 13, letterSpacing: -0.1 }} numberOfLines={1}>
-          {item.mosque?.name}
-        </Text>
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation?.(); item.mosque?.id && router.push(`/mosque/${item.mosque.id}` as any) }}
+          disabled={!item.mosque?.id}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
+          activeOpacity={0.7}
+        >
+          {item.mosque?.logoUrl ? (
+            <Image source={{ uri: item.mosque.logoUrl }} style={{ width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: '#F0F0F0' }} contentFit="cover" />
+          ) : (
+            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 14 }}>🎬</Text>
+            </View>
+          )}
+          <Text style={{ flex: 1, color: colors.text, fontWeight: '600', fontSize: 13, letterSpacing: -0.1 }} numberOfLines={1}>
+            {item.mosque?.name}
+          </Text>
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: categoryStyle.bg, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4 }}>
           <Text style={{ color: categoryStyle.text, fontSize: 11, fontWeight: '700', letterSpacing: 0.2 }}>
             {item.category?.replace('_', ' ') ?? 'VIDEO'}

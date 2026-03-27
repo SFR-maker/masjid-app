@@ -146,12 +146,17 @@ export default function AnnouncementDetailScreen() {
             <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 6 }}>{item.title}</Text>
 
             {item.mosque && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <TouchableOpacity
+                onPress={() => item.mosque?.id && router.push(`/mosque/${item.mosque.id}` as any)}
+                disabled={!item.mosque?.id}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, alignSelf: 'flex-start' }}
+              >
                 {item.mosque.logoUrl && (
                   <Image source={{ uri: item.mosque.logoUrl }} style={{ width: 20, height: 20, borderRadius: 4 }} contentFit="cover" />
                 )}
-                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{item.mosque.name}</Text>
-              </View>
+                <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>{item.mosque.name}</Text>
+              </TouchableOpacity>
             )}
 
             <Text style={{ color: colors.textTertiary, fontSize: 12, marginBottom: 20 }}>

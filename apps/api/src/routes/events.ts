@@ -77,7 +77,7 @@ export async function eventRoutes(app: FastifyInstance) {
       orderBy: { startTime: 'asc' },
       include: {
         _count: { select: { rsvps: { where: { status: 'GOING' } } } },
-        mosque: { select: { name: true } },
+        mosque: { select: { id: true, name: true, logoUrl: true } },
         ...(userId ? { rsvps: { where: { userId }, select: { status: true } } } : {}),
       },
     })
@@ -88,6 +88,8 @@ export async function eventRoutes(app: FastifyInstance) {
         items: events.map((e) => ({
           ...e,
           mosqueName: e.mosque.name,
+          mosqueId: e.mosque.id,
+          mosqueLogoUrl: (e.mosque as any).logoUrl,
           rsvpCount: e._count.rsvps,
           userRsvp: (e as any).rsvps?.[0]?.status ?? null,
           _count: undefined,

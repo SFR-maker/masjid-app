@@ -150,7 +150,13 @@ export default function RSVPsScreen() {
                     <Text style={{ fontWeight: '700', fontSize: 15, color: colors.text, marginBottom: 4 }} numberOfLines={2}>
                       {event.title}
                     </Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 6 }}>{event.mosque?.name}</Text>
+                    <TouchableOpacity
+                      onPress={(e) => { e.stopPropagation?.(); (event.mosqueId ?? event.mosque?.id) && router.push(`/mosque/${event.mosqueId ?? event.mosque?.id}` as any) }}
+                      disabled={!(event.mosqueId ?? event.mosque?.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600', marginBottom: 6 }}>{event.mosqueName ?? event.mosque?.name}</Text>
+                    </TouchableOpacity>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                       <Ionicons name="calendar-outline" size={13} color={colors.textTertiary} />
                       <Text style={{ color: colors.textTertiary, fontSize: 12 }}>

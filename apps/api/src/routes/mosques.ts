@@ -89,10 +89,17 @@ export async function mosqueRoutes(app: FastifyInstance) {
     if (state) where.state = { equals: state, mode: 'insensitive' }
     if (zip) where.zipCode = zip
 
+    // For geo searches, fetch all mosques with coordinates (no alphabetical cutoff)
+    const isGeoSearch = !!(lat && lng)
+    if (isGeoSearch) {
+      where.latitude = { not: null }
+      where.longitude = { not: null }
+    }
+
     const mosques = await prisma.mosqueProfile.findMany({
       where,
-      take: Math.min(100, Number(limit) || 20),
-      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      ...(isGeoSearch ? {} : { take: Math.min(100, Number(limit) || 20) }),
+      ...(cursor && !isGeoSearch ? { skip: 1, cursor: { id: cursor } } : {}),
       include: {
         _count: { select: { follows: true } },
         admins: { where: { role: 'OWNER' }, select: { id: true }, take: 1 },

@@ -88,9 +88,9 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
   const mosqueSchedule = data?.data
   const mosqueLocation = data?.mosqueLocation
 
-  // Aladhan fallback when mosque has no schedule, or when no mosque is selected at all
+  // Always fetch Aladhan when we have any coords — used to fill gaps in mosque schedule too
   const aladhanCoords = mosqueLocation ?? coords
-  const needsAladhan = !mosqueSchedule && !!aladhanCoords
+  const needsAladhan = !!aladhanCoords
 
   const { data: aladhanData } = useQuery({
     queryKey: ['prayer-widget-aladhan', aladhanCoords?.latitude, aladhanCoords?.longitude, today],
@@ -106,7 +106,7 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
 
   const aladhanTimings = aladhanData?.data?.timings
 
-  // Build a unified schedule: mosque times first, Aladhan as fallback
+  // Merge: mosque times take priority, Aladhan fills any missing fields
   const aladhanSchedule = aladhanTimings ? {
     fajrAdhan:    aladhanTimings.Fajr,
     dhuhrAdhan:   aladhanTimings.Dhuhr,
@@ -114,7 +114,13 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
     maghribAdhan: aladhanTimings.Maghrib,
     ishaAdhan:    aladhanTimings.Isha,
   } : null
-  const schedule = mosqueSchedule ?? aladhanSchedule
+  const schedule = (mosqueSchedule || aladhanSchedule) ? {
+    fajrAdhan:    mosqueSchedule?.fajrAdhan    ?? aladhanSchedule?.fajrAdhan,
+    dhuhrAdhan:   mosqueSchedule?.dhuhrAdhan   ?? aladhanSchedule?.dhuhrAdhan,
+    asrAdhan:     mosqueSchedule?.asrAdhan     ?? aladhanSchedule?.asrAdhan,
+    maghribAdhan: mosqueSchedule?.maghribAdhan ?? aladhanSchedule?.maghribAdhan,
+    ishaAdhan:    mosqueSchedule?.ishaAdhan    ?? aladhanSchedule?.ishaAdhan,
+  } : null
 
   const next = getNextPrayer(schedule, now)
   const countdown = next && next.diffMs > 0 ? formatCountdown(next.diffMs) : ''

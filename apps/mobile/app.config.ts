@@ -27,6 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#1B4332',
     },
+    googleServicesFile: './google-services.json',
     package: 'com.masjidapp.mobile',
     permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'POST_NOTIFICATIONS'],
     intentFilters: [

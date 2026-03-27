@@ -10,7 +10,7 @@ import {
   View, Text, FlatList, TouchableOpacity, Dimensions,
   StatusBar, StyleSheet, Share, TextInput, ScrollView,
   Animated, Keyboard, Modal, KeyboardAvoidingView, Platform,
-  ActivityIndicator,
+  ActivityIndicator, PanResponder,
 } from 'react-native'
 import { Video, ResizeMode } from 'expo-av'
 import { Image } from 'expo-image'
@@ -509,6 +509,45 @@ export default function VideosScreen() {
     setVisibleIndex(0)
   }, [selectedCategory, searchText])
 
+  // Category flash overlay
+  const categoryFlashOpacity = useRef(new Animated.Value(0)).current
+  const categoryFlashScale = useRef(new Animated.Value(0.8)).current
+
+  function flashCategory() {
+    categoryFlashOpacity.setValue(1)
+    categoryFlashScale.setValue(0.8)
+    Animated.parallel([
+      Animated.spring(categoryFlashScale, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 6 }),
+      Animated.sequence([
+        Animated.delay(600),
+        Animated.timing(categoryFlashOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]),
+    ]).start()
+  }
+
+  function changeCategory(direction: 'left' | 'right') {
+    const currentIdx = FEED_CATEGORIES.indexOf(selectedCategory)
+    const nextIdx = direction === 'left'
+      ? Math.min(currentIdx + 1, FEED_CATEGORIES.length - 1)
+      : Math.max(currentIdx - 1, 0)
+    if (nextIdx !== currentIdx) {
+      setSelectedCategory(FEED_CATEGORIES[nextIdx])
+      flashCategory()
+    }
+  }
+
+  const swipePan = useRef(
+    PanResponder.create({
+      // Only claim the gesture when it's clearly horizontal
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 2.5,
+      onPanResponderRelease: (_, g) => {
+        if (Math.abs(g.dx) < 50) return
+        changeCategory(g.dx < 0 ? 'left' : 'right')
+      },
+    })
+  ).current
+
   const { data, isLoading } = useQuery({
     queryKey: ['videos-feed', personalize],
     queryFn: () => api.get(`/videos?limit=40${personalize ? '&personalize=1' : ''}`),
@@ -565,7 +604,7 @@ export default function VideosScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={{ flex: 1, backgroundColor: '#000' }} {...swipePan.panHandlers}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <FlatList
@@ -596,6 +635,22 @@ export default function VideosScreen() {
         maxToRenderPerBatch={3}
         getItemLayout={(_data, index) => ({ length: SCREEN_H, offset: SCREEN_H * index, index })}
       />
+
+      {/* Category swipe flash indicator */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute', alignSelf: 'center', top: SCREEN_H * 0.42,
+          opacity: categoryFlashOpacity,
+          transform: [{ scale: categoryFlashScale }],
+          backgroundColor: 'rgba(0,0,0,0.65)',
+          borderRadius: 20, paddingHorizontal: 22, paddingVertical: 12,
+        }}
+      >
+        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 }}>
+          {selectedCategory}
+        </Text>
+      </Animated.View>
 
       {/* Floating header */}
       <VideoHeader

@@ -255,16 +255,8 @@ export default function QuranScreen() {
     if (!ayahParam || !ayahs.length) return
     const index = Number(ayahParam) - 1
     if (index < 0 || index >= ayahs.length) return
-
-    // Step 1: jump to a rough offset immediately so the list renders items near the target
-    const roughOffset = index * 120
-    flatListRef.current?.scrollToOffset({ offset: roughOffset, animated: false })
-
-    // Step 2: after items near the target are rendered, do a precise scrollToIndex
-    const t = setTimeout(() => {
-      flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.15 })
-    }, 800)
-    return () => clearTimeout(t)
+    // getItemLayout lets scrollToIndex work precisely on first call — no two-step hack needed
+    flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
   }, [ayahParam, ayahs])
 
   // Update global surah info and stop audio when surah/reciter changes.
@@ -522,14 +514,12 @@ export default function QuranScreen() {
           keyExtractor={item => String(item.numberInSurah)}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 }}
           windowSize={5}
-          initialNumToRender={10}
-          maxToRenderPerBatch={5}
-          onScrollToIndexFailed={({ index, averageItemLength }) => {
-            // Jump to rough offset to render items near the target, then retry precisely
-            flatListRef.current?.scrollToOffset({ offset: index * averageItemLength, animated: false })
-            setTimeout(() => {
-              flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.15 })
-            }, 300)
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          getItemLayout={(_, index) => ({ length: 120, offset: 120 * index, index })}
+          initialScrollIndex={ayahParam ? Math.max(0, Math.min(Number(ayahParam) - 1, ayahs.length - 1)) : undefined}
+          onScrollToIndexFailed={({ index }) => {
+            flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
           }}
           ListHeaderComponent={
             selectedSurah !== 1 && selectedSurah !== 9 ? (

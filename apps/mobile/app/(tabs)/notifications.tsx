@@ -122,12 +122,16 @@ export default function NotificationsScreen() {
               style={{
                 flexDirection: 'row',
                 alignItems: 'flex-start',
-                backgroundColor: item.isRead ? colors.surface : '#F0FDF4',
+                backgroundColor: item.isRead
+                  ? colors.surface
+                  : colors.isDark ? '#0D2B1A' : '#F0FDF4',
                 borderRadius: 16,
                 marginBottom: 8,
                 padding: 14,
                 borderWidth: 1,
-                borderColor: item.isRead ? colors.border : '#BBF7D0',
+                borderColor: item.isRead
+                  ? colors.border
+                  : colors.isDark ? '#1A4731' : '#BBF7D0',
                 shadowColor: colors.primary,
                 shadowOpacity: item.isRead ? 0.03 : 0.07,
                 shadowOffset: { width: 0, height: 2 },
@@ -144,12 +148,12 @@ export default function NotificationsScreen() {
                   </View>
                 )}
                 {!item.isRead && (
-                  <View style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary, borderWidth: 2, borderColor: item.isRead ? colors.surface : '#F0FDF4' }} />
+                  <View style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.isDark ? '#0D2B1A' : '#F0FDF4' }} />
                 )}
               </View>
               <View style={{ flex: 1 }}>
                 {item.mosqueName && (
-                  <Text style={{ color: '#2D6A4F', fontSize: 11, fontWeight: '700', letterSpacing: 0.3, marginBottom: 3 }}>
+                  <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700', letterSpacing: 0.3, marginBottom: 3 }}>
                     {item.mosqueName.toUpperCase()}
                   </Text>
                 )}

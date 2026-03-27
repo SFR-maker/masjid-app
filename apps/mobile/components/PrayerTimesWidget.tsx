@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from 'react-native'
+import { View, Text, TouchableOpacity, Pressable } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { router } from 'expo-router'
@@ -79,16 +79,17 @@ export function PrayerTimesWidget({ overrideMosqueId, overrideMosqueName }: Pray
         shadowColor: colors.primary, shadowOpacity: 0.35, shadowOffset: { width: 0, height: 6 }, shadowRadius: 16, elevation: 5,
       }}
     >
-      <TouchableOpacity
-        onPress={() => router.push(`/mosque/${mosqueId}` as any)}
-        activeOpacity={0.7}
+      <Pressable
+        onPress={(e) => { e.stopPropagation(); router.push(`/mosque/${mosqueId}` as any) }}
         hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         style={{ alignSelf: 'flex-start', marginBottom: 10 }}
       >
-        <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.65)' : 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600', letterSpacing: 0.5 }}>
-          {mosqueName?.toUpperCase()}
-        </Text>
-      </TouchableOpacity>
+        {({ pressed }) => (
+          <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.65)' : 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600', letterSpacing: 0.5, opacity: pressed ? 0.7 : 1 }}>
+            {mosqueName?.toUpperCase()}
+          </Text>
+        )}
+      </Pressable>
       {next ? (
         <View>
           <Text style={{ color: colors.isDark ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 }}>NEXT PRAYER</Text>

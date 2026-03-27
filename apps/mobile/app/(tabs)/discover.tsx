@@ -1,4 +1,3 @@
-'use client'
 import { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
@@ -374,8 +373,8 @@ export default function DiscoverScreen() {
         </View>
       ) : isError ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
-          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-            <Ionicons name="wifi-outline" size={28} color="#EF4444" />
+          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.isDark ? '#3B0A0A' : '#FEE2E2', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <Ionicons name="wifi-outline" size={28} color={colors.isDark ? '#F87171' : '#EF4444'} />
           </View>
           <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>Connection error</Text>
           <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>

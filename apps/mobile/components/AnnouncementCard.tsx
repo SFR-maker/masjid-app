@@ -203,9 +203,9 @@ export function AnnouncementCard({ item, compact }: Props) {
           {item.body}
         </Text>
         {(item as any).quranSurah && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: '#F0FDF4', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: colors.primaryLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start' }}>
             <Text style={{ fontSize: 11 }}>📖</Text>
-            <Text style={{ fontSize: 11, color: '#065F46', fontWeight: '600', letterSpacing: 0.1 }}>
+            <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '600', letterSpacing: 0.1 }}>
               {(item as any).quranSurahName} {(item as any).quranSurah}:{(item as any).quranAyah}
             </Text>
           </View>
@@ -228,7 +228,7 @@ export function AnnouncementCard({ item, compact }: Props) {
         >
           <Ionicons
             name={liked ? 'heart' : 'heart-outline'}
-            size={20}
+            size={18}
             color={liked ? '#EF4444' : '#9CA3AF'}
           />
           {likeCount > 0 && (

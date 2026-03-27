@@ -21,11 +21,6 @@ function toHijri(date: Date) {
   return { day: hDay, month: hMonth } // 1-indexed month
 }
 
-function getSuhoorIftar(coords?: { latitude: number; longitude: number } | null): null {
-  // Placeholder — actual calculation uses the same Aladhan API the prayer screen uses
-  return null
-}
-
 export function RamadanBanner() {
   const { colors } = useTheme()
   const today = new Date()
@@ -51,6 +46,8 @@ export function RamadanBanner() {
         borderRadius: 20,
         overflow: 'hidden',
         backgroundColor: '#0C2340',
+        borderWidth: colors.isDark ? 1 : 0,
+        borderColor: colors.isDark ? 'rgba(167,139,250,0.35)' : 'transparent',
       }}
     >
       {/* Stars background decoration */}

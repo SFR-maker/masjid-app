@@ -102,7 +102,9 @@ export function StreakWidget() {
         {/* Login streak */}
         <View style={{
           flex: 1,
-          backgroundColor: loginStreak > 0 ? '#FFF7ED' : colors.surfaceSecondary,
+          backgroundColor: loginStreak > 0
+            ? (colors.isDark ? '#2D1F0A' : '#FFF7ED')
+            : colors.surfaceSecondary,
           borderRadius: 14,
           padding: 12,
           alignItems: 'center',
@@ -110,7 +112,9 @@ export function StreakWidget() {
         }}>
           <Text style={{ fontSize: 26 }}>🔥</Text>
           <Text style={{
-            color: loginStreak > 0 ? '#C2410C' : colors.textTertiary,
+            color: loginStreak > 0
+              ? (colors.isDark ? '#FB923C' : '#C2410C')
+              : colors.textTertiary,
             fontWeight: '800',
             fontSize: 24,
             letterSpacing: -1,
@@ -118,7 +122,9 @@ export function StreakWidget() {
             {loginStreak}
           </Text>
           <Text style={{
-            color: loginStreak > 0 ? '#C2410C' : colors.textTertiary,
+            color: loginStreak > 0
+              ? (colors.isDark ? '#FB923C' : '#C2410C')
+              : colors.textTertiary,
             fontSize: 11,
             fontWeight: '600',
           }}>

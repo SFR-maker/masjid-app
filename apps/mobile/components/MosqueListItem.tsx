@@ -88,12 +88,12 @@ export function MosqueListItem({ mosque, onPress }: Props) {
       {/* Content */}
       <View style={{ flex: 1, marginLeft: 13 }}>
         <Text
-          style={{ color: colors.text, fontWeight: '700', fontSize: 15.5, letterSpacing: -0.3 }}
+          style={{ color: colors.text, fontWeight: '700', fontSize: 16, letterSpacing: -0.3 }}
           numberOfLines={1}
         >
           {mosque.name}
         </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 12.5, marginTop: 2, fontWeight: '500' }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2, fontWeight: '500' }}>
           {mosque.city}, {mosque.state}
         </Text>
 

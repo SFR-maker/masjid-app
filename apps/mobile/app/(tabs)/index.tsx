@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, FlatList, RefreshControl, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/clerk-expo'
 import { router } from 'expo-router'
@@ -132,146 +132,143 @@ export default function HomeScreen() {
   const followedMosques = followed?.data?.items ?? []
   const favoriteMosque = followedMosques.find((m: any) => m.isFavorite) ?? followedMosques[0] ?? null
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={() => {
-              refetchFeed()
-            }}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
-          <View>
-            <Text style={{ color: colors.textSecondary, fontSize: 12, letterSpacing: 0.3, fontWeight: '500' }}>
-              Assalamu Alaikum
-            </Text>
-            <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.5, marginTop: 1 }}>
-              {firstName} ✦
-            </Text>
-          </View>
+  const listHeader = (
+    <>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
+        <View>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, letterSpacing: 0.3, fontWeight: '500' }}>
+            Assalamu Alaikum
+          </Text>
+          <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.5, marginTop: 1 }}>
+            {firstName} ✦
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => router.push('/chat')}
+          style={{
+            backgroundColor: colors.primary,
+            borderRadius: 22, padding: 11,
+            shadowColor: colors.primary, shadowOpacity: 0.35,
+            shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+            elevation: 4,
+          }}
+        >
+          <Ionicons name="chatbubble-ellipses" size={20} color="white" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Ramadan banner (only visible during Ramadan) */}
+      <RamadanBanner />
+
+      {/* Prayer widget */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 18 }}>
+        <PrayerTimesWidget
+          overrideMosqueId={favoriteMosque?.id}
+          overrideMosqueName={favoriteMosque?.name}
+        />
+      </View>
+
+      {/* Streak widget */}
+      <StreakWidget />
+
+      {/* No follows prompt */}
+      {!followedMosques.length && (
+        <View style={{
+          marginHorizontal: 16, marginBottom: 18,
+          backgroundColor: colors.primary, borderRadius: 20, padding: 20,
+          shadowColor: colors.primary, shadowOpacity: 0.25,
+          shadowOffset: { width: 0, height: 6 }, shadowRadius: 16, elevation: 4,
+        }}>
+          <Text style={{ color: colors.primaryLight, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 6 }}>
+            GET STARTED
+          </Text>
+          <Text style={{ color: 'white', fontWeight: '800', fontSize: 18, marginBottom: 6, letterSpacing: -0.3, lineHeight: 24 }}>
+            🕌 Find your mosque
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 20, marginBottom: 16 }}>
+            Follow mosques to see prayer times, events, and announcements right here.
+          </Text>
           <TouchableOpacity
-            onPress={() => router.push('/chat')}
             style={{
-              backgroundColor: colors.primary,
-              borderRadius: 22, padding: 11,
-              shadowColor: colors.primary, shadowOpacity: 0.35,
-              shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
-              elevation: 4,
+              backgroundColor: 'white', borderRadius: 12,
+              paddingVertical: 10, paddingHorizontal: 18,
+              alignSelf: 'flex-start',
             }}
+            onPress={() => router.push('/(tabs)/discover')}
           >
-            <Ionicons name="chatbubble-ellipses" size={20} color="white" />
+            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>Discover Mosques →</Text>
           </TouchableOpacity>
         </View>
+      )}
 
-        {/* Ramadan banner (only visible during Ramadan) */}
-        <RamadanBanner />
-
-        {/* Prayer widget */}
-        <View style={{ paddingHorizontal: 16, marginBottom: 18 }}>
-          <PrayerTimesWidget
-            overrideMosqueId={favoriteMosque?.id}
-            overrideMosqueName={favoriteMosque?.name}
-          />
-        </View>
-
-        {/* Streak widget */}
-        <StreakWidget />
-
-        {/* No follows prompt */}
-        {!followedMosques.length && (
-          <View style={{
-            marginHorizontal: 16, marginBottom: 18,
-            backgroundColor: colors.primary, borderRadius: 20, padding: 20,
-            shadowColor: colors.primary, shadowOpacity: 0.25,
-            shadowOffset: { width: 0, height: 6 }, shadowRadius: 16, elevation: 4,
-          }}>
-            <Text style={{ color: colors.primaryLight, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 6 }}>
-              GET STARTED
-            </Text>
-            <Text style={{ color: 'white', fontWeight: '800', fontSize: 18, marginBottom: 6, letterSpacing: -0.3, lineHeight: 24 }}>
-              🕌 Find your mosque
-            </Text>
-            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 20, marginBottom: 16 }}>
-              Follow mosques to see prayer times, events, and announcements right here.
-            </Text>
-            <TouchableOpacity
-              style={{
-                backgroundColor: 'white', borderRadius: 12,
-                paddingVertical: 10, paddingHorizontal: 18,
-                alignSelf: 'flex-start',
-              }}
-              onPress={() => router.push('/(tabs)/discover')}
-            >
-              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>Discover Mosques →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Loading skeleton */}
-        {isLoading && (
-          <View style={{ paddingHorizontal: 16, gap: 14 }}>
-            {[0, 1, 2].map(i => (
-              <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceSecondary }} />
-                  <View style={{ flex: 1, height: 13, borderRadius: 6, backgroundColor: colors.surfaceSecondary }} />
-                </View>
-                <View style={{ height: 16, borderRadius: 6, backgroundColor: colors.surfaceSecondary, marginBottom: 8 }} />
-                <View style={{ height: 12, borderRadius: 6, backgroundColor: colors.surfaceSecondary, width: '70%' }} />
+      {/* Loading skeleton */}
+      {isLoading && (
+        <View style={{ paddingHorizontal: 16, gap: 14 }}>
+          {[0, 1, 2].map(i => (
+            <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceSecondary }} />
+                <View style={{ flex: 1, height: 13, borderRadius: 6, backgroundColor: colors.surfaceSecondary }} />
               </View>
-            ))}
-          </View>
-        )}
-
-        {/* Empty feed */}
-        {feedItems.length === 0 && followedMosques.length > 0 && !isLoading && (
-          <View style={{ alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 }}>
-            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 32 }}>📭</Text>
+              <View style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: colors.surfaceSecondary, marginBottom: 10 }} />
+              <View style={{ height: 16, borderRadius: 6, backgroundColor: colors.surfaceSecondary, marginBottom: 8 }} />
+              <View style={{ height: 12, borderRadius: 6, backgroundColor: colors.surfaceSecondary, width: '70%' }} />
             </View>
-            <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>All caught up</Text>
-            <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-              Your mosques haven't posted anything new yet
-            </Text>
-          </View>
-        )}
+          ))}
+        </View>
+      )}
+    </>
+  )
 
-        {/* Feed */}
-        {feedItems.map((item: any) => {
-          if (item.type === 'announcement') return <AnnouncementCard key={item.id} item={item} />
-          if (item.type === 'event') return <EventCard key={item.id} item={item} />
-          if (item.type === 'video') return <VideoFeedCard key={item.id} item={item} />
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <FlatList
+        data={feedItems}
+        keyExtractor={(item: any) => item.id}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          feedItems.length === 0 && followedMosques.length > 0 && !isLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 }}>
+              <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 32 }}>📭</Text>
+              </View>
+              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>All caught up</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+                Your mosques haven't posted anything new yet
+              </Text>
+            </View>
+          ) : null
+        }
+        renderItem={({ item }: { item: any }) => {
+          if (item.type === 'announcement') return <AnnouncementCard item={item} />
+          if (item.type === 'event') return <EventCard item={item} />
+          if (item.type === 'video') return <VideoFeedCard item={item} />
           if (item.type === 'poll') return (
-            <View key={item.id} style={{ marginHorizontal: 16 }}>
+            <View style={{ marginHorizontal: 16 }}>
               <PollCard poll={item} queryKey={['home-feed']} />
             </View>
           )
           return null
-        })}
-
-        {/* Load more */}
-        {hasNextPage && (
-          <TouchableOpacity
-            onPress={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            style={{ marginHorizontal: 16, marginBottom: 16, backgroundColor: colors.surface, borderRadius: 16, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.border }}
-          >
-            {isFetchingNextPage
-              ? <ActivityIndicator size="small" color={colors.primary} />
-              : <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>Load more</Text>
-            }
-          </TouchableOpacity>
-        )}
-
-        <View style={{ height: 32 }} />
-      </ScrollView>
+        }}
+        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage() }}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : <View style={{ height: 32 }} />
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetchFeed}
+            tintColor={colors.primary}
+          />
+        }
+      />
     </SafeAreaView>
   )
 }

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import type { EventListItem } from '@masjid/types'
 import { useTheme } from '../contexts/ThemeContext'
 
+
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
   HALAQA:     { bg: '#EDE9FE', text: '#6D28D9', dot: '#8B5CF6' },
   YOUTH:      { bg: '#DBEAFE', text: '#1D4ED8', dot: '#3B82F6' },
@@ -117,8 +118,8 @@ export function EventCard({ item }: Props) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={{ flexDirection: 'row', marginRight: 4 }}>
               {[...Array(Math.min(3, item.rsvpCount ?? 0))].map((_, i) => (
-                <View key={i} style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#D8F3DC', borderWidth: 1.5, borderColor: 'white', marginLeft: i === 0 ? 0 : -5, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 8 }}>👤</Text>
+                <View key={i} style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.surface, marginLeft: i === 0 ? 0 : -5, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="person" size={9} color={colors.primary} />
                 </View>
               ))}
             </View>
@@ -129,11 +130,13 @@ export function EventCard({ item }: Props) {
           <View style={{
             borderRadius: 12,
             paddingHorizontal: 16, paddingVertical: 7,
-            backgroundColor: isGoing ? colors.primary : isMaybe ? '#FEF3C7' : colors.surface,
+            backgroundColor: isGoing ? colors.primary : isMaybe ? (colors.isDark ? '#2D1F0A' : '#FEF3C7') : colors.surface,
+            borderWidth: isGoing ? 0 : 1,
+            borderColor: isMaybe ? (colors.isDark ? '#78350F' : '#D97706') : colors.border,
           }}>
             <Text style={{
               fontSize: 12, fontWeight: '700',
-              color: isGoing ? 'white' : isMaybe ? '#92400E' : colors.textSecondary,
+              color: isGoing ? 'white' : isMaybe ? (colors.isDark ? '#FB923C' : '#92400E') : colors.textSecondary,
               letterSpacing: 0.2,
             }}>
               {isGoing ? '✓ Going' : isMaybe ? '? Maybe' : 'RSVP'}

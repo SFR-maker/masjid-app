@@ -732,13 +732,19 @@ export default function PrayerScreen() {
                   TARAWEEH — NIGHT PRAYER
                 </Text>
                 {taraweehSchedules.map((t: any, idx: number) => (
-                  <View key={t.id ?? idx} style={{ backgroundColor: '#0F2D48', borderRadius: 16, padding: 16 }}>
+                  <View key={t.id ?? idx} style={{
+                    backgroundColor: colors.isDark ? '#0A1F38' : '#0F2D48',
+                    borderRadius: 16,
+                    padding: 16,
+                    borderWidth: colors.isDark ? 1 : 0,
+                    borderColor: colors.isDark ? 'rgba(74,222,128,0.15)' : 'transparent',
+                  }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
                         {taraweehSchedules.length > 1 ? `Taraweeh ${idx + 1}` : 'Taraweeh'}
                       </Text>
                       {t.rakaat && (
-                        <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                        <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
                           <Text style={{ color: 'white', fontSize: 11, fontWeight: '600' }}>{t.rakaat} Raka&apos;at</Text>
                         </View>
                       )}

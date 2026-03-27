@@ -31,7 +31,6 @@ export function PollCard({ poll, queryKey }: PollProps) {
   const { colors } = useTheme()
   const GREEN = colors.primary
   const GREEN_LIGHT = colors.primaryLight
-  const GREEN_MID = colors.primary
   const { isSignedIn } = useAuth()
   const queryClient = useQueryClient()
   const hasVoted = !!poll.userVote
@@ -117,8 +116,8 @@ export function PollCard({ poll, queryKey }: PollProps) {
             <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>ENDED</Text>
           </View>
         ) : poll.endsAt ? (
-          <View style={{ backgroundColor: '#FEF3C7', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ color: '#92400E', fontSize: 11, fontWeight: '600' }}>
+          <View style={{ backgroundColor: colors.isDark ? '#2D1F0A' : '#FEF3C7', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Text style={{ color: colors.isDark ? '#FB923C' : '#92400E', fontSize: 11, fontWeight: '600' }}>
               {formatDistanceToNow(new Date(poll.endsAt), { addSuffix: true })}
             </Text>
           </View>
@@ -152,7 +151,7 @@ export function PollCard({ poll, queryKey }: PollProps) {
                     position: 'absolute', top: 0, left: 0, bottom: 0,
                     width: `${pct}%`,
                     backgroundColor: isSelected ? GREEN_LIGHT : colors.border,
-                    opacity: 0.6,
+                    opacity: colors.isDark ? 0.85 : 0.6,
                   }} />
                   <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, paddingVertical: 11 }}>
                     <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 }}>

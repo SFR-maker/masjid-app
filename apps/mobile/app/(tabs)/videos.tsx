@@ -525,25 +525,25 @@ export default function VideosScreen() {
     ]).start()
   }
 
-  function changeCategory(direction: 'left' | 'right') {
-    const currentIdx = FEED_CATEGORIES.indexOf(selectedCategory)
-    const nextIdx = direction === 'left'
-      ? Math.min(currentIdx + 1, FEED_CATEGORIES.length - 1)
-      : Math.max(currentIdx - 1, 0)
-    if (nextIdx !== currentIdx) {
-      setSelectedCategory(FEED_CATEGORIES[nextIdx])
-      flashCategory()
-    }
-  }
+  // Ref so the PanResponder (created once) always reads the latest category
+  const selectedCategoryRef = useRef(selectedCategory)
+  useEffect(() => { selectedCategoryRef.current = selectedCategory }, [selectedCategory])
 
   const swipePan = useRef(
     PanResponder.create({
-      // Only claim the gesture when it's clearly horizontal
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dx) > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 2.5,
       onPanResponderRelease: (_, g) => {
         if (Math.abs(g.dx) < 50) return
-        changeCategory(g.dx < 0 ? 'left' : 'right')
+        const direction = g.dx < 0 ? 'left' : 'right'
+        const currentIdx = FEED_CATEGORIES.indexOf(selectedCategoryRef.current)
+        const nextIdx = direction === 'left'
+          ? Math.min(currentIdx + 1, FEED_CATEGORIES.length - 1)
+          : Math.max(currentIdx - 1, 0)
+        if (nextIdx !== currentIdx) {
+          setSelectedCategory(FEED_CATEGORIES[nextIdx])
+          flashCategory()
+        }
       },
     })
   ).current

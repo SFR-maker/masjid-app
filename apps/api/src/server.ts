@@ -5,6 +5,7 @@ import rateLimit from '@fastify/rate-limit'
 import { buildRoutes } from './routes'
 import { authenticationPlugin } from './plugins/auth'
 import { redis } from './lib/redis'
+import { ZodError } from 'zod'
 import './workers/notification.worker'
 import './workers/mux-poller'
 import './workers/cron.worker'
@@ -62,6 +63,26 @@ async function start() {
     timeWindow: '1 minute',
     ...(isRealRedis ? { redis } : {}),
     keyGenerator: (req) => (req as any).userId ?? req.ip ?? 'unknown',
+  })
+
+  // Convert ZodError validation failures to 400 instead of 500
+  app.setErrorHandler((error, _req, reply) => {
+    if (error instanceof ZodError) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Validation error',
+        issues: error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      })
+    }
+    // Prisma known request error (e.g. invalid cursor, not found)
+    if ((error as any).code === 'P2025') {
+      return reply.status(404).send({ success: false, error: 'Record not found' })
+    }
+    app.log.error(error)
+    return reply.status(error.statusCode ?? 500).send({
+      success: false,
+      error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message,
+    })
   })
 
   await app.register(authenticationPlugin)

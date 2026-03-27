@@ -79,7 +79,9 @@ export async function userRoutes(app: FastifyInstance) {
   app.get('/me/feed', { preHandler: [requireAuth] }, async (req, reply) => {
     const { before, limit: limitStr = '12' } = req.query as { before?: string; limit?: string }
     const limit = Math.min(Number(limitStr) || 12, 50)
-    const beforeDate = before ? new Date(before) : undefined
+    // Guard against invalid date strings that would produce 'Invalid Date' → Prisma crash
+    const parsedBefore = before ? new Date(before) : undefined
+    const beforeDate = parsedBefore && !isNaN(parsedBefore.getTime()) ? parsedBefore : undefined
 
     const follows = await prisma.userFollow.findMany({
       where: { userId: req.userId! },

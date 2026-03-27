@@ -48,8 +48,11 @@ async function pollProcessingVideos() {
   }
 }
 
-// Poll every 30 seconds
-setInterval(pollProcessingVideos, 30_000)
-
-// Also run immediately on startup
-pollProcessingVideos()
+if (!process.env.MUX_TOKEN_ID || !process.env.MUX_TOKEN_SECRET) {
+  process.stdout.write(JSON.stringify({ level: 'warn', msg: 'mux-poller: MUX_TOKEN_ID or MUX_TOKEN_SECRET not configured — poller disabled' }) + '\n')
+} else {
+  // Poll every 30 seconds
+  setInterval(pollProcessingVideos, 30_000)
+  // Also run immediately on startup
+  pollProcessingVideos()
+}

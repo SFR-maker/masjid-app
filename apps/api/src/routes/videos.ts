@@ -11,22 +11,35 @@ export async function videoRoutes(app: FastifyInstance) {
     const userId = req.userId
     const lim = Math.min(100, Number(limit) || 20)
 
-    const videos = await prisma.video.findMany({
-      where: {
-        isPublished: true,
-        status: 'READY',
-        ...(mosqueId ? { mosqueId } : {}),
-        ...(category ? { category } : {}),
-        ...(q ? { title: { contains: q, mode: 'insensitive' } } : {}),
-      },
-      take: lim,
-      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      orderBy: { createdAt: 'desc' },
-      include: {
-        mosque: { select: { id: true, name: true, logoUrl: true, isVerified: true } },
-        ...(userId ? { likes: { where: { userId }, select: { id: true } } } : {}),
-      },
-    })
+    // Validate category enum if provided
+    const validCategories = ['GENERAL','LECTURE','QURAN','DUA','KHUTBAH','EDUCATIONAL','EVENT','OTHER']
+    const safeCategory = category && validCategories.includes(category) ? category : undefined
+
+    let videos
+    try {
+      videos = await prisma.video.findMany({
+        where: {
+          isPublished: true,
+          status: 'READY',
+          ...(mosqueId ? { mosqueId } : {}),
+          ...(safeCategory ? { category: safeCategory } : {}),
+          ...(q ? { title: { contains: q, mode: 'insensitive' } } : {}),
+        },
+        take: lim,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          mosque: { select: { id: true, name: true, logoUrl: true, isVerified: true } },
+          ...(userId ? { likes: { where: { userId }, select: { id: true } } } : {}),
+        },
+      })
+    } catch (err: any) {
+      // Invalid cursor (deleted video) — return empty result rather than 500
+      if (err?.code === 'P2025') {
+        return reply.send({ success: true, data: { items: [], cursor: undefined, hasMore: false } })
+      }
+      throw err
+    }
 
     let items = videos.map((v) => ({
       ...v,
@@ -41,6 +54,7 @@ export async function videoRoutes(app: FastifyInstance) {
       const views = await prisma.videoView.findMany({
         where: { userId, createdAt: { gte: thirtyDaysAgo } },
         select: { videoId: true },
+        take: 50,
       })
       if (views.length > 0) {
         const viewedIds = new Set(views.map((v) => v.videoId))
@@ -49,8 +63,8 @@ export async function videoRoutes(app: FastifyInstance) {
           select: { category: true },
         })
         const affinity: Record<string, number> = {}
-        for (const { category } of videoCategories) {
-          affinity[category] = (affinity[category] ?? 0) + 1
+        for (const { category: cat } of videoCategories) {
+          affinity[cat] = (affinity[cat] ?? 0) + 1
         }
         items.sort((a, b) => (affinity[b.category] ?? 0) - (affinity[a.category] ?? 0))
       }
@@ -70,11 +84,12 @@ export async function videoRoutes(app: FastifyInstance) {
   app.post('/videos/:id/view', async (req, reply) => {
     const { id: videoId } = req.params as { id: string }
     const userId = req.userId
-    const { watchTime } = (req.body as any) ?? {}
+    const body = z.object({ watchTime: z.number().int().nonnegative().optional() }).safeParse(req.body)
+    const watchTime = body.success ? body.data.watchTime : undefined
 
     prisma.videoView.create({
       data: { videoId, userId: userId ?? null, watchTime: watchTime ?? null },
-    }).catch(() => {})
+    }).catch((err) => { app.log.warn({ err, videoId }, 'Failed to record video view') })
 
     return reply.send({ success: true })
   })
@@ -256,13 +271,23 @@ export async function videoRoutes(app: FastifyInstance) {
     })
 
     if (existing) {
-      await prisma.videoLike.delete({ where: { videoId_userId: { videoId, userId } } })
-      await prisma.video.update({ where: { id: videoId }, data: { likeCount: { decrement: 1 } } })
+      await prisma.$transaction([
+        prisma.videoLike.delete({ where: { videoId_userId: { videoId, userId } } }),
+        prisma.video.update({
+          where: { id: videoId },
+          data: { likeCount: { decrement: 1 } },
+        }),
+      ])
       return reply.send({ success: true, liked: false })
     }
 
-    await prisma.videoLike.create({ data: { videoId, userId } })
-    await prisma.video.update({ where: { id: videoId }, data: { likeCount: { increment: 1 } } })
+    await prisma.$transaction([
+      prisma.videoLike.create({ data: { videoId, userId } }),
+      prisma.video.update({
+        where: { id: videoId },
+        data: { likeCount: { increment: 1 } },
+      }),
+    ])
     return reply.send({ success: true, liked: true })
   })
 

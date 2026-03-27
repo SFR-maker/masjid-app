@@ -64,7 +64,7 @@ export async function announcementRoutes(app: FastifyInstance) {
     })
   })
 
-  // POST /announcements/:id/likes — toggle like
+  // POST /announcements/:id/likes — toggle like (atomic via transaction)
   app.post('/announcements/:id/likes', { preHandler: [requireAuth] }, async (req, reply) => {
     const { id } = req.params as { id: string }
     const userId = req.userId!
@@ -72,11 +72,15 @@ export async function announcementRoutes(app: FastifyInstance) {
       where: { announcementId_userId: { announcementId: id, userId } },
     })
     if (existing) {
-      await prisma.announcementLike.delete({ where: { id: existing.id } })
+      await prisma.$transaction([
+        prisma.announcementLike.delete({ where: { id: existing.id } }),
+      ])
       const count = await prisma.announcementLike.count({ where: { announcementId: id } })
       return reply.send({ success: true, data: { isLiked: false, likeCount: count } })
     }
-    await prisma.announcementLike.create({ data: { announcementId: id, userId } })
+    await prisma.$transaction([
+      prisma.announcementLike.create({ data: { announcementId: id, userId } }),
+    ])
     const count = await prisma.announcementLike.count({ where: { announcementId: id } })
     return reply.send({ success: true, data: { isLiked: true, likeCount: count } })
   })

@@ -27,6 +27,10 @@ export async function prayerRoutes(app: FastifyInstance) {
     const { date, days = '7' } = req.query as { date?: string; days?: string }
 
     if (date) {
+      // Validate date format before passing to Prisma to avoid 'Invalid Date' crash
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return reply.status(400).send({ success: false, error: 'Invalid date format. Use YYYY-MM-DD.' })
+      }
       const [schedule, mosque] = await Promise.all([
         prisma.prayerSchedule.findUnique({
           where: { mosqueId_date: { mosqueId, date: new Date(date) } },

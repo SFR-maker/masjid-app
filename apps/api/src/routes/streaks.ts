@@ -17,13 +17,16 @@ function daysBetween(a: Date, b: Date): number {
 async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN'): Promise<void> {
   const today = toDateOnly(new Date())
 
+  // Use upsert to avoid TOCTOU race when the same user has concurrent requests
   const existing = await prisma.userStreak.findUnique({
     where: { userId_type: { userId, type } },
   })
 
   if (!existing) {
-    await prisma.userStreak.create({
-      data: { userId, type, currentStreak: 1, longestStreak: 1, lastLoggedDate: today },
+    await prisma.userStreak.upsert({
+      where: { userId_type: { userId, type } },
+      create: { userId, type, currentStreak: 1, longestStreak: 1, lastLoggedDate: today },
+      update: {},
     })
     return
   }

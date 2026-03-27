@@ -186,8 +186,8 @@ importers:
         specifier: 8.4.4
         version: 8.4.4(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       '@stripe/stripe-react-native':
-        specifier: ^0.61.0
-        version: 0.61.0(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
+        specifier: ^0.50.3
+        version: 0.50.3(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       '@tanstack/react-query':
         specifier: ^5.60.0
         version: 5.95.2(react@19.1.0)
@@ -2575,17 +2575,14 @@ packages:
     resolution: {integrity: sha512-w8CEY73X/7tw2KKlL3iOk679V9bWseE4GzNz3zlaYxcTjmcmWOathRb0emgo/QQ3eoNzmq68+2Y2gxluAv3xGw==}
     engines: {node: '>=12.16'}
 
-  '@stripe/stripe-react-native@0.61.0':
-    resolution: {integrity: sha512-2UdFpxOZXccg8yHPl4DtCD5fZtKRZ6JwBDd8rNKoMdzpArEnpHG0qUFMWJY7hxa0Nort0+xb1iooFIYDyv50hA==}
+  '@stripe/stripe-react-native@0.50.3':
+    resolution: {integrity: sha512-nzOjqZXQKdM7y33Em2JZxCTAgf/q/J51IJQ50XtwIL0QT6Jt5WSmfKm9rGmBhoXxxG4DcXu/qxJeAHlhcPDGQg==}
     peerDependencies:
       expo: '>=46.0.9'
       react: '*'
       react-native: '*'
-      react-native-webview: '*'
     peerDependenciesMeta:
       expo:
-        optional: true
-      react-native-webview:
         optional: true
 
   '@swc/helpers@0.5.15':
@@ -9341,7 +9338,7 @@ snapshots:
 
   '@stripe/stripe-js@5.6.0': {}
 
-  '@stripe/stripe-react-native@0.61.0(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)':
+  '@stripe/stripe-react-native@0.50.3(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)':
     dependencies:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.1.17)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)

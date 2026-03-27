@@ -9,7 +9,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, Dimensions,
   StatusBar, StyleSheet, Share, TextInput, ScrollView,
-  Animated, Keyboard, Modal, KeyboardAvoidingView, Platform,
+  Animated, Keyboard, KeyboardAvoidingView, Platform,
   ActivityIndicator, PanResponder,
 } from 'react-native'
 import { Video, ResizeMode } from 'expo-av'
@@ -24,6 +24,7 @@ import { api } from '../../lib/api'
 import { PersonalizationOptInModal, usePersonalizationState } from '../../components/PersonalizationOptIn'
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
+const PANEL_HEIGHT = Math.round(SCREEN_H * 0.58)
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   LECTURE:     { bg: 'rgba(109,40,217,0.75)',  text: '#EDE9FE' },
@@ -81,7 +82,24 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
   shouldPlayRef.current = shouldPlay
   const playStartRef = useRef<number | null>(null)
   const [showComments, setShowComments] = useState(false)
+  const [panelVisible, setPanelVisible] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const panelAnim = useRef(new Animated.Value(0)).current
+  const panelTranslateY = panelAnim.interpolate({ inputRange: [0, 1], outputRange: [PANEL_HEIGHT, 0] })
+
+  function openComments() {
+    setPanelVisible(true)
+    setShowComments(true)
+    Animated.spring(panelAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }).start()
+  }
+
+  function closeComments() {
+    Keyboard.dismiss()
+    Animated.spring(panelAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start(() => {
+      setPanelVisible(false)
+      setShowComments(false)
+    })
+  }
 
   // Pause icon flash animation
   const pauseIconOpacity = useRef(new Animated.Value(0)).current
@@ -263,7 +281,7 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
           <Text style={styles.railLabel}>Share</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.railItem} onPress={() => setShowComments(true)}>
+        <TouchableOpacity style={styles.railItem} onPress={openComments}>
           <Ionicons name="chatbubble-outline" size={24} color="#fff" />
           <Text style={styles.railLabel}>Comments</Text>
         </TouchableOpacity>
@@ -300,47 +318,62 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
         )}
       </View>
 
-      {/* Comments bottom sheet */}
-      <Modal visible={showComments} transparent animationType="slide" onRequestClose={() => setShowComments(false)} statusBarTranslucent>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { Keyboard.dismiss(); setShowComments(false) }} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: SCREEN_H * 0.72, paddingBottom: insets.bottom + 8 }}>
-            {/* Handle */}
-            <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            </View>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16, paddingHorizontal: 20, paddingBottom: 12 }}>
+      {/* Inline comment panel — slides up from bottom, no modal */}
+      {panelVisible && (
+        <Animated.View style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: PANEL_HEIGHT,
+          backgroundColor: '#1A1A1A',
+          borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          transform: [{ translateY: panelTranslateY }],
+          overflow: 'hidden',
+        }}>
+          {/* Drag handle / close tap */}
+          <TouchableOpacity onPress={closeComments} style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }} activeOpacity={0.7}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+          </TouchableOpacity>
+
+          {/* Header row */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12 }}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
               Comments {comments.length > 0 ? `(${comments.length})` : ''}
             </Text>
-            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+            <TouchableOpacity onPress={closeComments} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={20} color="rgba(255,255,255,0.55)" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
 
-            <ScrollView style={{ maxHeight: SCREEN_H * 0.52 }} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
-              {commentsLoading ? (
-                <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
-              ) : comments.length === 0 ? (
-                <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 24, fontSize: 14 }}>
-                  No comments yet. Be the first!
-                </Text>
-              ) : (
-                comments.map((c: any) => (
-                  <View key={c.id} style={{ flexDirection: 'row', gap: 10 }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
-                      {c.user?.avatarUrl
-                        ? <Image source={{ uri: c.user.avatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} contentFit="cover" />
-                        : <Text style={{ fontSize: 13 }}>👤</Text>
-                      }
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600', marginBottom: 2 }}>{c.user?.name ?? 'Anonymous'}</Text>
-                      <Text style={{ color: '#fff', fontSize: 14, lineHeight: 20 }}>{c.text}</Text>
-                    </View>
+          {/* Comments list */}
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
+            {commentsLoading ? (
+              <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
+            ) : comments.length === 0 ? (
+              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 24, fontSize: 14 }}>
+                No comments yet. Be the first!
+              </Text>
+            ) : (
+              comments.map((c: any) => (
+                <View key={c.id} style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                    {c.user?.avatarUrl
+                      ? <Image source={{ uri: c.user.avatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} contentFit="cover" />
+                      : <Text style={{ fontSize: 13 }}>👤</Text>
+                    }
                   </View>
-                ))
-              )}
-            </ScrollView>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600', marginBottom: 2 }}>{c.user?.name ?? 'Anonymous'}</Text>
+                    <Text style={{ color: '#fff', fontSize: 14, lineHeight: 20 }}>{c.text}</Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </ScrollView>
 
-            {isSignedIn && (
-              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+          {/* Comment input */}
+          {isSignedIn && (
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: insets.bottom + 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
                 <TextInput
                   style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 }}
                   placeholder="Add a comment..."
@@ -360,10 +393,10 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
                   }
                 </TouchableOpacity>
               </View>
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+            </KeyboardAvoidingView>
+          )}
+        </Animated.View>
+      )}
     </View>
   )
 }
@@ -509,22 +542,6 @@ export default function VideosScreen() {
     setVisibleIndex(0)
   }, [selectedCategory, searchText])
 
-  // Category flash overlay
-  const categoryFlashOpacity = useRef(new Animated.Value(0)).current
-  const categoryFlashScale = useRef(new Animated.Value(0.8)).current
-
-  function flashCategory() {
-    categoryFlashOpacity.setValue(1)
-    categoryFlashScale.setValue(0.8)
-    Animated.parallel([
-      Animated.spring(categoryFlashScale, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 6 }),
-      Animated.sequence([
-        Animated.delay(600),
-        Animated.timing(categoryFlashOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
-      ]),
-    ]).start()
-  }
-
   // Ref so the PanResponder (created once) always reads the latest category
   const selectedCategoryRef = useRef(selectedCategory)
   useEffect(() => { selectedCategoryRef.current = selectedCategory }, [selectedCategory])
@@ -532,9 +549,9 @@ export default function VideosScreen() {
   const swipePan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 2.5,
+        Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
       onPanResponderRelease: (_, g) => {
-        if (Math.abs(g.dx) < 50) return
+        if (Math.abs(g.dx) < 30) return
         const direction = g.dx < 0 ? 'left' : 'right'
         const currentIdx = FEED_CATEGORIES.indexOf(selectedCategoryRef.current)
         const nextIdx = direction === 'left'
@@ -542,7 +559,6 @@ export default function VideosScreen() {
           : Math.max(currentIdx - 1, 0)
         if (nextIdx !== currentIdx) {
           setSelectedCategory(FEED_CATEGORIES[nextIdx])
-          flashCategory()
         }
       },
     })
@@ -635,22 +651,6 @@ export default function VideosScreen() {
         maxToRenderPerBatch={3}
         getItemLayout={(_data, index) => ({ length: SCREEN_H, offset: SCREEN_H * index, index })}
       />
-
-      {/* Category swipe flash indicator */}
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: 'absolute', alignSelf: 'center', top: SCREEN_H * 0.42,
-          opacity: categoryFlashOpacity,
-          transform: [{ scale: categoryFlashScale }],
-          backgroundColor: 'rgba(0,0,0,0.65)',
-          borderRadius: 20, paddingHorizontal: 22, paddingVertical: 12,
-        }}
-      >
-        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 }}>
-          {selectedCategory}
-        </Text>
-      </Animated.View>
 
       {/* Floating header */}
       <VideoHeader

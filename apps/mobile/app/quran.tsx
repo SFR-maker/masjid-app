@@ -250,13 +250,20 @@ export default function QuranScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ayahs.length, readingMode])
 
-  // Scroll to the ayah from notification params once content is ready
+  // Scroll to the ayah from notification params once content is ready.
+  // Two non-animated steps: first scroll to approximate offset, then precise index scroll
+  // after FlatList has measured items near that position. Both are animated:false → no choppiness.
   useEffect(() => {
     if (!ayahParam || !ayahs.length) return
     const index = Number(ayahParam) - 1
     if (index < 0 || index >= ayahs.length) return
-    // getItemLayout lets scrollToIndex work precisely on first call — no two-step hack needed
-    flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
+    // Step 1: rough offset so FlatList renders items near the target
+    flatListRef.current?.scrollToOffset({ offset: index * 160, animated: false })
+    // Step 2: precise scroll after items are measured
+    const t = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
+    }, 250)
+    return () => clearTimeout(t)
   }, [ayahParam, ayahs])
 
   // Update global surah info and stop audio when surah/reciter changes.
@@ -516,10 +523,12 @@ export default function QuranScreen() {
           windowSize={5}
           initialNumToRender={15}
           maxToRenderPerBatch={10}
-          getItemLayout={(_, index) => ({ length: 120, offset: 120 * index, index })}
-          initialScrollIndex={ayahParam ? Math.max(0, Math.min(Number(ayahParam) - 1, ayahs.length - 1)) : undefined}
-          onScrollToIndexFailed={({ index }) => {
-            flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
+          onScrollToIndexFailed={({ index, averageItemLength }) => {
+            // Scroll to estimated position first, then retry once items are rendered
+            flatListRef.current?.scrollToOffset({ offset: index * (averageItemLength || 160), animated: false })
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
+            }, 200)
           }}
           ListHeaderComponent={
             selectedSurah !== 1 && selectedSurah !== 9 ? (

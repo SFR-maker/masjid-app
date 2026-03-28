@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
 import {
   View, Text, ScrollView, TouchableOpacity, FlatList,
-  ActivityIndicator, TextInput, Platform, NativeScrollEvent, NativeSyntheticEvent, ViewToken,
+  ActivityIndicator, TextInput, Platform, NativeScrollEvent, NativeSyntheticEvent,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -246,10 +246,9 @@ export default function QuranScreen() {
   const didMountRef = useRef(false)
   const flatListRef = useRef<FlatList>(null)
   const scrollViewRef = useRef<ScrollView>(null)
-  const visibleIndicesRef = useRef<Set<number>>(new Set())
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    visibleIndicesRef.current = new Set(viewableItems.map((v) => v.index ?? -1))
-  }).current
+  const flatListScrollOffsetRef = useRef(0)
+  const flatListHeightRef = useRef(600)
+  const userScrollingRef = useRef(false)
   // Y offset of each Arabic ayah row within the ScrollView content
   const arabicAyahOffsets = useRef<number[]>([])
   // Y offset of each translation row within the ScrollView content (kept for translation highlighting)
@@ -280,15 +279,28 @@ export default function QuranScreen() {
     setAyahsForPlayback(ayahs)
   }, [ayahs])
 
-  // Verse mode: scroll to the currently playing ayah only if it's not already visible
+  // Verse mode: scroll to the playing ayah only if it's genuinely off-screen
   useEffect(() => {
     if (!ayahs.length || !playingAyah || readingMode !== 'verse') return
     const index = playingAyah - 1
     if (index < 0 || index >= ayahs.length) return
-    if (visibleIndicesRef.current.has(index)) return // already on screen — don't scroll
+    if (userScrollingRef.current) return // user is actively scrolling — leave them alone
+
+    // Estimate item position using scroll offset + list height
+    // Use 200px as a conservative estimated item height — real cards are ~170-220px
+    const estimatedItemTop = index * 200
+    const estimatedItemBottom = estimatedItemTop + 200
+    const viewTop = flatListScrollOffsetRef.current
+    const viewBottom = viewTop + flatListHeightRef.current
+
+    // Item is already visible — don't scroll
+    if (estimatedItemBottom > viewTop && estimatedItemTop < viewBottom) return
+
     const t = setTimeout(() => {
-      flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 })
-    }, 300)
+      if (!userScrollingRef.current) {
+        flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 })
+      }
+    }, 400)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playingAyah, readingMode])
@@ -629,8 +641,12 @@ export default function QuranScreen() {
               flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
             }, 300)
           }}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+          onScroll={(e) => { flatListScrollOffsetRef.current = e.nativeEvent.contentOffset.y }}
+          onLayout={(e) => { flatListHeightRef.current = e.nativeEvent.layout.height }}
+          onScrollBeginDrag={() => { userScrollingRef.current = true }}
+          onMomentumScrollEnd={() => { setTimeout(() => { userScrollingRef.current = false }, 1500) }}
+          onScrollEndDrag={() => { setTimeout(() => { userScrollingRef.current = false }, 1500) }}
+          scrollEventThrottle={100}
           ListHeaderComponent={
             selectedSurah !== 1 && selectedSurah !== 9 ? (
               <View style={{ backgroundColor: colors.primary, borderRadius: 16, padding: 20, marginBottom: 16, alignItems: 'center', opacity: playingAyah === 0 ? 0.75 : 1, borderWidth: playingAyah === 0 ? 3 : 0, borderColor: 'white' }}>

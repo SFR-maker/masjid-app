@@ -260,7 +260,7 @@ export async function mosqueRoutes(app: FastifyInstance) {
           where: { mosqueId },
           orderBy: { createdAt: 'desc' },
           take: 5,
-          select: { id: true, title: true, priority: true, isPublished: true, createdAt: true, likeCount: true, isPinned: true },
+          select: { id: true, title: true, priority: true, isPublished: true, createdAt: true, isPinned: true, _count: { select: { likes: true } } },
         }),
         prisma.event.findMany({
           where: { mosqueId, isPublished: true, isCancelled: false, startTime: { gte: now } },
@@ -270,9 +270,9 @@ export async function mosqueRoutes(app: FastifyInstance) {
         }),
         prisma.announcement.findMany({
           where: { mosqueId, isPublished: true },
-          orderBy: { likeCount: 'desc' },
+          orderBy: { createdAt: 'desc' },
           take: 5,
-          select: { id: true, title: true, likeCount: true, commentCount: true, createdAt: true },
+          select: { id: true, title: true, createdAt: true, _count: { select: { likes: true, comments: true } } },
         }),
       ])
 
@@ -284,9 +284,9 @@ export async function mosqueRoutes(app: FastifyInstance) {
           rsvpCount,
           videosCount,
           unreadCount,
-          recentAnnouncements,
+          recentAnnouncements: recentAnnouncements.map((a) => ({ ...a, likeCount: a._count.likes, _count: undefined })),
           upcomingEvents: upcomingEvents.map((e) => ({ ...e, rsvpCount: e._count.rsvps, _count: undefined })),
-          topAnnouncements,
+          topAnnouncements: topAnnouncements.map((a) => ({ ...a, likeCount: a._count.likes, commentCount: a._count.comments, _count: undefined })),
         },
       })
     }

@@ -36,7 +36,7 @@ export function VerificationsSection() {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Mosque Verifications</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Mosque Verifications</Text>
         {!isLoading && (
           <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
             {requests.length} pending request{requests.length !== 1 ? 's' : ''}
@@ -119,7 +119,7 @@ export function ReportsSection() {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Content Reports</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Content Reports</Text>
       </View>
 
       <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 12 }}>
@@ -209,7 +209,7 @@ export function PlatformStatsSection() {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Platform Statistics</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Platform Statistics</Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>Live platform-wide data</Text>
       </View>
 

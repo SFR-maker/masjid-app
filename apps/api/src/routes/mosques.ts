@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma, Prisma } from '@masjid/database'
 import { requireAuth, requireMosqueAdmin } from '../plugins/auth'
-import { generateSignedUploadParams, generateSignedVideoUploadParams, generateSignedDownloadUrl, deleteCloudinaryResource } from '../lib/cloudinary'
+import { generateSignedUploadParams, generateSignedVideoUploadParams, generateSignedRawUploadParams, generateSignedDownloadUrl, deleteCloudinaryResource } from '../lib/cloudinary'
 import { notificationQueue } from '../workers/notification.worker'
 
 const createMosqueSchema = z.object({
@@ -679,6 +679,17 @@ export async function mosqueRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const { id } = req.params as { id: string }
       const params = await generateSignedUploadParams(`mosques/${id}`)
+      return reply.send({ success: true, data: params })
+    }
+  )
+
+  // GET /mosques/:id/upload-params/raw — signed Cloudinary raw/document upload params
+  app.get(
+    '/:id/upload-params/raw',
+    { preHandler: [requireMosqueAdmin((req) => (req.params as any).id)] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string }
+      const params = await generateSignedRawUploadParams(`mosques/${id}/documents`)
       return reply.send({ success: true, data: params })
     }
   )

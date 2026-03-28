@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Linking } from 'react-native'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
@@ -69,8 +69,8 @@ export function DocumentsSection({ mosqueId }: { mosqueId: string }) {
       const asset = result.assets[0]
       setUploading(true)
 
-      // Get signed upload params
-      const paramsRes = await api.get(`/mosques/${mosqueId}/upload-params`)
+      // Get signed upload params for raw/document files
+      const paramsRes = await api.get(`/mosques/${mosqueId}/upload-params/raw`)
       const { signature, timestamp, cloudName, apiKey, folder } = paramsRes.data
 
       // Upload to Cloudinary as raw
@@ -107,7 +107,7 @@ export function DocumentsSection({ mosqueId }: { mosqueId: string }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Documents</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Documents</Text>
         <TouchableOpacity
           onPress={uploadDocument}
           disabled={uploading}
@@ -168,6 +168,12 @@ export function DocumentsSection({ mosqueId }: { mosqueId: string }) {
                     </Text>
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => Linking.openURL(doc.fileUrl)}
+                      style={{ padding: 7, backgroundColor: colors.primaryLight, borderRadius: 8 }}
+                    >
+                      <Ionicons name="open-outline" size={16} color={colors.primary} />
+                    </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => { setRenaming(doc.id); setNewName(doc.name) }}
                       style={{ padding: 7, backgroundColor: colors.surfaceSecondary, borderRadius: 8 }}

@@ -50,6 +50,25 @@ export async function generateSignedVideoUploadParams(folder: string) {
   }
 }
 
+export async function generateSignedRawUploadParams(folder: string, maxBytes = 50_000_000) {
+  const timestamp = Math.round(new Date().getTime() / 1000)
+  const params = {
+    timestamp,
+    folder,
+    resource_type: 'raw',
+    max_bytes: maxBytes,
+  }
+  const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET!)
+  return {
+    signature,
+    timestamp,
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    folder,
+    maxBytes: params.max_bytes,
+  }
+}
+
 export function generateSignedDownloadUrl(publicId: string, resourceType: 'image' | 'raw' = 'raw'): string {
   const timestamp = Math.round(Date.now() / 1000) + 3600 // 1 hour expiry
   return cloudinary.url(publicId, {

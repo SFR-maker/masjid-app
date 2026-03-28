@@ -2,8 +2,9 @@ import { useState, useRef } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   Alert, RefreshControl, TextInput, Modal, KeyboardAvoidingView, Platform,
-  FlatList,
+  FlatList, Linking,
 } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
@@ -78,7 +79,7 @@ function AnnouncementsSection({ mosqueId }: { mosqueId: string }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Announcements</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Announcements</Text>
         <TouchableOpacity onPress={() => setShowCreate(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 }}>
           <Ionicons name="add" size={16} color={colors.primaryContrast} />
           <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primaryContrast }}>Post</Text>
@@ -199,7 +200,12 @@ function EventsSection({ mosqueId }: { mosqueId: string }) {
   const { colors } = useTheme()
   const queryClient = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ title: '', description: '', location: '', category: 'GENERAL', startTime: '', endTime: '' })
+  const [form, setForm] = useState({ title: '', description: '', location: '', category: 'GENERAL' })
+  const [startDate, setStartDate] = useState<Date | null>(null)
+  const [endDate, setEndDate] = useState<Date | null>(null)
+  const [pickerField, setPickerField] = useState<'start' | 'end' | null>(null)
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date')
+  const [tempDate, setTempDate] = useState<Date>(new Date())
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['admin-events', mosqueId],
@@ -210,21 +216,23 @@ function EventsSection({ mosqueId }: { mosqueId: string }) {
 
   const createMutation = useMutation({
     mutationFn: () => {
-      if (!form.startTime) throw new Error('Start time required')
+      if (!startDate) throw new Error('Start time required')
       return api.post(`/mosques/${mosqueId}/events`, {
         title: form.title,
         description: form.description || undefined,
         location: form.location || undefined,
         category: form.category,
-        startTime: new Date(form.startTime).toISOString(),
-        endTime: form.endTime ? new Date(form.endTime).toISOString() : undefined,
+        startTime: startDate.toISOString(),
+        endTime: endDate ? endDate.toISOString() : undefined,
         requiresRsvp: true,
       })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events', mosqueId] })
       setShowCreate(false)
-      setForm({ title: '', description: '', location: '', category: 'GENERAL', startTime: '', endTime: '' })
+      setForm({ title: '', description: '', location: '', category: 'GENERAL' })
+      setStartDate(null)
+      setEndDate(null)
     },
     onError: (e: any) => Alert.alert('Error', e.message ?? 'Could not create event.'),
   })
@@ -240,7 +248,7 @@ function EventsSection({ mosqueId }: { mosqueId: string }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Events</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Events</Text>
         <TouchableOpacity onPress={() => setShowCreate(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 }}>
           <Ionicons name="add" size={16} color={colors.primaryContrast} />
           <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primaryContrast }}>Create</Text>
@@ -295,30 +303,106 @@ function EventsSection({ mosqueId }: { mosqueId: string }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <TouchableOpacity onPress={() => setShowCreate(false)}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
               <Text style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.text }}>New Event</Text>
-              <TouchableOpacity onPress={() => { if (!form.title.trim() || !form.startTime) { Alert.alert('Required', 'Title and start time are required'); return } createMutation.mutate() }} disabled={createMutation.isPending}>
+              <TouchableOpacity onPress={() => { if (!form.title.trim() || !startDate) { Alert.alert('Required', 'Title and start time are required'); return } createMutation.mutate() }} disabled={createMutation.isPending}>
                 {createMutation.isPending ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={{ fontSize: 15, fontWeight: '700', color: colors.primary }}>Create</Text>}
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
-              {[
+              {([
                 { label: 'Title', key: 'title', placeholder: 'Event title…', multiline: false },
                 { label: 'Description', key: 'description', placeholder: 'What is this event about?', multiline: true },
                 { label: 'Location', key: 'location', placeholder: 'Address or online link…', multiline: false },
-                { label: 'Start Time (YYYY-MM-DDTHH:MM)', key: 'startTime', placeholder: '2026-04-01T18:00', multiline: false },
-                { label: 'End Time (optional)', key: 'endTime', placeholder: '2026-04-01T20:00', multiline: false },
-              ].map(({ label, key, placeholder, multiline }) => (
+              ] as { label: string; key: keyof typeof form; placeholder: string; multiline: boolean }[]).map(({ label, key, placeholder, multiline }) => (
                 <View key={key}>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>{label}</Text>
                   <TextInput
                     style={{ backgroundColor: colors.inputBackground, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.border, ...(multiline ? { minHeight: 80 } : {}) }}
                     placeholder={placeholder}
                     placeholderTextColor={colors.textTertiary}
-                    value={(form as any)[key]}
+                    value={form[key]}
                     onChangeText={(t) => setForm((f) => ({ ...f, [key]: t }))}
                     multiline={multiline}
                   />
                 </View>
               ))}
+
+              {/* Start Time */}
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>Start Time *</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => { const d = new Date(); d.setHours(18, 0, 0, 0); setStartDate(d) }}
+                    style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>Today</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => { setPickerField('start'); setPickerMode('date'); setTempDate(startDate ?? new Date()) }}
+                    style={{ flex: 1, backgroundColor: colors.inputBackground, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: startDate ? colors.primary : colors.border, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                  >
+                    <Ionicons name="calendar-outline" size={16} color={startDate ? colors.primary : colors.textTertiary} />
+                    <Text style={{ fontSize: 14, color: startDate ? colors.text : colors.textTertiary }}>
+                      {startDate ? format(startDate, 'MMM d, yyyy · h:mm a') : 'Pick date & time…'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* End Time */}
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>End Time (optional)</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {endDate && (
+                    <TouchableOpacity
+                      onPress={() => setEndDate(null)}
+                      style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#EF4444' }}
+                    >
+                      <Ionicons name="close" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    onPress={() => { setPickerField('end'); setPickerMode('date'); setTempDate(endDate ?? startDate ?? new Date()) }}
+                    style={{ flex: 1, backgroundColor: colors.inputBackground, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: endDate ? colors.primary : colors.border, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                  >
+                    <Ionicons name="time-outline" size={16} color={endDate ? colors.primary : colors.textTertiary} />
+                    <Text style={{ fontSize: 14, color: endDate ? colors.text : colors.textTertiary }}>
+                      {endDate ? format(endDate, 'MMM d, yyyy · h:mm a') : 'Pick end time…'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Native date/time picker */}
+              {pickerField !== null && (
+                <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                      {pickerField === 'start' ? 'Start' : 'End'} — {pickerMode === 'date' ? 'Pick Date' : 'Pick Time'}
+                    </Text>
+                    <TouchableOpacity onPress={() => {
+                      if (pickerMode === 'date') { setPickerMode('time') }
+                      else {
+                        if (pickerField === 'start') setStartDate(new Date(tempDate))
+                        else setEndDate(new Date(tempDate))
+                        setPickerField(null)
+                        setPickerMode('date')
+                      }
+                    }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>
+                        {pickerMode === 'date' ? 'Next →' : 'Done ✓'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={tempDate}
+                    mode={pickerMode}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(_e: any, date?: Date) => { if (date) setTempDate(date) }}
+                    textColor={colors.text}
+                    style={{ width: '100%' }}
+                  />
+                </View>
+              )}
               <View>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>Category</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -413,7 +497,7 @@ function VideosSection({ mosqueId, isSuperAdmin }: { mosqueId: string | null; is
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
           {isSuperAdmin && !mosqueId ? 'Global Videos' : 'Videos'}
         </Text>
         <TouchableOpacity onPress={() => setShowCreate(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 }}>
@@ -556,9 +640,10 @@ function PollsSection({ mosqueId }: { mosqueId: string }) {
 
   const createMutation = useMutation({
     mutationFn: () => {
+      if (question.trim().length < 5) throw new Error('Question must be at least 5 characters')
       const validOptions = options.filter((o) => o.trim())
       if (validOptions.length < 2) throw new Error('At least 2 options required')
-      return api.post(`/mosques/${mosqueId}/polls`, { question, options: validOptions, sendNotification: true })
+      return api.post(`/mosques/${mosqueId}/polls`, { question: question.trim(), options: validOptions, sendNotification: true })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-polls', mosqueId] })
@@ -578,7 +663,7 @@ function PollsSection({ mosqueId }: { mosqueId: string }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Polls</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Polls</Text>
         <TouchableOpacity onPress={() => setShowCreate(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 }}>
           <Ionicons name="add" size={16} color={colors.primaryContrast} />
           <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primaryContrast }}>Create</Text>
@@ -697,7 +782,7 @@ function FollowersSection({ mosqueId }: { mosqueId: string }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Followers</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Followers</Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{total} total followers</Text>
       </View>
       {isLoading ? (
@@ -840,15 +925,15 @@ function PrayerTimesSection({ mosqueId }: { mosqueId: string }) {
 
   const inputStyle = {
     flex: 1, backgroundColor: colors.inputBackground ?? colors.surfaceSecondary,
-    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10,
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 11,
     fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.border,
-    textAlign: 'center' as const,
+    minWidth: 72,
   }
 
   return (
     <View style={{ flex: 1 }}>
       {/* Sub-tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 0 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 12, paddingRight: 4, paddingVertical: 10, alignItems: 'center' }}>
         {([['daily', 'Daily Times'], ['jumuah', "Jumu'ah"], ['taraweeh', 'Taraweeh']] as const).map(([k, label]) => (
           <PillTab key={k} label={label} icon={k === 'daily' ? 'time-outline' : k === 'jumuah' ? 'people-outline' : 'moon-outline'} active={tab === k} onPress={() => setTab(k)} />
         ))}

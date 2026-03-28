@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Image } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Image, Linking } from 'react-native'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { api } from '../../lib/api'
@@ -52,7 +52,7 @@ export function TeamSection({ mosqueId }: { mosqueId: string }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Team</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Team</Text>
         <TouchableOpacity
           onPress={() => setShowAdd(!showAdd)}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 }}
@@ -66,7 +66,7 @@ export function TeamSection({ mosqueId }: { mosqueId: string }) {
         <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 10 }}>
           <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>Search Users</Text>
           <TextInput
-            style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.border }}
+            style={{ backgroundColor: colors.inputBackground ?? colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.border }}
             placeholder="Name or email..."
             placeholderTextColor={colors.textTertiary}
             value={search}
@@ -130,7 +130,9 @@ export function TeamSection({ mosqueId }: { mosqueId: string }) {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>{admin.user.name}</Text>
-                <Text style={{ fontSize: 12, color: colors.textTertiary }}>{admin.user.email}</Text>
+                <TouchableOpacity onPress={() => admin.user.email && Linking.openURL(`mailto:${admin.user.email}`)}>
+                  <Text style={{ fontSize: 12, color: colors.primary }}>{admin.user.email}</Text>
+                </TouchableOpacity>
                 <View style={{ backgroundColor: `${roleColor(admin.role)}22`, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 }}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: roleColor(admin.role) }}>{admin.role}</Text>
                 </View>

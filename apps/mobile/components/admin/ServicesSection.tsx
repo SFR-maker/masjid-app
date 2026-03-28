@@ -77,7 +77,7 @@ export function ServicesSection({ mosqueId }: { mosqueId: string }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Services</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Services</Text>
         {tab === 'services' && (
           <TouchableOpacity
             onPress={() => setShowForm(true)}
@@ -201,7 +201,7 @@ export function ServicesSection({ mosqueId }: { mosqueId: string }) {
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <Text style={{ fontSize: 17, fontWeight: '800', color: colors.text }}>Add Service</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Add Service</Text>
             <TouchableOpacity onPress={() => setShowForm(false)} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 8 }}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>

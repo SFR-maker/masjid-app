@@ -5,15 +5,17 @@ import { format } from 'date-fns'
 import { api } from '../../lib/api'
 import { useTheme } from '../../contexts/ThemeContext'
 
-function StatCard({ icon, label, value, color }: { icon: string; label: string; value: number | string; color?: string }) {
+function StatCard({ icon, label, value, color, onPress }: { icon: string; label: string; value: number | string; color?: string; onPress?: () => void }) {
   const { colors } = useTheme()
-  return (
+  const inner = (
     <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', gap: 6, minWidth: 80 }}>
       <Ionicons name={icon as any} size={22} color={color ?? colors.primary} />
       <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>{value}</Text>
       <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center', fontWeight: '600' }}>{label}</Text>
     </View>
   )
+  if (onPress) return <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={{ flex: 1 }}>{inner}</TouchableOpacity>
+  return inner
 }
 
 export function DashboardHome({ mosqueId, mosqueName, onNavigate }: {
@@ -40,14 +42,14 @@ export function DashboardHome({ mosqueId, mosqueName, onNavigate }: {
     >
       {/* Stats grid — row 1: 2 cards */}
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <StatCard icon="people-outline" label="Followers" value={stats.followersCount ?? 0} />
-        <StatCard icon="calendar-outline" label="Events" value={stats.upcomingEventsCount ?? 0} color="#059669" />
+        <StatCard icon="people-outline" label="Followers" value={stats.followersCount ?? 0} onPress={() => onNavigate('followers')} />
+        <StatCard icon="calendar-outline" label="Events" value={stats.upcomingEventsCount ?? 0} color="#059669" onPress={() => onNavigate('events')} />
       </View>
       {/* Stats grid — row 2: 3 cards */}
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <StatCard icon="checkmark-circle-outline" label="RSVPs" value={stats.rsvpCount ?? 0} color="#7C3AED" />
-        <StatCard icon="videocam-outline" label="Videos" value={stats.videosCount ?? 0} color="#D97706" />
-        <StatCard icon="mail-outline" label="Messages" value={stats.unreadCount ?? 0} color={stats.unreadCount > 0 ? '#DC2626' : colors.textTertiary} />
+        <StatCard icon="videocam-outline" label="Videos" value={stats.videosCount ?? 0} color="#D97706" onPress={() => onNavigate('videos')} />
+        <StatCard icon="mail-outline" label="Messages" value={stats.unreadCount ?? 0} color={stats.unreadCount > 0 ? '#DC2626' : colors.textTertiary} onPress={() => onNavigate('messages')} />
       </View>
 
       {/* Upcoming Events */}

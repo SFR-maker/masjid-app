@@ -197,7 +197,7 @@ export async function videoRoutes(app: FastifyInstance) {
           muxPlaybackId: playbackId,
           thumbnailUrl: playbackId ? getMuxThumbnailUrl(playbackId) : undefined,
           duration: Math.round(data.duration ?? 0),
-          isPublished: true,
+          isPublished: false, // admin must explicitly publish
         },
       })
     }
@@ -236,6 +236,29 @@ export async function videoRoutes(app: FastifyInstance) {
 
       const updated = await prisma.video.update({ where: { id }, data: body })
       return reply.send({ success: true, data: updated })
+    }
+  )
+
+  // PATCH /videos/:id/publish — toggle isPublished (admin)
+  app.patch(
+    '/videos/:id/publish',
+    { preHandler: [requireAuth] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string }
+      const video = await prisma.video.findUnique({ where: { id }, select: { mosqueId: true, isPublished: true } })
+      if (!video) return reply.status(404).send({ success: false, error: 'Not found' })
+
+      const userId = req.userId!
+      const isAdmin = await prisma.mosqueAdmin.findUnique({
+        where: { userId_mosqueId: { userId, mosqueId: video.mosqueId } },
+      })
+      if (!isAdmin) return reply.status(403).send({ success: false, error: 'Forbidden' })
+
+      const updated = await prisma.video.update({
+        where: { id },
+        data: { isPublished: !video.isPublished },
+      })
+      return reply.send({ success: true, data: { isPublished: updated.isPublished } })
     }
   )
 

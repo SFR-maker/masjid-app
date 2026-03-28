@@ -172,6 +172,7 @@ export async function announcementRoutes(app: FastifyInstance) {
           quranSurahName: z.string().optional(),
           quranArabic: z.string().optional(),
           quranEnglish: z.string().optional(),
+          sendNotification: z.boolean().default(true),
         })
         .parse(req.body)
 
@@ -186,8 +187,8 @@ export async function announcementRoutes(app: FastifyInstance) {
         },
       })
 
-      // Queue push notification only if publishing now (not scheduled)
-      if (!isScheduled) {
+      // Queue push notification only if publishing now, not scheduled, and not silenced
+      if (!isScheduled && body.sendNotification !== false) {
         await notificationQueue.add('mosque-announcement', {
           type: 'mosque_announcement',
           mosqueId,

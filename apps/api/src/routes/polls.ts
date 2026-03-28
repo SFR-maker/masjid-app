@@ -51,6 +51,7 @@ export async function pollRoutes(app: FastifyInstance) {
         question: z.string().min(5).max(300),
         options: z.array(z.string().min(1).max(200)).min(2).max(6),
         endsAt: z.string().datetime().optional(),
+        sendNotification: z.boolean().default(true),
       }).parse(req.body)
 
       const poll = await prisma.poll.create({
@@ -75,12 +76,12 @@ export async function pollRoutes(app: FastifyInstance) {
         },
       }).catch(() => {}) // Non-fatal — poll still created if this fails
 
-      // Notify mosque followers
+      // Notify mosque followers (unless silenced)
       const mosque = await prisma.mosqueProfile.findUnique({
         where: { id: mosqueId },
         select: { name: true },
       })
-      notificationQueue.add('mosque_poll', {
+      if (body.sendNotification !== false) notificationQueue.add('mosque_poll', {
         type: 'mosque_poll',
         mosqueId,
         title: `New Poll — ${mosque?.name ?? 'Your Mosque'}`,

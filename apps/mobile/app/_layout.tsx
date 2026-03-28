@@ -2,7 +2,7 @@ import { useEffect, Component, ReactNode, useMemo } from 'react'
 import { setupAdhanChannel } from '../hooks/useAdhanScheduler'
 import { usePushNotificationSetup, setupQuranPlayerCategory } from '../hooks/useNotifications'
 import { View, ActivityIndicator, Text, ScrollView, Platform } from 'react-native'
-import { Stack } from 'expo-router'
+import { Stack, router } from 'expo-router'
 import NowPlayingBar from '../components/NowPlayingBar'
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo'
 import { useApiTokenSync, api } from '../lib/api'
@@ -124,20 +124,49 @@ function RootNavigator() {
     setupQuranPlayerCategory().catch(console.warn)
   }, [])
 
-  // ── Quran media notification action handler ───────────────────────────────
+  // ── Notification tap handler: Quran controls + deep links ────────────────
   useEffect(() => {
     if (Platform.OS === 'web') return
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      if (response.notification.request.content.data?.type !== 'quran_player') return
-      const action = response.actionIdentifier
-      if (action === 'quran_pause' || action === 'quran_play') {
-        toggleQuranPlayback().catch(() => {})
-      } else if (action === 'quran_next') {
-        nextQuranAyah().catch(() => {})
-      } else if (action === 'quran_prev') {
-        prevQuranAyah().catch(() => {})
+
+    function handleNotificationResponse(response: Notifications.NotificationResponse) {
+      const data = response.notification.request.content.data as any ?? {}
+
+      // Quran media controls (action buttons on lock screen / notification shade)
+      if (data?.type === 'quran_player') {
+        const action = response.actionIdentifier
+        if (action === 'quran_pause' || action === 'quran_play') {
+          toggleQuranPlayback().catch(() => {})
+        } else if (action === 'quran_next') {
+          nextQuranAyah().catch(() => {})
+        } else if (action === 'quran_prev') {
+          prevQuranAyah().catch(() => {})
+        }
+        return
       }
-    })
+
+      // Deep link routing when user taps a push notification
+      if (data?.announcementId) {
+        router.push(`/announcement/${data.announcementId}`)
+      } else if (data?.pollId) {
+        router.push(`/poll/${data.pollId}` as any)
+      } else if (data?.eventId) {
+        router.push(`/event/${data.eventId}`)
+      } else if (data?.mosqueId) {
+        router.push(`/mosque/${data.mosqueId}`)
+      } else if (data?.type === 'ayah_of_day' && data?.surah && data?.ayah) {
+        router.push(`/quran?surah=${data.surah}&ayah=${data.ayah}`)
+      } else if (data?.messageId || data?.type === 'MESSAGE_REPLY') {
+        router.push('/messages')
+      }
+    }
+
+    const sub = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse)
+
+    // Handle cold-start: app opened by tapping a notification
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleNotificationResponse(response)
+    }).catch(() => {})
+
     return () => sub.remove()
   }, [])
 

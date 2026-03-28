@@ -483,8 +483,8 @@ export default function QuranScreen() {
               <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 6 }}>In the name of Allah, the Most Gracious, the Most Merciful</Text>
             </View>
           )}
-          {/* Arabic block — one View per ayah so we can track position and scroll to it */}
-          <View style={{ marginBottom: 24 }}>
+          {/* Arabic block — flows as continuous RTL text; each ayah tracked for scroll */}
+          <View style={{ marginBottom: 24, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {ayahs.map((a, i) => {
               const ayahActive = playingAyah === a.numberInSurah
               let text = a.text as string
@@ -500,16 +500,13 @@ export default function QuranScreen() {
                   onLayout={(e) => { arabicAyahOffsets.current[i] = e.nativeEvent.layout.y }}
                   style={{
                     backgroundColor: ayahActive ? colors.primaryLight : 'transparent',
-                    borderRadius: ayahActive ? 10 : 0,
-                    paddingHorizontal: ayahActive ? 8 : 0,
-                    paddingVertical: ayahActive ? 4 : 2,
-                    marginHorizontal: ayahActive ? -8 : 0,
-                    marginBottom: 4,
+                    borderRadius: ayahActive ? 6 : 0,
+                    paddingHorizontal: ayahActive ? 4 : 0,
+                    paddingVertical: ayahActive ? 2 : 0,
                   }}
                 >
                   <Text style={{ fontSize: 22, lineHeight: 48, textAlign: 'right', fontFamily: Platform.OS === 'ios' ? 'GeezaPro' : 'serif', color: ayahActive ? colors.primary : colors.text, fontWeight: ayahActive ? '600' : '400' }}>
-                    {text}{' '}
-                    <Text style={{ fontSize: 16, color: ayahActive ? colors.primary : colors.textTertiary }}>﴿{a.numberInSurah}﴾</Text>
+                    {text}{' '}<Text style={{ fontSize: 16, color: ayahActive ? colors.primary : colors.textTertiary }}>﴿{a.numberInSurah}﴾</Text>{' '}
                   </Text>
                 </TouchableOpacity>
               )

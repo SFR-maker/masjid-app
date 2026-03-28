@@ -15,6 +15,7 @@ const DEFAULT_FORM = {
   quranSurahName: '',
   quranArabic: '',
   quranEnglish: '',
+  sendNotification: true,
 }
 
 type MediaType = 'image' | 'video'
@@ -443,7 +444,7 @@ function EngagementPanel({ announcement, adminFetch }: { announcement: any; admi
   )
 }
 
-const DEFAULT_POLL_FORM = { question: '', options: ['', ''], endsAt: '' }
+const DEFAULT_POLL_FORM = { question: '', options: ['', ''], endsAt: '', sendNotification: true }
 
 export default function AnnouncementsPage() {
   const { mosqueId } = useParams<{ mosqueId: string }>()
@@ -477,6 +478,7 @@ export default function AnnouncementsPage() {
         question: pollForm.question,
         options: pollForm.options.filter(o => o.trim()),
         endsAt: pollForm.endsAt || undefined,
+        sendNotification: pollForm.sendNotification,
       }),
     }).then(async r => {
       const json = await r.json()
@@ -522,6 +524,7 @@ export default function AnnouncementsPage() {
         quranSurahName: form.quranSurahName || undefined,
         quranArabic: form.quranArabic || undefined,
         quranEnglish: form.quranEnglish || undefined,
+        sendNotification: form.sendNotification,
       }),
     }).then(r => r.json()),
     onSuccess: () => {
@@ -696,13 +699,17 @@ export default function AnnouncementsPage() {
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800"
                   />
                 </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={pollForm.sendNotification} onChange={e => setPollForm(f => ({ ...f, sendNotification: e.target.checked }))} className="rounded accent-green-800" />
+                  <span className="text-sm text-gray-700">Notify followers via push notification</span>
+                </label>
                 <div className="flex gap-3">
                   <button
                     onClick={() => createPollMutation.mutate()}
                     disabled={createPollMutation.isPending || !pollForm.question || pollForm.options.filter(o => o.trim()).length < 2}
                     className="bg-green-800 text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-green-900 disabled:opacity-50"
                   >
-                    {createPollMutation.isPending ? 'Creating…' : '📊 Create Poll'}
+                    {createPollMutation.isPending ? 'Creating…' : pollForm.sendNotification ? '📊 Create Poll & Notify' : '📊 Create Poll Silently'}
                   </button>
                   <button
                     onClick={() => { setShowPollForm(false); setPollForm(DEFAULT_POLL_FORM) }}
@@ -842,6 +849,12 @@ export default function AnnouncementsPage() {
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-800" />
               </div>
             </div>
+            {!editingId && !isScheduled && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.sendNotification} onChange={e => setForm(f => ({ ...f, sendNotification: e.target.checked }))} className="rounded accent-green-800" />
+                <span className="text-sm text-gray-700">Notify followers via push notification</span>
+              </label>
+            )}
             <div className="flex gap-3">
               {editingId ? (
                 <button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || !form.title || !form.body}
@@ -851,7 +864,7 @@ export default function AnnouncementsPage() {
               ) : (
                 <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !form.title || !form.body}
                   className="bg-green-800 text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-green-900 disabled:opacity-50">
-                  {createMutation.isPending ? 'Saving...' : isScheduled ? '⏰ Schedule Announcement' : '📢 Publish & Notify Followers'}
+                  {createMutation.isPending ? 'Saving...' : isScheduled ? '⏰ Schedule Announcement' : form.sendNotification ? '📢 Publish & Notify Followers' : '📝 Publish Silently'}
                 </button>
               )}
               <button onClick={() => { setShowForm(false); setEditingId(null); setForm(DEFAULT_FORM) }}

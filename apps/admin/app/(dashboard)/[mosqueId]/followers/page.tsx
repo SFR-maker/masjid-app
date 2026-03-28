@@ -70,6 +70,17 @@ export default function FollowersPage() {
   const [exporting, setExporting] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
 
+  // Group message modal
+  const [showMessageModal, setShowMessageModal] = useState(false)
+  const [messageForm, setMessageForm] = useState({ title: '', body: '' })
+  const [messageSending, setMessageSending] = useState(false)
+  const [messageResult, setMessageResult] = useState<string | null>(null)
+
+  // Mass email modal
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailEmails, setEmailEmails] = useState<string[]>([])
+  const [emailLoading, setEmailLoading] = useState(false)
+
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   function handleSearchChange(val: string) {
     setSearch(val)
@@ -144,6 +155,38 @@ export default function FollowersPage() {
     }
   }
 
+  async function handleSendMessage() {
+    if (!messageForm.title || !messageForm.body) return
+    setMessageSending(true)
+    setMessageResult(null)
+    try {
+      const res = await adminFetch(`/mosques/${mosqueId}/followers/notify`, {
+        method: 'POST',
+        body: JSON.stringify({ title: messageForm.title, body: messageForm.body }),
+      })
+      const json = await res.json()
+      setMessageResult(res.ok ? `✓ Sent to all followers` : (json?.error ?? 'Failed to send'))
+      if (res.ok) { setTimeout(() => { setShowMessageModal(false); setMessageForm({ title: '', body: '' }); setMessageResult(null) }, 2000) }
+    } catch {
+      setMessageResult('Failed to send. Please try again.')
+    } finally {
+      setMessageSending(false)
+    }
+  }
+
+  async function handleOpenEmailModal() {
+    setEmailLoading(true)
+    setShowEmailModal(true)
+    try {
+      const res = await adminFetch(`/mosques/${mosqueId}/followers?${buildParams({ all: 'true', page: '1', limit: '10000' })}`)
+      const json = await res.json()
+      const emails = (json.data?.items ?? []).map((f: any) => f.user.email).filter(Boolean)
+      setEmailEmails(emails)
+    } finally {
+      setEmailLoading(false)
+    }
+  }
+
   function clearFilters() {
     setSearch(''); setDebouncedSearch('')
     setIsFavorite('all'); setVolunteer('all'); setMarriage('all')
@@ -167,13 +210,27 @@ export default function FollowersPage() {
             {isLoading ? 'Loading…' : `${total.toLocaleString()} follower${total !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="flex items-center gap-2 bg-green-800 text-white rounded-xl px-5 py-2.5 text-sm font-bold hover:bg-green-900 transition-colors shadow-sm disabled:opacity-60"
-        >
-          {exporting ? '⏳ Exporting…' : '⬇ Export CSV'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMessageModal(true)}
+            className="flex items-center gap-2 bg-green-800 text-white rounded-xl px-4 py-2.5 text-sm font-bold hover:bg-green-900 transition-colors shadow-sm"
+          >
+            💬 Group Message
+          </button>
+          <button
+            onClick={handleOpenEmailModal}
+            className="flex items-center gap-2 bg-blue-700 text-white rounded-xl px-4 py-2.5 text-sm font-bold hover:bg-blue-800 transition-colors shadow-sm"
+          >
+            📧 Mass Email
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-2 border border-gray-200 text-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold hover:bg-gray-50 transition-colors disabled:opacity-60"
+          >
+            {exporting ? '⏳ Exporting…' : '⬇ Export CSV'}
+          </button>
+        </div>
       </div>
 
       {/* Filters card */}
@@ -401,6 +458,92 @@ export default function FollowersPage() {
           </>
         )}
       </div>
+      {/* Group Message Modal */}
+      {showMessageModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Send Group Message</h2>
+            <p className="text-xs text-gray-400 mb-4">Sends a push notification to all followers matching the current filters</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  value={messageForm.title}
+                  onChange={e => setMessageForm(f => ({ ...f, title: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-700"
+                  placeholder="Notification title…"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea
+                  value={messageForm.body}
+                  onChange={e => setMessageForm(f => ({ ...f, body: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 h-24 resize-none focus:outline-none focus:ring-2 focus:ring-green-700"
+                  placeholder="Write your message…"
+                />
+              </div>
+              {messageResult && (
+                <p className={`text-sm px-3 py-2 rounded-xl ${messageResult.startsWith('✓') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>{messageResult}</p>
+              )}
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={handleSendMessage}
+                disabled={messageSending || !messageForm.title || !messageForm.body}
+                className="bg-green-800 text-white rounded-xl px-5 py-2 text-sm font-semibold hover:bg-green-900 disabled:opacity-50"
+              >
+                {messageSending ? 'Sending…' : '💬 Send to All Followers'}
+              </button>
+              <button onClick={() => { setShowMessageModal(false); setMessageForm({ title: '', body: '' }); setMessageResult(null) }} className="border border-gray-200 text-gray-600 rounded-xl px-5 py-2 text-sm font-medium hover:bg-gray-50">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mass Email Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Mass Email</h2>
+            <p className="text-xs text-gray-400 mb-4">Copy the emails below to use in your email client or marketing tool</p>
+            {emailLoading ? (
+              <div className="py-8 text-center text-gray-400 text-sm">Loading emails…</div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-2 font-medium">{emailEmails.length} email{emailEmails.length !== 1 ? 's' : ''} for current filters</p>
+                <textarea
+                  readOnly
+                  value={emailEmails.join(', ')}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-xs text-gray-700 h-36 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(emailEmails.join(', ')) }}
+                    className="bg-blue-700 text-white rounded-xl px-5 py-2 text-sm font-semibold hover:bg-blue-800"
+                  >
+                    📋 Copy All Emails
+                  </button>
+                  <a
+                    href={`mailto:?bcc=${emailEmails.slice(0, 100).join(',')}`}
+                    className="border border-gray-200 text-gray-600 rounded-xl px-5 py-2 text-sm font-medium hover:bg-gray-50 inline-flex items-center"
+                  >
+                    Open in Email Client
+                  </a>
+                </div>
+                {emailEmails.length > 100 && (
+                  <p className="text-xs text-amber-600 mt-2">Email client link limited to first 100 addresses. Copy all for full list.</p>
+                )}
+              </>
+            )}
+            <button onClick={() => { setShowEmailModal(false); setEmailEmails([]) }} className="mt-4 text-sm text-gray-400 hover:text-gray-600">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

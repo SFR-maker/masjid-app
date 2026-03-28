@@ -51,6 +51,11 @@ export default function VideosPage() {
     },
   })
 
+  const publishMutation = useMutation({
+    mutationFn: (id: string) => adminFetch(`/videos/${id}/publish`, { method: 'PATCH' }).then(r => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-videos', mosqueId] }),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => adminFetch(`/videos/${id}`, { method: 'DELETE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-videos', mosqueId] }),
@@ -248,6 +253,11 @@ export default function VideosPage() {
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColors[v.status] ?? 'bg-gray-100 text-gray-500'}`}>
                     {v.status}
                   </span>
+                  {v.status === 'READY' && (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${v.isPublished ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
+                      {v.isPublished ? 'Published' : 'Draft'}
+                    </span>
+                  )}
                   <span className="bg-green-50 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">{v.category}</span>
                 </div>
                 <p className="text-gray-900 font-semibold truncate">{v.title}</p>
@@ -263,6 +273,15 @@ export default function VideosPage() {
                 >
                   📊 Stats
                 </button>
+                {v.status === 'READY' && (
+                  <button
+                    onClick={() => publishMutation.mutate(v.id)}
+                    disabled={publishMutation.isPending}
+                    className={`border rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${v.isPublished ? 'border-orange-100 text-orange-600 hover:bg-orange-50' : 'border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100'}`}
+                  >
+                    {v.isPublished ? 'Unpublish' : '▶ Publish'}
+                  </button>
+                )}
                 <button
                   onClick={() => openEdit(v)}
                   className="border border-gray-200 text-gray-600 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-gray-50"

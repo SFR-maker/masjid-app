@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma, Prisma } from '@masjid/database'
 import { requireAuth, requireMosqueAdmin } from '../plugins/auth'
 import { generateSignedUploadParams, generateSignedVideoUploadParams, generateSignedDownloadUrl, deleteCloudinaryResource } from '../lib/cloudinary'
+import { notificationQueue } from '../workers/notification.worker'
 
 const createMosqueSchema = z.object({
   name: z.string().min(2).max(200),
@@ -487,6 +488,30 @@ export async function mosqueRoutes(app: FastifyInstance) {
         req.log.error({ err }, 'followers endpoint error')
         return reply.status(500).send({ success: false, error: 'Internal server error' })
       }
+    }
+  )
+
+  // POST /:id/followers/notify — send push notification to filtered followers (admin)
+  app.post(
+    '/:id/followers/notify',
+    { preHandler: [requireMosqueAdmin((req) => (req.params as any).id)] },
+    async (req, reply) => {
+      const { id: mosqueId } = req.params as { id: string }
+      const { title, body: message } = z.object({
+        title: z.string().min(1).max(200),
+        body: z.string().min(1).max(1000),
+      }).parse(req.body)
+
+      const mosque = await prisma.mosqueProfile.findUnique({ where: { id: mosqueId }, select: { name: true } })
+      await notificationQueue.add('mosque_announcement', {
+        type: 'mosque_announcement',
+        mosqueId,
+        title,
+        body: message,
+        data: { mosqueId },
+      })
+
+      return reply.send({ success: true, message: `Notification queued for followers of ${mosque?.name}` })
     }
   )
 

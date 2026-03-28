@@ -102,7 +102,8 @@ async function schedulePrayerNotifications(times: AdhanPrayerTimes) {
   await cancelAdhanNotifications()
 
   const now      = new Date()
-  const todayStr = now.toISOString().slice(0, 10)
+  // Use local date parts (not UTC) so prayer times are correct in non-UTC timezones
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   for (const prayer of PRAYERS) {
     const timeStr = times[prayer.key as keyof AdhanPrayerTimes]

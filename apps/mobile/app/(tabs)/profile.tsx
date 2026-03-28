@@ -15,6 +15,7 @@ import { TIME_FORMAT_KEY, useTimeFormat } from '../../hooks/useTimeFormat'
 
 export default function ProfileScreen() {
   const { signOut: clerkSignOut } = useClerk()
+  const { isSignedIn } = useAuth()
   const { user } = useUser()
   const queryClient = useQueryClient()
   const [signingOut, setSigningOut] = useState(false)
@@ -200,20 +201,22 @@ export default function ProfileScreen() {
 
         {/* ── Profile header ─────────────────────────────────────────────── */}
         <View style={{ alignItems: 'center', paddingTop: 32, paddingBottom: 28 }}>
-          {/* Sign out button top-right */}
-          <TouchableOpacity
-            onPress={handleSignOut}
-            disabled={signingOut}
-            style={{ position: 'absolute', top: 16, right: 16 }}
-          >
-            {signingOut
-              ? <ActivityIndicator size="small" color="#EF4444" />
-              : <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '600' }}>{t('profile_sign_out')}</Text>
-            }
-          </TouchableOpacity>
+          {isSignedIn ? (
+            /* Sign out button — only when signed in */
+            <TouchableOpacity
+              onPress={handleSignOut}
+              disabled={signingOut}
+              style={{ position: 'absolute', top: 16, right: 16 }}
+            >
+              {signingOut
+                ? <ActivityIndicator size="small" color="#EF4444" />
+                : <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '600' }}>{t('profile_sign_out')}</Text>
+              }
+            </TouchableOpacity>
+          ) : null}
 
           <View style={{ position: 'relative', marginBottom: 14 }}>
-            {user?.imageUrl ? (
+            {isSignedIn && user?.imageUrl ? (
               <Image
                 source={{ uri: user.imageUrl }}
                 style={{ width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: colors.primaryLight }}
@@ -221,18 +224,33 @@ export default function ProfileScreen() {
               />
             ) : (
               <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: colors.primaryLight }}>
-                <Text style={{ color: colors.primaryContrast, fontSize: 30, fontWeight: '800' }}>
-                  {user?.firstName?.[0] ?? '?'}
-                </Text>
+                {isSignedIn
+                  ? <Text style={{ color: colors.primaryContrast, fontSize: 30, fontWeight: '800' }}>{user?.firstName?.[0] ?? '?'}</Text>
+                  : <Ionicons name="person-outline" size={36} color={colors.primaryContrast} />
+                }
               </View>
             )}
           </View>
+
           <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.4 }}>
-            {user?.fullName ?? 'User'}
+            {isSignedIn ? (user?.fullName ?? 'User') : 'Guest'}
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 3, fontWeight: '500' }}>
-            {user?.primaryEmailAddress?.emailAddress}
+            {isSignedIn ? user?.primaryEmailAddress?.emailAddress : 'Browsing without an account'}
           </Text>
+
+          {!isSignedIn && (
+            <TouchableOpacity
+              onPress={() => router.replace('/(auth)/sign-in' as any)}
+              style={{
+                marginTop: 16, backgroundColor: colors.primary,
+                borderRadius: 12, paddingVertical: 12, paddingHorizontal: 32,
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: colors.primaryContrast, fontWeight: '700', fontSize: 15 }}>Sign In</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── Admin shortcut (only for mosque admins) ────────────────────── */}

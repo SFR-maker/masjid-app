@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
 import {
   View, Text, ScrollView, TouchableOpacity, FlatList,
-  ActivityIndicator, TextInput, Platform, NativeScrollEvent, NativeSyntheticEvent,
+  ActivityIndicator, TextInput, Platform, NativeScrollEvent, NativeSyntheticEvent, ViewToken,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -246,6 +246,10 @@ export default function QuranScreen() {
   const didMountRef = useRef(false)
   const flatListRef = useRef<FlatList>(null)
   const scrollViewRef = useRef<ScrollView>(null)
+  const visibleIndicesRef = useRef<Set<number>>(new Set())
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    visibleIndicesRef.current = new Set(viewableItems.map((v) => v.index ?? -1))
+  }).current
   // Y offset of each Arabic ayah row within the ScrollView content
   const arabicAyahOffsets = useRef<number[]>([])
   // Y offset of each translation row within the ScrollView content (kept for translation highlighting)
@@ -276,11 +280,12 @@ export default function QuranScreen() {
     setAyahsForPlayback(ayahs)
   }, [ayahs])
 
-  // Verse mode: scroll to the currently playing ayah whenever it changes
+  // Verse mode: scroll to the currently playing ayah only if it's not already visible
   useEffect(() => {
     if (!ayahs.length || !playingAyah || readingMode !== 'verse') return
     const index = playingAyah - 1
     if (index < 0 || index >= ayahs.length) return
+    if (visibleIndicesRef.current.has(index)) return // already on screen — don't scroll
     const t = setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 })
     }, 300)
@@ -624,6 +629,8 @@ export default function QuranScreen() {
               flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
             }, 300)
           }}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
           ListHeaderComponent={
             selectedSurah !== 1 && selectedSurah !== 9 ? (
               <View style={{ backgroundColor: colors.primary, borderRadius: 16, padding: 20, marginBottom: 16, alignItems: 'center', opacity: playingAyah === 0 ? 0.75 : 1, borderWidth: playingAyah === 0 ? 3 : 0, borderColor: 'white' }}>

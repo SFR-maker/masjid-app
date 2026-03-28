@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.masjidapp.mobile",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to find nearby mosques.",
         "NSCameraUsageDescription": "Used to upload your profile photo.",
@@ -29,7 +29,7 @@
         "backgroundColor": "#1B4332"
       },
       "package": "com.masjidapp.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -58,7 +58,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Masjid to find mosques near you."
+          "locationWhenInUsePermission": "Allow Masjidly to find mosques near you."
         }
       ]
     ],

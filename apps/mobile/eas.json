@@ -16,12 +16,27 @@
       }
     },
     "production": {
+      "channel": "production",
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "credentialsSource": "remote"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "YOUR_APPLE_ID@email.com",
+        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./store/google-play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

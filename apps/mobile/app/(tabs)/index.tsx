@@ -157,12 +157,12 @@ export default function HomeScreen() {
           <TouchableOpacity
             onPress={() => router.push('/messages')}
             style={{
-              backgroundColor: colors.isDark ? colors.surface : colors.surfaceSecondary,
+              backgroundColor: colors.isDark ? '#2D3748' : '#FFFFFF',
               borderRadius: 22, padding: 11,
-              borderWidth: 1, borderColor: colors.border,
-              shadowColor: '#000', shadowOpacity: 0.08,
-              shadowOffset: { width: 0, height: 3 }, shadowRadius: 8,
-              elevation: 3,
+              borderWidth: 1, borderColor: colors.isDark ? '#4A5568' : '#D1D5DB',
+              shadowColor: '#000', shadowOpacity: 0.15,
+              shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+              elevation: 5,
             }}
           >
             <Ionicons name="mail-outline" size={20} color={colors.text} />

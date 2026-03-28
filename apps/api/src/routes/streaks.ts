@@ -94,6 +94,39 @@ export async function streakRoutes(app: FastifyInstance) {
       where: { userId, prayer, date: today },
     })
 
+    // If today now has fewer than 5 prayers and the streak was earned today, revert it
+    const todayCount = await prisma.prayerLog.count({ where: { userId, date: today } })
+    if (todayCount < 5) {
+      const streak = await prisma.userStreak.findUnique({
+        where: { userId_type: { userId, type: 'PRAYER' } },
+      })
+      if (streak?.lastLoggedDate) {
+        const lastLogged = toDateOnly(new Date(streak.lastLoggedDate))
+        if (daysBetween(today, lastLogged) === 0) {
+          // Find the most recent previous date that had all 5 prayers (for lastLoggedDate)
+          const prevDates = await prisma.prayerLog.findMany({
+            where: { userId, date: { lt: today } },
+            distinct: ['date'],
+            select: { date: true },
+            orderBy: { date: 'desc' },
+            take: 30,
+          })
+          let prevFullDate: Date | null = null
+          for (const { date } of prevDates) {
+            const count = await prisma.prayerLog.count({ where: { userId, date } })
+            if (count >= 5) { prevFullDate = toDateOnly(new Date(date)); break }
+          }
+          await prisma.userStreak.update({
+            where: { userId_type: { userId, type: 'PRAYER' } },
+            data: {
+              currentStreak: Math.max(0, streak.currentStreak - 1),
+              lastLoggedDate: prevFullDate,
+            },
+          })
+        }
+      }
+    }
+
     return reply.send({ success: true })
   })
 

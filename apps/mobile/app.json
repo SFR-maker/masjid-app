@@ -20,7 +20,10 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Allow Masjidly to find mosques near you.",
         "NSCameraUsageDescription": "Used to upload your profile photo.",
-        "UIBackgroundModes": ["audio", "fetch"],
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },

@@ -54,6 +54,7 @@ model User {
   streaks              UserStreak[]
   checkIns             MosqueCheckIn[]
   readingPlan          QuranReadingPlan?
+  quranBookmark        QuranBookmark?
 
   @@map("users")
 }
@@ -1125,4 +1126,19 @@ model QuranReadingPlan {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("quran_reading_plans")
+}
+
+model QuranBookmark {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  surah     Int
+  ayah      Int
+  surahName String
+  ayahText  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quran_bookmarks")
 }

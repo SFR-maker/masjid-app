@@ -91,4 +91,33 @@ export async function readingPlanRoutes(app: FastifyInstance) {
     await prisma.quranReadingPlan.deleteMany({ where: { userId: req.userId! } })
     return reply.send({ success: true })
   })
+
+  // GET /reading-plan/bookmark
+  app.get('/bookmark', { preHandler: [requireAuth] }, async (req, reply) => {
+    const bookmark = await prisma.quranBookmark.findUnique({ where: { userId: req.userId! } })
+    return reply.send({ success: true, data: bookmark })
+  })
+
+  // PUT /reading-plan/bookmark — upsert (one bookmark per user)
+  app.put('/bookmark', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { surah, ayah, surahName, ayahText } = z.object({
+      surah: z.number().int().min(1).max(114),
+      ayah: z.number().int().min(1),
+      surahName: z.string(),
+      ayahText: z.string().optional(),
+    }).parse(req.body)
+
+    const bookmark = await prisma.quranBookmark.upsert({
+      where: { userId: req.userId! },
+      create: { userId: req.userId!, surah, ayah, surahName, ayahText },
+      update: { surah, ayah, surahName, ayahText },
+    })
+    return reply.send({ success: true, data: bookmark })
+  })
+
+  // DELETE /reading-plan/bookmark — clear bookmark
+  app.delete('/bookmark', { preHandler: [requireAuth] }, async (req, reply) => {
+    await prisma.quranBookmark.deleteMany({ where: { userId: req.userId! } })
+    return reply.send({ success: true })
+  })
 }

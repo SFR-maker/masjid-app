@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useQuranAudioStore } from '../lib/quranAudioStore'
 import {
   setAyahsForPlayback,
@@ -20,6 +20,7 @@ import {
 } from '../lib/quranAudio'
 import { useTheme } from '../contexts/ThemeContext'
 import { ReadingPlanWidget } from '../components/ReadingPlanWidget'
+import { api } from '../lib/api'
 
 const RECITERS = [
   { id: 'ar.alafasy',           name: 'Mishary Alafasy' },
@@ -188,6 +189,8 @@ export default function QuranScreen() {
   const [search, setSearch] = useState('')
   const [audioLoading, setAudioLoading] = useState(false)
   const [readingMode, setReadingMode] = useState<'verse' | 'reading'>('verse')
+  const [targetAyah, setTargetAyah] = useState<number | null>(ayahParam ? Number(ayahParam) : null)
+  const [bookmarkToast, setBookmarkToast] = useState<string | null>(null)
 
   const isPlaying = useQuranAudioStore(s => s.isPlaying)
   const isPaused = useQuranAudioStore(s => s.isPaused)
@@ -202,6 +205,41 @@ export default function QuranScreen() {
     }
     return () => { deactivateKeepAwake() }
   }, [isPlaying])
+
+  // ── Bookmark ─────────────────────────────────────────────────────────────
+  const { data: bookmarkData } = useQuery({
+    queryKey: ['quran-bookmark'],
+    queryFn: () => api.get('/reading-plan/bookmark'),
+    staleTime: 60_000,
+  })
+  const bookmark = bookmarkData?.data ?? null
+
+  const saveBookmark = useMutation({
+    mutationFn: (payload: { surah: number; ayah: number; surahName: string; ayahText?: string }) =>
+      api.put('/reading-plan/bookmark', payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quran-bookmark'] })
+      setBookmarkToast('Bookmark saved')
+      setTimeout(() => setBookmarkToast(null), 2000)
+    },
+  })
+
+  const removeBookmark = useMutation({
+    mutationFn: () => api.delete('/reading-plan/bookmark'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quran-bookmark'] })
+      setBookmarkToast('Bookmark removed')
+      setTimeout(() => setBookmarkToast(null), 2000)
+    },
+  })
+
+  function handleBookmark(surahNum: number, ayahNum: number, surahName: string, ayahText?: string) {
+    if (bookmark?.surah === surahNum && bookmark?.ayah === ayahNum) {
+      removeBookmark.mutate()
+    } else {
+      saveBookmark.mutate({ surah: surahNum, ayah: ayahNum, surahName, ayahText })
+    }
+  }
 
   // Use getState() for actions to avoid subscribing the component to store changes
   // Track whether this is the initial mount so we can skip stopQuranAudio() on first render
@@ -363,6 +401,28 @@ export default function QuranScreen() {
               style={{ flex: 1, fontSize: 14, color: colors.text }} />
           </View>
         </View>
+
+        {/* Bookmark — Continue Reading */}
+        {bookmark && (
+          <TouchableOpacity
+            onPress={() => { setSelectedSurah(bookmark.surah); setTargetAyah(bookmark.ayah) }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 20, marginBottom: 12, borderRadius: 16, padding: 14, backgroundColor: colors.primary }}
+          >
+            <Ionicons name="bookmark" size={22} color={colors.primaryContrast} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.primaryContrast, fontWeight: '700', fontSize: 14 }}>Continue Reading</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 1 }}>
+                {bookmark.surahName} · Ayah {bookmark.ayah}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => removeBookmark.mutate()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.6)" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        )}
 
         {/* Reading Plan */}
         <ReadingPlanWidget />
@@ -532,15 +592,24 @@ export default function QuranScreen() {
             <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, letterSpacing: 0.8, marginBottom: 16 }}>TRANSLATION</Text>
             {transAyahs.map((t, i) => {
               const active = playingAyah === (i + 1)
+              const ayahNum = i + 1
+              const readingBookmarked = bookmark?.surah === selectedSurah && bookmark?.ayah === ayahNum
               return (
                 <View
                   key={i}
                   onLayout={(e) => { readingAyahOffsets.current[i] = e.nativeEvent.layout.y }}
                   style={{ flexDirection: 'row', gap: 10, marginBottom: 14, backgroundColor: active ? colors.primaryLight : 'transparent', borderRadius: 10, padding: active ? 8 : 0, marginHorizontal: active ? -8 : 0 }}
                 >
-                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: active ? colors.primary : colors.primaryLight, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: active ? colors.primaryContrast : colors.primary }}>{i + 1}</Text>
-                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleBookmark(selectedSurah!, ayahNum, selectedSurahInfo?.englishName ?? '', ayahs[i]?.text)}
+                    style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: readingBookmarked ? colors.primary : active ? colors.primary : colors.primaryLight, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    {readingBookmarked
+                      ? <Ionicons name="bookmark" size={12} color={colors.primaryContrast} />
+                      : <Text style={{ fontSize: 10, fontWeight: '700', color: active ? colors.primaryContrast : colors.primary }}>{ayahNum}</Text>
+                    }
+                  </TouchableOpacity>
                   <Text style={{ flex: 1, fontSize: 14, color: active ? colors.text : colors.textSecondary, lineHeight: 22, fontWeight: active ? '500' : '400' }}>{t.text}</Text>
                 </View>
               )
@@ -554,7 +623,8 @@ export default function QuranScreen() {
           keyExtractor={item => String(item.numberInSurah)}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 }}
           windowSize={7}
-          initialNumToRender={ayahParam ? Number(ayahParam) + 5 : 12}
+          initialScrollIndex={targetAyah ? Math.max(0, targetAyah - 1) : 0}
+          initialNumToRender={targetAyah ? targetAyah + 5 : ayahParam ? Number(ayahParam) + 5 : 12}
           maxToRenderPerBatch={8}
           onScrollToIndexFailed={({ index, averageItemLength }) => {
             // Target not yet rendered — scroll to estimated offset, then retry once items are visible
@@ -587,15 +657,15 @@ export default function QuranScreen() {
               if (words.length > 4) ayahText = words.slice(4).join(' ')
             }
 
+            const isThisBookmarked = bookmark?.surah === selectedSurah && bookmark?.ayah === ayah.numberInSurah
             return (
               <View style={{
                 marginBottom: 16,
                 backgroundColor: isThisPlaying ? colors.primaryLight : colors.surface,
                 borderRadius: 16, padding: 16,
-                borderWidth: 1, borderColor: isThisPlaying ? colors.primary : colors.border,
+                borderWidth: 1, borderColor: isThisBookmarked ? colors.primary : isThisPlaying ? colors.primary : colors.border,
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  {/* Bug 13 fix: ayah number badge is tappable to start recitation from that ayah */}
                   <TouchableOpacity
                     onPress={() => handlePlaySingle(ayah, index)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -603,17 +673,29 @@ export default function QuranScreen() {
                   >
                     <Text style={{ fontSize: 12, fontWeight: '700', color: isThisPlaying ? colors.primaryContrast : colors.primary }}>{ayah.numberInSurah}</Text>
                   </TouchableOpacity>
-                  {ayah.audio && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <TouchableOpacity
-                      onPress={() => handlePlaySingle(ayah, index)}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isThisPlaying ? colors.primary : colors.surfaceSecondary, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}
+                      onPress={() => handleBookmark(selectedSurah!, ayah.numberInSurah, selectedSurahInfo?.englishName ?? '', ayah.text)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Ionicons name={isThisPlaying ? 'pause' : 'play'} size={13} color={isThisPlaying ? colors.primaryContrast : colors.primary} />
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: isThisPlaying ? colors.primaryContrast : colors.primary }}>
-                        {isThisPlaying ? 'Pause' : 'Play'}
-                      </Text>
+                      <Ionicons
+                        name={isThisBookmarked ? 'bookmark' : 'bookmark-outline'}
+                        size={18}
+                        color={isThisBookmarked ? colors.primary : colors.textTertiary}
+                      />
                     </TouchableOpacity>
-                  )}
+                    {ayah.audio && (
+                      <TouchableOpacity
+                        onPress={() => handlePlaySingle(ayah, index)}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isThisPlaying ? colors.primary : colors.surfaceSecondary, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}
+                      >
+                        <Ionicons name={isThisPlaying ? 'pause' : 'play'} size={13} color={isThisPlaying ? colors.primaryContrast : colors.primary} />
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: isThisPlaying ? colors.primaryContrast : colors.primary }}>
+                          {isThisPlaying ? 'Pause' : 'Play'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
                 <Text style={{ fontSize: 22, lineHeight: 40, color: colors.text, textAlign: 'right', fontFamily: Platform.OS === 'ios' ? 'GeezaPro' : 'serif', marginBottom: 12 }}>
                   {ayahText}
@@ -627,6 +709,13 @@ export default function QuranScreen() {
         />
       )}
 
+      {/* Bookmark toast */}
+      {bookmarkToast && (
+        <View style={{ position: 'absolute', bottom: 100, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 20, paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name="bookmark" size={14} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{bookmarkToast}</Text>
+        </View>
+      )}
     </SafeAreaView>
   )
 }

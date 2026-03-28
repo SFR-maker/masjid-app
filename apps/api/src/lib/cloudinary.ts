@@ -49,3 +49,17 @@ export async function generateSignedVideoUploadParams(folder: string) {
     maxBytes: params.max_bytes,
   }
 }
+
+export function generateSignedDownloadUrl(publicId: string, resourceType: 'image' | 'raw' = 'raw'): string {
+  const timestamp = Math.round(Date.now() / 1000) + 3600 // 1 hour expiry
+  return cloudinary.url(publicId, {
+    resource_type: resourceType,
+    sign_url: true,
+    type: 'upload',
+    expires_at: timestamp,
+  })
+}
+
+export async function deleteCloudinaryResource(publicId: string, resourceType: 'image' | 'raw' | 'video' = 'raw'): Promise<void> {
+  await cloudinary.uploader.destroy(publicId, { resource_type: resourceType })
+}

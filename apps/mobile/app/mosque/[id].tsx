@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, FlatList, TouchableOpacity, Linking, ActivityIndicator, Alert,
   Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native'
+import * as WebBrowser from 'expo-web-browser'
 import { useLocalSearchParams, router, Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -1168,16 +1169,16 @@ function DocumentsTab({ mosqueId }: { mosqueId: string }) {
   }
 
   async function handleDownload(doc: any) {
-    if (!doc.fileUrl) return
     try {
-      const supported = await Linking.canOpenURL(doc.fileUrl)
-      if (supported) {
-        await Linking.openURL(doc.fileUrl)
-      } else {
-        Alert.alert('Cannot open', 'No app available to open this file.')
-      }
+      // Try to get a signed URL from API first
+      const res = await api.get<any>(`/mosques/${mosqueId}/documents/${doc.id}/download`)
+      const url = res?.data?.url ?? doc.fileUrl
+      await WebBrowser.openBrowserAsync(url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      })
     } catch {
-      Alert.alert('Error', 'Could not open the file. Please try again.')
+      // Fallback to direct URL
+      Linking.openURL(doc.fileUrl).catch(() => {})
     }
   }
 

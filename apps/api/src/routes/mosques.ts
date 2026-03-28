@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma, Prisma } from '@masjid/database'
 import { requireAuth, requireMosqueAdmin } from '../plugins/auth'
-import { generateSignedUploadParams, generateSignedVideoUploadParams } from '../lib/cloudinary'
+import { generateSignedUploadParams, generateSignedVideoUploadParams, generateSignedDownloadUrl, deleteCloudinaryResource } from '../lib/cloudinary'
 
 const createMosqueSchema = z.object({
   name: z.string().min(2).max(200),
@@ -502,6 +502,23 @@ export async function mosqueRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: { items: docs } })
   })
 
+  // GET /mosques/:id/documents/:docId/download — get signed download URL
+  app.get('/:id/documents/:docId/download', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { id: mosqueId, docId } = req.params as { id: string; docId: string }
+    const doc = await prisma.mosqueDocument.findUnique({ where: { id: docId } })
+    if (!doc || doc.mosqueId !== mosqueId) {
+      return reply.status(404).send({ success: false, error: 'Document not found' })
+    }
+    // Extract public ID from Cloudinary URL
+    // URL format: https://res.cloudinary.com/{cloud}/raw/upload/v{version}/{publicId}
+    const urlMatch = doc.fileUrl.match(/\/(?:raw|image|video)\/upload\/(?:v\d+\/)?(.+)$/)
+    const publicId = urlMatch ? urlMatch[1].replace(/\.[^/.]+$/, '') : null
+    if (!publicId) return reply.send({ success: true, data: { url: doc.fileUrl } })
+    const resourceType = doc.mimeType?.startsWith('image/') ? 'image' : 'raw'
+    const signedUrl = generateSignedDownloadUrl(publicId, resourceType)
+    return reply.send({ success: true, data: { url: signedUrl, name: doc.name, mimeType: doc.mimeType } })
+  })
+
   // POST /mosques/:id/documents — admin upload
   app.post(
     '/:id/documents',
@@ -537,7 +554,15 @@ export async function mosqueRoutes(app: FastifyInstance) {
     { preHandler: [requireMosqueAdmin((req) => (req.params as any).id)] },
     async (req, reply) => {
       const { docId } = req.params as { id: string; docId: string }
+      const doc = await prisma.mosqueDocument.findUnique({ where: { id: docId } })
       await prisma.mosqueDocument.delete({ where: { id: docId } })
+      // Extract publicId from fileUrl and delete from Cloudinary
+      const urlMatch = doc?.fileUrl.match(/\/(?:raw|image|video)\/upload\/(?:v\d+\/)?(.+)$/)
+      const publicId = urlMatch ? urlMatch[1].replace(/\.[^/.]+$/, '') : null
+      if (publicId) {
+        const resourceType = doc?.mimeType?.startsWith('image/') ? 'image' : 'raw'
+        deleteCloudinaryResource(publicId, resourceType).catch(() => {}) // best-effort
+      }
       return reply.send({ success: true })
     }
   )

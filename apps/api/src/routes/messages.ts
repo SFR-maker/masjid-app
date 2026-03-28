@@ -395,6 +395,15 @@ export async function messageRoutes(app: FastifyInstance) {
     }
   )
 
+  // DELETE /users/me/groups/:groupId — user leaves a group chat
+  app.delete('/users/me/groups/:groupId', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { groupId } = req.params as { groupId: string }
+    await prisma.groupChatMember.deleteMany({
+      where: { groupChatId: groupId, userId: req.userId! },
+    })
+    return reply.send({ success: true })
+  })
+
   // GET /users/me/groups — user's group chats
   app.get('/users/me/groups', { preHandler: [requireAuth] }, async (req, reply) => {
     const memberships = await prisma.groupChatMember.findMany({

@@ -221,12 +221,14 @@ export async function videoRoutes(app: FastifyInstance) {
       const video = await prisma.video.findUnique({ where: { id }, select: { mosqueId: true } })
       if (!video) return reply.status(404).send({ success: false, error: 'Not found' })
 
-      // Verify caller is admin of this mosque
       const userId = req.userId!
-      const isAdmin = await prisma.mosqueAdmin.findUnique({
-        where: { userId_mosqueId: { userId, mosqueId: video.mosqueId } },
-      })
-      if (!isAdmin) return reply.status(403).send({ success: false, error: 'Forbidden' })
+      if (!req.isSuperAdmin) {
+        if (!video.mosqueId) return reply.status(403).send({ success: false, error: 'Forbidden' })
+        const isAdmin = await prisma.mosqueAdmin.findUnique({
+          where: { userId_mosqueId: { userId, mosqueId: video.mosqueId } },
+        })
+        if (!isAdmin) return reply.status(403).send({ success: false, error: 'Forbidden' })
+      }
 
       const body = z.object({
         title: z.string().min(1).optional(),
@@ -249,10 +251,13 @@ export async function videoRoutes(app: FastifyInstance) {
       if (!video) return reply.status(404).send({ success: false, error: 'Not found' })
 
       const userId = req.userId!
-      const isAdmin = await prisma.mosqueAdmin.findUnique({
-        where: { userId_mosqueId: { userId, mosqueId: video.mosqueId } },
-      })
-      if (!isAdmin) return reply.status(403).send({ success: false, error: 'Forbidden' })
+      if (!req.isSuperAdmin) {
+        if (!video.mosqueId) return reply.status(403).send({ success: false, error: 'Forbidden' })
+        const isAdmin = await prisma.mosqueAdmin.findUnique({
+          where: { userId_mosqueId: { userId, mosqueId: video.mosqueId } },
+        })
+        if (!isAdmin) return reply.status(403).send({ success: false, error: 'Forbidden' })
+      }
 
       const updated = await prisma.video.update({
         where: { id },
@@ -272,10 +277,13 @@ export async function videoRoutes(app: FastifyInstance) {
       if (!video) return reply.status(404).send({ success: false, error: 'Not found' })
 
       const userId = req.userId!
-      const isAdmin = await prisma.mosqueAdmin.findUnique({
-        where: { userId_mosqueId: { userId, mosqueId: video.mosqueId } },
-      })
-      if (!isAdmin) return reply.status(403).send({ success: false, error: 'Forbidden' })
+      if (!req.isSuperAdmin) {
+        if (!video.mosqueId) return reply.status(403).send({ success: false, error: 'Forbidden' })
+        const isAdmin = await prisma.mosqueAdmin.findUnique({
+          where: { userId_mosqueId: { userId, mosqueId: video.mosqueId } },
+        })
+        if (!isAdmin) return reply.status(403).send({ success: false, error: 'Forbidden' })
+      }
 
       await prisma.video.delete({ where: { id } })
       return reply.send({ success: true })

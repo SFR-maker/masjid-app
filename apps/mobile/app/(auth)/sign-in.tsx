@@ -216,6 +216,18 @@ export default function SignInScreen() {
               </Link>
             </View>
           </View>
+
+          {mode === 'user' && (
+            <TouchableOpacity
+              onPress={() => router.replace('/(tabs)')}
+              style={{ marginTop: 20, alignItems: 'center', paddingVertical: 12 }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>
+                Browse as Guest →
+              </Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </LinearGradient>
     </KeyboardAvoidingView>

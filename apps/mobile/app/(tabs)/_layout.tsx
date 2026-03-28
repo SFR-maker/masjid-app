@@ -1,7 +1,6 @@
 import { View, Text } from 'react-native'
 import { Tabs } from 'expo-router'
 import { useAuth } from '@clerk/clerk-expo'
-import { Redirect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -15,7 +14,7 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets()
   usePushNotificationSetup()
 
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />
+  // Guest browsing allowed — auth is required only for specific actions (follow, RSVP, donate, message)
 
   // Bug 5 fix: Use safe area bottom inset so the tab bar clears the home
   // indicator on notched iPhones and Android gesture nav bars.

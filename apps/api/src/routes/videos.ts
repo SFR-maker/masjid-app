@@ -31,6 +31,7 @@ export async function videoRoutes(app: FastifyInstance) {
         include: {
           mosque: { select: { id: true, name: true, logoUrl: true, isVerified: true } },
           ...(userId ? { likes: { where: { userId }, select: { id: true } } } : {}),
+          _count: { select: { comments: true } },
         },
       })
     } catch (err: any) {
@@ -45,7 +46,9 @@ export async function videoRoutes(app: FastifyInstance) {
       ...v,
       streamUrl: v.muxPlaybackId ? getMuxStreamUrl(v.muxPlaybackId) : null,
       userLiked: userId ? (v as any).likes?.length > 0 : false,
+      commentCount: (v as any)._count?.comments ?? 0,
       likes: undefined,
+      _count: undefined,
     }))
 
     // Personalized re-ranking: boost categories the user watches most

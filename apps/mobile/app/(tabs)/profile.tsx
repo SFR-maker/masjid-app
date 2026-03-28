@@ -159,9 +159,7 @@ export default function ProfileScreen() {
           try {
             queryClient.clear()
             await clerkSignOut()
-            // Tabs layout detects isSignedIn=false and redirects automatically.
-            // Do NOT call router.replace here — it races with Clerk's state update
-            // and auth layout may redirect back to tabs before isSignedIn=false propagates.
+            router.replace('/(auth)/sign-in' as any)
           } catch {
             setSigningOut(false)
             Alert.alert('Error', 'Could not sign out. Please try again.')

@@ -675,7 +675,7 @@ const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 function EventsTab({ mosqueId }: { mosqueId: string }) {
   const { colors } = useTheme()
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar')
   const [month, setMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
 
@@ -713,7 +713,7 @@ function EventsTab({ mosqueId }: { mosqueId: string }) {
     <View>
       {/* Toggle */}
       <View style={{ flexDirection: 'row', backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 3, marginBottom: 16, alignSelf: 'flex-start' }}>
-        {(['list', 'calendar'] as const).map((mode) => (
+        {(['calendar', 'list'] as const).map((mode) => (
           <TouchableOpacity
             key={mode}
             onPress={() => { setViewMode(mode); setSelectedDay(null) }}

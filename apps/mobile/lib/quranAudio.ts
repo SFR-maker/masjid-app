@@ -32,13 +32,14 @@ async function _updateMediaNotification(isPlaying: boolean) {
         body: ayahLabel ? `${reciterName} · ${ayahLabel}` : (reciterName || 'Playing'),
         sticky: true,
         autoDismiss: false,
-        vibrate: [],                   // No buzz — media control notification
-        priority: Notifications.AndroidNotificationPriority.LOW,  // No banner popup
+        vibrate: [],
+        sound: false,
+        priority: Notifications.AndroidNotificationPriority.LOW,
         color: '#14532D',
         categoryIdentifier: isPlaying ? 'quran_playing' : 'quran_paused',
         data: { type: 'quran_player' },
       },
-      trigger: null,
+      trigger: Platform.OS === 'android' ? { channelId: 'quran_player' } as any : null,
     })
   } catch {}
 }

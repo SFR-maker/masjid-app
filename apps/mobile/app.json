@@ -18,9 +18,10 @@
       "bundleIdentifier": "com.masjidapp.mobile",
       "buildNumber": "3",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We use your location to find nearby mosques.",
+        "NSLocationWhenInUseUsageDescription": "Allow Masjidly to find mosques near you.",
         "NSCameraUsageDescription": "Used to upload your profile photo.",
-        "UIBackgroundModes": ["audio", "fetch"]
+        "UIBackgroundModes": ["audio", "fetch"],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

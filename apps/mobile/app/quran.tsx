@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
 import {
   View, Text, ScrollView, TouchableOpacity, FlatList,
   ActivityIndicator, TextInput, Platform, NativeScrollEvent, NativeSyntheticEvent,
@@ -191,6 +192,17 @@ export default function QuranScreen() {
   const isPlaying = useQuranAudioStore(s => s.isPlaying)
   const isPaused = useQuranAudioStore(s => s.isPaused)
   const playingAyah = useQuranAudioStore(s => s.playingAyah)
+
+  // Keep screen awake while audio is playing
+  useEffect(() => {
+    if (isPlaying) {
+      activateKeepAwakeAsync()
+    } else {
+      deactivateKeepAwake()
+    }
+    return () => { deactivateKeepAwake() }
+  }, [isPlaying])
+
   // Use getState() for actions to avoid subscribing the component to store changes
   // Track whether this is the initial mount so we can skip stopQuranAudio() on first render
   const didMountRef = useRef(false)

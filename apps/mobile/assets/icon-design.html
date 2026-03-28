@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1024px; height: 1024px; overflow: hidden; }
+
+  .icon {
+    width: 1024px;
+    height: 1024px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle geometric ring decoration */
+  .ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .ring-1 { width: 680px; height: 680px; }
+  .ring-2 { width: 820px; height: 820px; }
+  .ring-3 { width: 960px; height: 960px; }
+
+  /* Radial glow behind logo */
+  .glow {
+    position: absolute;
+    width: 480px;
+    height: 480px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(45,106,79,0.55) 0%, transparent 70%);
+  }
+
+  /* Subtle star/geometric pattern top-right */
+  .pattern {
+    position: absolute;
+    top: 60px;
+    right: 60px;
+    opacity: 0.07;
+    font-size: 180px;
+    color: white;
+    line-height: 1;
+  }
+
+  .logo-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    margin-top: -10px;
+  }
+
+  svg.mosque {
+    width: 700px;
+    height: 600px;
+    filter: drop-shadow(0px 12px 40px rgba(0,0,0,0.5));
+  }
+</style>
+</head>
+<body>
+<div class="icon">
+  <div class="ring ring-1"></div>
+  <div class="ring ring-2"></div>
+  <div class="ring ring-3"></div>
+  <div class="glow"></div>
+
+  <div class="logo-wrap">
+    <svg class="mosque" viewBox="0 0 420 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- Left minaret -->
+      <rect x="42" y="90" width="36" height="185" rx="6" fill="white" fill-opacity="0.92"/>
+      <rect x="34" y="82" width="52" height="20" rx="4" fill="white" fill-opacity="0.85"/>
+      <rect x="38" y="62" width="44" height="24" rx="4" fill="white" fill-opacity="0.80"/>
+      <rect x="46" y="48" width="28" height="18" rx="4" fill="white" fill-opacity="0.75"/>
+      <!-- Left minaret cap -->
+      <ellipse cx="60" cy="48" rx="14" ry="6" fill="white" fill-opacity="0.70"/>
+      <path d="M53 48 Q60 28 67 48Z" fill="white" fill-opacity="0.88"/>
+      <!-- Left minaret crescent -->
+      <circle cx="60" cy="24" r="5" fill="#D4A843" fill-opacity="0.9"/>
+      <circle cx="63" cy="22" r="3.5" fill="#0D2B1F"/>
+
+      <!-- Right minaret -->
+      <rect x="342" y="90" width="36" height="185" rx="6" fill="white" fill-opacity="0.92"/>
+      <rect x="334" y="82" width="52" height="20" rx="4" fill="white" fill-opacity="0.85"/>
+      <rect x="338" y="62" width="44" height="24" rx="4" fill="white" fill-opacity="0.80"/>
+      <rect x="346" y="48" width="28" height="18" rx="4" fill="white" fill-opacity="0.75"/>
+      <!-- Right minaret cap -->
+      <ellipse cx="360" cy="48" rx="14" ry="6" fill="white" fill-opacity="0.70"/>
+      <path d="M353 48 Q360 28 367 48Z" fill="white" fill-opacity="0.88"/>
+      <!-- Right minaret crescent -->
+      <circle cx="360" cy="24" r="5" fill="#D4A843" fill-opacity="0.9"/>
+      <circle cx="363" cy="22" r="3.5" fill="#0D2B1F"/>
+
+      <!-- Main building body -->
+      <rect x="96" y="190" width="228" height="85" rx="8" fill="white" fill-opacity="0.95"/>
+
+      <!-- Side wings -->
+      <rect x="78" y="210" width="50" height="65" rx="6" fill="white" fill-opacity="0.88"/>
+      <rect x="292" y="210" width="50" height="65" rx="6" fill="white" fill-opacity="0.88"/>
+
+      <!-- Small side domes -->
+      <ellipse cx="103" cy="210" rx="26" ry="14" fill="white" fill-opacity="0.82"/>
+      <path d="M77 210 Q103 180 129 210Z" fill="white" fill-opacity="0.88"/>
+
+      <ellipse cx="317" cy="210" rx="26" ry="14" fill="white" fill-opacity="0.82"/>
+      <path d="M291 210 Q317 180 343 210Z" fill="white" fill-opacity="0.88"/>
+
+      <!-- Main dome base ellipse -->
+      <ellipse cx="210" cy="190" rx="95" ry="20" fill="white" fill-opacity="0.90"/>
+
+      <!-- Main dome -->
+      <path d="M115 190 Q115 88 210 82 Q305 88 305 190Z" fill="white" fill-opacity="0.97"/>
+
+      <!-- Dome highlight -->
+      <path d="M135 175 Q148 108 210 96 Q200 150 192 175Z" fill="white" fill-opacity="0.15"/>
+
+      <!-- Main crescent -->
+      <circle cx="210" cy="72" r="14" fill="#D4A843"/>
+      <circle cx="216" cy="68" r="10" fill="#0D2B1F"/>
+      <!-- Star next to crescent -->
+      <polygon points="228,58 229.5,63 234.5,63 230.5,66 232,71 228,68 224,71 225.5,66 221.5,63 226.5,63" fill="#D4A843" fill-opacity="0.9"/>
+
+      <!-- Door arch -->
+      <path d="M190 275 Q190 248 210 246 Q230 248 230 275 L230 275 L190 275Z" fill="#1B4332" fill-opacity="0.5"/>
+      <rect x="190" y="265" width="40" height="10" rx="2" fill="#1B4332" fill-opacity="0.3"/>
+
+      <!-- Arch windows on main body -->
+      <path d="M140 245 Q140 228 153 226 Q166 228 166 245Z" fill="#1B4332" fill-opacity="0.25"/>
+      <path d="M254 245 Q254 228 267 226 Q280 228 280 245Z" fill="#1B4332" fill-opacity="0.25"/>
+
+      <!-- Ground line -->
+      <rect x="60" y="273" width="300" height="10" rx="5" fill="white" fill-opacity="0.15"/>
+
+    </svg>
+  </div>
+</div>
+</body>
+</html>

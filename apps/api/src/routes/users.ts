@@ -219,7 +219,12 @@ export async function userRoutes(app: FastifyInstance) {
         replies: { orderBy: { createdAt: 'asc' } },
       },
     })
-    return reply.send({ success: true, data: { items: messages } })
+    // A thread counts as unread if the most recent reply is from admin
+    const unreadCount = messages.filter((m) => {
+      const last = m.replies[m.replies.length - 1]
+      return last?.fromAdmin === true
+    }).length
+    return reply.send({ success: true, data: { items: messages, unreadCount } })
   })
 
   // DELETE /users/me/messages/:messageId — user deletes their conversation

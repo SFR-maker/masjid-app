@@ -34,6 +34,8 @@ export default function TabsLayout() {
           backgroundColor: colors.tabBar,
           paddingBottom: tabBarPaddingBottom,
           height: tabBarHeight,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}

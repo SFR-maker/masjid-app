@@ -78,6 +78,15 @@ export default function MessagesScreen() {
     onError: () => Alert.alert('Error', 'Could not delete conversation.'),
   })
 
+  const leaveGroupMutation = useMutation({
+    mutationFn: (groupId: string) => api.delete(`/users/me/groups/${groupId}`),
+    onSuccess: () => {
+      setSelectedGroupId(null)
+      queryClient.invalidateQueries({ queryKey: ['my-groups'] })
+    },
+    onError: () => Alert.alert('Error', 'Could not leave group. Try again.'),
+  })
+
   function handleSendReply() {
     if (!replyText.trim() || !selectedThread) return
     replyMutation.mutate({ messageId: selectedThread.id, body: replyText.trim() })
@@ -97,6 +106,17 @@ export default function MessagesScreen() {
         { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(messageId) },
       ])
     }
+  }
+
+  function confirmLeaveGroup(groupId: string, groupName: string) {
+    Alert.alert(
+      'Leave group?',
+      `You will be removed from "${groupName}" and will no longer receive messages from this group. This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Leave Group', style: 'destructive', onPress: () => leaveGroupMutation.mutate(groupId) },
+      ]
+    )
   }
 
   // Scroll to bottom on new replies
@@ -261,6 +281,16 @@ export default function MessagesScreen() {
                 {selectedGroup.mosque?.name} · {selectedGroup._count?.members ?? 0} members
               </Text>
             </View>
+            <TouchableOpacity
+              onPress={() => confirmLeaveGroup(selectedGroup.id, selectedGroup.name)}
+              disabled={leaveGroupMutation.isPending}
+              style={{ padding: 8 }}
+            >
+              {leaveGroupMutation.isPending
+                ? <ActivityIndicator size="small" color="#EF4444" />
+                : <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              }
+            </TouchableOpacity>
           </View>
 
           {/* Messages */}

@@ -114,8 +114,8 @@ export default function AnnouncementDetailScreen() {
       </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={56}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 56 : 0}
       >
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Media */}

@@ -9,8 +9,8 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, Dimensions,
   StatusBar, StyleSheet, Share, TextInput, ScrollView,
-  Animated, Keyboard, KeyboardAvoidingView, Platform,
-  ActivityIndicator, PanResponder,
+  Animated, Keyboard, Platform, Modal, KeyboardAvoidingView,
+  ActivityIndicator, PanResponder, Pressable,
 } from 'react-native'
 import { Video, ResizeMode } from 'expo-av'
 import { Image } from 'expo-image'
@@ -86,17 +86,24 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
   const [panelVisible, setPanelVisible] = useState(false)
   const [commentText, setCommentText] = useState('')
   const panelAnim = useRef(new Animated.Value(0)).current
+  const backdropAnim = useRef(new Animated.Value(0)).current
   const panelTranslateY = panelAnim.interpolate({ inputRange: [0, 1], outputRange: [PANEL_HEIGHT, 0] })
 
   function openComments() {
     setPanelVisible(true)
     setShowComments(true)
-    Animated.spring(panelAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }).start()
+    Animated.parallel([
+      Animated.spring(panelAnim, { toValue: 1, useNativeDriver: true, tension: 70, friction: 12 }),
+      Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+    ]).start()
   }
 
   function closeComments() {
     Keyboard.dismiss()
-    Animated.spring(panelAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start(() => {
+    Animated.parallel([
+      Animated.spring(panelAnim, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
+      Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+    ]).start(() => {
       setPanelVisible(false)
       setShowComments(false)
     })
@@ -272,6 +279,13 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
       <View style={[styles.rail, { bottom: insets.bottom + 90 }]}>
         <LikeButton liked={item.userLiked} count={item.likeCount ?? 0} onPress={() => likeMutation.mutate()} />
 
+        <TouchableOpacity style={styles.railItem} onPress={openComments} activeOpacity={0.75}>
+          <Ionicons name="chatbubble-ellipses-outline" size={28} color={panelVisible ? '#22C55E' : '#fff'} />
+          <Text style={[styles.railLabel, panelVisible && { color: '#22C55E' }]}>
+            {(showComments && comments.length > 0 ? comments.length : (item.commentCount ?? 0)).toLocaleString()}
+          </Text>
+        </TouchableOpacity>
+
         <View style={styles.railItem}>
           <Ionicons name="eye-outline" size={26} color="#fff" />
           <Text style={styles.railLabel}>{(item.viewCount ?? 0).toLocaleString()}</Text>
@@ -280,11 +294,6 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
         <TouchableOpacity style={styles.railItem} onPress={handleShare}>
           <Feather name="share-2" size={24} color="#fff" />
           <Text style={styles.railLabel}>Share</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.railItem} onPress={openComments}>
-          <Ionicons name="chatbubble-outline" size={24} color="#fff" />
-          <Text style={styles.railLabel}>Comments</Text>
         </TouchableOpacity>
       </View>
 
@@ -319,85 +328,110 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
         )}
       </View>
 
-      {/* Inline comment panel — slides up from bottom, no modal */}
-      {panelVisible && (
-        <Animated.View style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          height: PANEL_HEIGHT,
-          backgroundColor: '#1A1A1A',
-          borderTopLeftRadius: 20, borderTopRightRadius: 20,
-          transform: [{ translateY: panelTranslateY }],
-          overflow: 'hidden',
-        }}>
-          {/* Drag handle / close tap */}
-          <TouchableOpacity onPress={closeComments} style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }} activeOpacity={0.7}>
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-          </TouchableOpacity>
+      {/* Comment sheet — Modal renders at root level, bypassing card overflow:hidden */}
+      <Modal
+        visible={panelVisible}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={closeComments}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          {/* Backdrop */}
+          <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.6)', opacity: backdropAnim }]}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeComments} />
+          </Animated.View>
 
-          {/* Header row */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12 }}>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
-              Comments {comments.length > 0 ? `(${comments.length})` : ''}
-            </Text>
-            <TouchableOpacity onPress={closeComments} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={20} color="rgba(255,255,255,0.55)" />
-            </TouchableOpacity>
-          </View>
-          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          {/* Push panel to bottom */}
+          <View style={{ flex: 1 }} pointerEvents="none" />
 
-          {/* Comments list */}
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
-            {commentsLoading ? (
-              <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
-            ) : comments.length === 0 ? (
-              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 24, fontSize: 14 }}>
-                No comments yet. Be the first!
+          {/* Sliding panel */}
+          <Animated.View style={[styles.commentPanel, { transform: [{ translateY: panelTranslateY }] }]}>
+            {/* Handle */}
+            <View style={styles.commentHandle} />
+
+            {/* Header */}
+            <View style={styles.commentHeader}>
+              <Text style={styles.commentHeaderTitle}>
+                {comments.length > 0 ? `${comments.length} Comments` : 'Comments'}
               </Text>
-            ) : (
-              comments.map((c: any) => (
-                <View key={c.id} style={{ flexDirection: 'row', gap: 10 }}>
-                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
-                    {c.user?.avatarUrl
-                      ? <Image source={{ uri: c.user.avatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} contentFit="cover" />
-                      : <Text style={{ fontSize: 13 }}>👤</Text>
-                    }
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600', marginBottom: 2 }}>{c.user?.name ?? 'Anonymous'}</Text>
-                    <Text style={{ color: '#fff', fontSize: 14, lineHeight: 20 }}>{c.text}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </ScrollView>
+              <TouchableOpacity onPress={closeComments} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.commentCloseBtn}>
+                <Ionicons name="close" size={18} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.commentDivider} />
 
-          {/* Comment input */}
-          {isSignedIn && (
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: insets.bottom + 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
-                <TextInput
-                  style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 }}
-                  placeholder="Add a comment..."
-                  placeholderTextColor="rgba(255,255,255,0.35)"
-                  value={commentText}
-                  onChangeText={setCommentText}
-                  maxLength={1000}
-                />
-                <TouchableOpacity
-                  onPress={() => postComment.mutate()}
-                  disabled={postComment.isPending || commentText.trim().length < 2}
-                  style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: commentText.trim().length >= 2 ? '#3B82F6' : 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  {postComment.isPending
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Ionicons name="send" size={16} color="#fff" />
-                  }
-                </TouchableOpacity>
-              </View>
-            </KeyboardAvoidingView>
-          )}
-        </Animated.View>
-      )}
+            {/* Comment list */}
+            <ScrollView
+              style={styles.commentScroll}
+              contentContainerStyle={styles.commentList}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {commentsLoading ? (
+                <ActivityIndicator color="#22C55E" style={{ marginTop: 32 }} />
+              ) : comments.length === 0 ? (
+                <View style={styles.commentEmpty}>
+                  <Ionicons name="chatbubble-outline" size={36} color="rgba(255,255,255,0.15)" />
+                  <Text style={styles.commentEmptyText}>No comments yet</Text>
+                  <Text style={styles.commentEmptySubtext}>Be the first to comment!</Text>
+                </View>
+              ) : (
+                comments.map((c: any) => (
+                  <View key={c.id} style={styles.commentRow}>
+                    <View style={styles.commentAvatar}>
+                      {c.user?.avatarUrl
+                        ? <Image source={{ uri: c.user.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
+                        : <Text style={{ fontSize: 16 }}>👤</Text>
+                      }
+                    </View>
+                    <View style={styles.commentBubble}>
+                      <Text style={styles.commentUsername}>{c.user?.name ?? 'Anonymous'}</Text>
+                      <Text style={styles.commentText}>{c.text}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {/* Input — in normal flow, KAV pushes it above keyboard */}
+            <View style={[styles.commentInputRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+              {isSignedIn ? (
+                <>
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder="Write a comment..."
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    maxLength={1000}
+                    multiline
+                    returnKeyType="send"
+                    blurOnSubmit={false}
+                  />
+                  <TouchableOpacity
+                    onPress={() => postComment.mutate()}
+                    disabled={postComment.isPending || commentText.trim().length < 2}
+                    style={[styles.commentSendBtn, commentText.trim().length >= 2 && styles.commentSendBtnActive]}
+                  >
+                    {postComment.isPending
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Ionicons name="send" size={16} color="#fff" />
+                    }
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, textAlign: 'center', flex: 1, paddingVertical: 4 }}>
+                  Sign in to leave a comment
+                </Text>
+              )}
+            </View>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   )
 }
@@ -749,6 +783,143 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
+  },
+
+  // ── Comment panel ───────────────────────────────────────────────────────────
+  commentPanel: {
+    backgroundColor: '#161618',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: PANEL_HEIGHT,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 24,
+  },
+  commentScroll: {
+    maxHeight: PANEL_HEIGHT - 160,
+  },
+  commentHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 14,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+  },
+  commentHeaderTitle: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.1,
+  },
+  commentCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    marginHorizontal: 0,
+  },
+  commentList: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
+    gap: 16,
+  },
+  commentEmpty: {
+    alignItems: 'center',
+    paddingTop: 36,
+    gap: 8,
+  },
+  commentEmptyText: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  commentEmptySubtext: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 13,
+  },
+  commentRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  commentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  commentBubble: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  commentUsername: {
+    color: '#22C55E',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 3,
+    letterSpacing: 0.1,
+  },
+  commentText: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.07)',
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    color: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    maxHeight: 90,
+  },
+  commentSendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentSendBtnActive: {
+    backgroundColor: '#22C55E',
   },
 
   // ── Header ──────────────────────────────────────────────────────────────────

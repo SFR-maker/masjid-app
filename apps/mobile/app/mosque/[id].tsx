@@ -51,18 +51,33 @@ export default function MosqueProfileScreen() {
       isFollowing
         ? api.delete(`/mosques/${id}/follow`)
         : api.post(`/mosques/${id}/follow`, {}),
+    onMutate: (isFollowing: boolean) => {
+      // Optimistic update: flip isFollowing on the mosque detail cache immediately
+      queryClient.setQueryData(['mosque', id], (old: any) => {
+        if (!old) return old
+        return { ...old, data: { ...old.data, isFollowing: !isFollowing } }
+      })
+    },
     onSuccess: (_, isFollowing) => {
+      // Invalidate all related queries so every screen reflects the change
       queryClient.invalidateQueries({ queryKey: ['mosque', id] })
       queryClient.invalidateQueries({ queryKey: ['followed-mosques'] })
+      queryClient.invalidateQueries({ queryKey: ['mosques'] })
+      queryClient.invalidateQueries({ queryKey: ['mosque-detail'] })
       if (!isFollowing && mosque) {
-        // Just followed — set as selected mosque
         setSelectedMosque(mosque.id, mosque.name)
       } else if (isFollowing && selectedMosqueId === id) {
-        // Just unfollowed the currently selected mosque — clear it
         clearSelectedMosque()
       }
     },
-    onError: () => Alert.alert('Error', 'Could not update follow. Please try again.'),
+    onError: (_err, isFollowing) => {
+      // Revert optimistic update
+      queryClient.setQueryData(['mosque', id], (old: any) => {
+        if (!old) return old
+        return { ...old, data: { ...old.data, isFollowing } }
+      })
+      Alert.alert('Error', 'Could not update follow. Please try again.')
+    },
   })
 
   const favoriteMutation = useMutation({

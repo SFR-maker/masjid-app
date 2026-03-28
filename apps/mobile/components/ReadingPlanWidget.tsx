@@ -137,12 +137,23 @@ export function ReadingPlanWidget() {
 
   if (plan.isCompleted) {
     return (
-      <View style={[styles.card, { backgroundColor: '#D1FAE5', borderColor: '#6EE7B7' }]}>
-        <Text style={{ fontSize: 22 }}>🎉</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: '#065F46', fontWeight: '800', fontSize: 14 }}>Quran Complete!</Text>
-          <Text style={{ color: '#059669', fontSize: 12, marginTop: 1 }}>Alhamdulillah — you've completed the full Quran</Text>
+      <View style={[styles.card, { backgroundColor: '#D1FAE5', borderColor: '#6EE7B7', flexDirection: 'column', gap: 10 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ fontSize: 22 }}>🎉</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#065F46', fontWeight: '800', fontSize: 14 }}>Quran Complete!</Text>
+            <Text style={{ color: '#059669', fontSize: 12, marginTop: 1 }}>Alhamdulillah — you've completed the full Quran</Text>
+          </View>
         </View>
+        <TouchableOpacity
+          onPress={() => resetPlan.mutate()}
+          disabled={resetPlan.isPending}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#A7F3D0', borderRadius: 10, paddingVertical: 9 }}
+        >
+          <Text style={{ color: '#065F46', fontWeight: '700', fontSize: 13 }}>
+            {resetPlan.isPending ? 'Restarting...' : '↩ Start Again from Juz 1'}
+          </Text>
+        </TouchableOpacity>
       </View>
     )
   }

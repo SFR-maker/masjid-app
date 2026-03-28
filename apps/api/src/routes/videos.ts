@@ -54,20 +54,15 @@ export async function videoRoutes(app: FastifyInstance) {
     // Personalized re-ranking: boost categories the user watches most
     if (personalize === '1' && userId) {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      const views = await prisma.videoView.findMany({
+      const viewsWithCategories = await prisma.videoView.findMany({
         where: { userId, createdAt: { gte: thirtyDaysAgo } },
-        select: { videoId: true },
+        select: { video: { select: { category: true } } },
         take: 50,
       })
-      if (views.length > 0) {
-        const viewedIds = new Set(views.map((v) => v.videoId))
-        const videoCategories = await prisma.video.findMany({
-          where: { id: { in: [...viewedIds] } },
-          select: { category: true },
-        })
+      if (viewsWithCategories.length > 0) {
         const affinity: Record<string, number> = {}
-        for (const { category: cat } of videoCategories) {
-          affinity[cat] = (affinity[cat] ?? 0) + 1
+        for (const { video } of viewsWithCategories) {
+          if (video) affinity[video.category] = (affinity[video.category] ?? 0) + 1
         }
         items.sort((a, b) => (affinity[b.category] ?? 0) - (affinity[a.category] ?? 0))
       }

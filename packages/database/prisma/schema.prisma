@@ -576,6 +576,7 @@ model AnnouncementLike {
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([announcementId, userId])
+  @@index([userId])
   @@map("announcement_likes")
 }
 
@@ -646,6 +647,8 @@ model Video {
   comments VideoComment[]
 
   @@index([mosqueId, createdAt])
+  @@index([isPublished, status])
+  @@index([mosqueId, isPublished, status])
   @@map("videos")
 }
 
@@ -660,6 +663,7 @@ model VideoComment {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([videoId])
+  @@index([userId])
   @@map("video_comments")
 }
 
@@ -797,6 +801,7 @@ model PollVote {
   user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([pollId, userId])
+  @@index([userId])
   @@map("poll_votes")
 }
 
@@ -869,6 +874,7 @@ model Notification {
   mosque MosqueProfile? @relation(fields: [mosqueId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
+  @@index([userId, isRead, createdAt])
   @@map("notifications")
 }
 

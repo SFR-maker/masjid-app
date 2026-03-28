@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import compress from '@fastify/compress'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import { buildRoutes } from './routes'
@@ -40,6 +41,7 @@ function validateEnv() {
 async function start() {
   validateEnv()
 
+  await app.register(compress, { threshold: 1024 })
   await app.register(helmet, { contentSecurityPolicy: false })
 
   const isDev = process.env.NODE_ENV !== 'production'

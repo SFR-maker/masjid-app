@@ -211,8 +211,12 @@ export async function userRoutes(app: FastifyInstance) {
 
   // GET /users/me/messages — user's sent messages + replies
   app.get('/me/messages', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { cursor, limit: limitStr = '50' } = req.query as { cursor?: string; limit?: string }
+    const limit = Math.min(Number(limitStr) || 50, 100)
     const messages = await prisma.directMessage.findMany({
       where: { fromUserId: req.userId! },
+      take: limit,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       orderBy: { createdAt: 'desc' },
       include: {
         mosque: { select: { id: true, name: true, logoUrl: true } },
@@ -224,7 +228,15 @@ export async function userRoutes(app: FastifyInstance) {
       const last = m.replies[m.replies.length - 1]
       return last?.fromAdmin === true
     }).length
-    return reply.send({ success: true, data: { items: messages, unreadCount } })
+    return reply.send({
+      success: true,
+      data: {
+        items: messages,
+        unreadCount,
+        cursor: messages[messages.length - 1]?.id,
+        hasMore: messages.length === limit,
+      },
+    })
   })
 
   // DELETE /users/me/messages/:messageId — user deletes their conversation

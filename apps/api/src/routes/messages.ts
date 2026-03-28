@@ -365,12 +365,23 @@ export async function messageRoutes(app: FastifyInstance) {
         where: { groupChatId: groupId, userId: req.userId! },
       })
       if (!member) return reply.status(403).send({ success: false, error: 'Not a member' })
+      const { cursor, limit: limitStr = '50' } = req.query as { cursor?: string; limit?: string }
+      const limit = Math.min(Number(limitStr) || 50, 100)
       const messages = await prisma.groupChatMessage.findMany({
         where: { groupChatId: groupId },
-        orderBy: { createdAt: 'asc' },
+        take: limit,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { createdAt: 'desc' },
         include: { fromUser: { select: { id: true, name: true, avatarUrl: true } } },
       })
-      return reply.send({ success: true, data: { items: messages } })
+      return reply.send({
+        success: true,
+        data: {
+          items: messages,
+          cursor: messages[messages.length - 1]?.id,
+          hasMore: messages.length === limit,
+        },
+      })
     }
   )
 

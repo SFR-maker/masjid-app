@@ -154,12 +154,17 @@ export async function eventRoutes(app: FastifyInstance) {
   // PUT /events/:id
   app.put('/events/:id', { preHandler: [requireAuth] }, async (req, reply) => {
     const { id } = req.params as { id: string }
-    const event = await prisma.event.findUnique({ where: { id } })
+    const event = await prisma.event.findUnique({
+      where: { id },
+      select: { id: true, mosqueId: true, title: true, startTime: true, endTime: true, location: true, description: true, isCancelled: true },
+    })
     if (!event) return reply.status(404).send({ success: false, error: 'Event not found' })
 
-    const admin = await prisma.mosqueAdmin.findUnique({
-      where: { userId_mosqueId: { userId: req.userId!, mosqueId: event.mosqueId } },
-    })
+    const [admin] = await Promise.all([
+      prisma.mosqueAdmin.findUnique({
+        where: { userId_mosqueId: { userId: req.userId!, mosqueId: event.mosqueId } },
+      }),
+    ])
     if (!admin && !req.isSuperAdmin) {
       return reply.status(403).send({ success: false, error: 'Forbidden' })
     }

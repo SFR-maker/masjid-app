@@ -92,7 +92,7 @@ export default function SignInScreen() {
           {/* Logo */}
           <View style={{ alignItems: 'center', marginBottom: 32 }}>
             <Text style={{ color: 'white', fontSize: 48, fontWeight: 'bold' }}>مسجد</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 22, marginTop: 4 }}>Masjidi</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 22, marginTop: 4 }}>Masjidly</Text>
             <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 4 }}>
               Your mosque community
             </Text>

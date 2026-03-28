@@ -215,7 +215,7 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
 
   async function handleShare() {
     try {
-      await Share.share({ message: `${item.title} — ${item.mosque?.name ?? 'Mosque'}\n\nWatch on the Masjid app`, title: item.title })
+      await Share.share({ message: `${item.title} — ${item.mosque?.name ?? 'Mosque'}\n\nWatch on Masjidly`, title: item.title })
     } catch {}
   }
 

@@ -4,7 +4,7 @@ import { QueryProvider } from '../components/QueryProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Masjid Admin',
+  title: 'Masjidly Admin',
   description: 'Mosque administration dashboard',
 }
 

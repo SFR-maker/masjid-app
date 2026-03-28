@@ -123,7 +123,7 @@ export default function ChatScreen() {
                 </Text>
               </View>
               <Text style={{ color: colors.textTertiary, fontSize: 10, marginTop: 4, paddingHorizontal: 4 }}>
-                {item.role === 'ASSISTANT' ? 'Masjid AI' : 'You'}
+                {item.role === 'ASSISTANT' ? 'Masjidly AI' : 'You'}
               </Text>
             </View>
           )}

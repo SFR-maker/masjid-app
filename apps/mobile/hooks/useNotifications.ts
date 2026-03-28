@@ -22,7 +22,7 @@ if (Platform.OS !== 'web') {
   if (Platform.OS === 'android') {
     // Default app notifications channel
     Notifications.setNotificationChannelAsync('default', {
-      name: 'Masjid App',
+      name: 'Masjidly',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#14532D',

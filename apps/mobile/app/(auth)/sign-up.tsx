@@ -87,7 +87,7 @@ export default function SignUpScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={{ alignItems: 'center', marginBottom: 32 }}>
-            <Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold' }}>Join Masjid</Text>
+            <Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold' }}>Join Masjidly</Text>
             <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 4 }}>
               Connect with your community
             </Text>

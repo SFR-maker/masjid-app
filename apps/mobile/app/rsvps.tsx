@@ -21,7 +21,7 @@ function buildICS(event: { title: string; startTime: string; endTime?: string; l
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Masjid App//EN',
+    'PRODID:-//Masjidly//EN',
     'BEGIN:VEVENT',
     `UID:${uid}`,
     `DTSTAMP:${formatICSDate(new Date())}`,

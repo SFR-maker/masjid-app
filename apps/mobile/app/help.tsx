@@ -8,7 +8,7 @@ const faqs = [
   { q: 'How do I follow a mosque?', a: 'Open the mosque\'s page from Discover and tap the Follow button.' },
   { q: 'Why are prayer times not showing?', a: 'Prayer times are set by mosque admins. If times are missing, the mosque hasn\'t added them yet.' },
   { q: 'How do I RSVP to an event?', a: 'Go to a mosque\'s page, open an event, and tap RSVP.' },
-  { q: 'Can I add my mosque to the app?', a: 'Contact us at support@masjidapp.com to get your mosque listed.' },
+  { q: 'Can I add my mosque to the app?', a: 'Contact us at support@masjidly.app to get your mosque listed.' },
 ]
 
 export default function HelpScreen() {
@@ -30,7 +30,7 @@ export default function HelpScreen() {
           </View>
         ))}
         <TouchableOpacity
-          onPress={() => Linking.openURL('mailto:support@masjidapp.com')}
+          onPress={() => Linking.openURL('mailto:support@masjidly.app')}
           style={{ marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
         >
           <Text style={{ color: colors.primaryContrast, fontWeight: '600' }}>Email Support</Text>

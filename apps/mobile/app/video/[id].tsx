@@ -453,7 +453,7 @@ export default function VideoScreen() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => Share.share({ message: `${video.title} — ${video.mosque?.name ?? 'Mosque'}\n\nWatch on the Masjid app`, title: video.title }).catch(() => {})}
+              onPress={() => Share.share({ message: `${video.title} — ${video.mosque?.name ?? 'Mosque'}\n\nWatch on Masjidly`, title: video.title }).catch(() => {})}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: actionBtnBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 }}
             >
               <Ionicons name="share-outline" size={15} color={colors.textSecondary} />

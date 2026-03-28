@@ -19,7 +19,7 @@ const sections = [
   },
   {
     title: 'Account Deletion',
-    body: 'To delete your account and all associated data, please contact support@masjidapp.com.',
+    body: 'To delete your account and all associated data, please contact support@masjidly.app.',
   },
 ]
 

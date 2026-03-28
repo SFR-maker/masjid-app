@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   View, Text, Pressable, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity, Platform, Alert, Share,
-  FlatList, Animated, Dimensions, KeyboardAvoidingView,
+  FlatList, Animated, Dimensions, Keyboard,
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -88,6 +88,7 @@ export default function VideoScreen() {
   // Animation values
   const panelAnim = useRef(new Animated.Value(0)).current   // 0 = closed, 1 = open
   const videoAnim = useRef(new Animated.Value(0)).current   // 0 = full, 1 = compact
+  const keyboardShift = useRef(new Animated.Value(0)).current
 
   const panelHeight = panelAnim.interpolate({
     inputRange: [0, 1],
@@ -97,6 +98,21 @@ export default function VideoScreen() {
     inputRange: [0, 1],
     outputRange: [VIDEO_FULL_HEIGHT, VIDEO_COMPACT_HEIGHT],
   })
+  // Lift panel up when keyboard opens so input stays above keyboard
+  const panelBottom = keyboardShift.interpolate({ inputRange: [0, 1], outputRange: [0, 1] })
+
+  // Keyboard listeners — lift the panel on Android (iOS handled by SafeAreaView)
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => Animated.timing(keyboardShift, { toValue: e.endCoordinates.height, duration: Platform.OS === 'ios' ? e.duration : 220, useNativeDriver: false }).start()
+    )
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e) => Animated.timing(keyboardShift, { toValue: 0, duration: Platform.OS === 'ios' ? e.duration : 180, useNativeDriver: false }).start()
+    )
+    return () => { show.remove(); hide.remove() }
+  }, [keyboardShift])
 
   function openComments() {
     setCommentsOpen(true)
@@ -104,6 +120,7 @@ export default function VideoScreen() {
     Animated.spring(videoAnim, { toValue: 1, useNativeDriver: false, tension: 65, friction: 11 }).start()
   }
   function closeComments() {
+    Keyboard.dismiss()
     Animated.spring(panelAnim, { toValue: 0, useNativeDriver: false, tension: 65, friction: 11 }).start(() => setCommentsOpen(false))
     Animated.spring(videoAnim, { toValue: 0, useNativeDriver: false, tension: 65, friction: 11 }).start()
   }
@@ -160,13 +177,20 @@ export default function VideoScreen() {
   }
   if (!video) return null
 
+  const actionBtnBg = colors.isDark ? '#1E293B' : '#F3F4F6'
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Back button */}
+      <View style={{ flex: 1 }}>
+        {/* Back button with pill background */}
         <Pressable
           onPress={() => router.back()}
-          style={{ position: 'absolute', top: 0, left: 0, zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 6, padding: 14 }}
+          style={{
+            position: 'absolute', top: 12, left: 14, zIndex: 10,
+            width: 36, height: 36, borderRadius: 18,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            alignItems: 'center', justifyContent: 'center',
+          }}
         >
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </Pressable>
@@ -192,32 +216,81 @@ export default function VideoScreen() {
         </Animated.View>
 
         {/* Info strip — always visible above the panel */}
-        <View style={{ backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <View style={{ backgroundColor: colors.primaryLight, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3 }}>
-              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>{video.category}</Text>
-            </View>
-            {video.mosque && (
-              <TouchableOpacity onPress={() => video.mosque?.id && router.push(`/mosque/${video.mosque.id}` as any)} activeOpacity={0.7}>
-                <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>{video.mosque.name}</Text>
-              </TouchableOpacity>
+        <View style={{
+          backgroundColor: colors.surface,
+          paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12,
+          borderBottomWidth: 1, borderBottomColor: colors.border,
+        }}>
+          {/* Mosque row */}
+          <TouchableOpacity
+            onPress={() => video.mosque?.id && router.push(`/mosque/${video.mosque.id}` as any)}
+            activeOpacity={0.7}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}
+          >
+            {video.mosque?.logoUrl ? (
+              <Image
+                source={{ uri: video.mosque.logoUrl }}
+                style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.border }}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 16 }}>🕌</Text>
+              </View>
             )}
-          </View>
-          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 8 }} numberOfLines={2}>{video.title}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700', letterSpacing: -0.1 }}>
+                {video.mosque?.name ?? 'Mosque'}
+              </Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 1 }}>View profile →</Text>
+            </View>
+            <View style={{ backgroundColor: colors.primaryLight, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4 }}>
+              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700', letterSpacing: 0.2 }}>
+                {(video.category ?? 'VIDEO').replace('_', ' ')}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
-          {/* Action row */}
+          {/* Title */}
+          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '800', lineHeight: 23, letterSpacing: -0.3, marginBottom: 4 }} numberOfLines={3}>
+            {video.title}
+          </Text>
+
+          {/* Description */}
+          {video.description ? (
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19, marginBottom: 10 }} numberOfLines={3}>
+              {video.description}
+            </Text>
+          ) : <View style={{ height: 8 }} />}
+
+          {/* Stats + actions */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ color: colors.textTertiary, fontSize: 12, flex: 1 }}>{video.viewCount ?? 0} views</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
+              <Ionicons name="eye-outline" size={13} color={colors.textTertiary} />
+              <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
+                {(video.viewCount ?? 0).toLocaleString()} views
+              </Text>
+            </View>
             <Pressable
-              onPress={() => likeMutation.mutate()}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.surfaceSecondary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 }}
+              onPress={() => {
+                if (!isSignedIn) { Alert.alert('Sign in required', 'Sign in to like videos'); return }
+                likeMutation.mutate()
+              }}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 5,
+                backgroundColor: video.userLiked ? '#FEE2E2' : actionBtnBg,
+                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                borderWidth: video.userLiked ? 1 : 0, borderColor: '#FECACA',
+              }}
             >
               <Ionicons name={video.userLiked ? 'heart' : 'heart-outline'} size={15} color={video.userLiked ? '#EF4444' : colors.textSecondary} />
-              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{video.likeCount ?? 0}</Text>
+              <Text style={{ color: video.userLiked ? '#EF4444' : colors.text, fontSize: 13, fontWeight: '600' }}>
+                {video.likeCount ?? 0}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => Share.share({ message: `${video.title} — ${video.mosque?.name ?? 'Mosque'}\n\nWatch on the Masjid app`, title: video.title }).catch(() => {})}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.surfaceSecondary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: actionBtnBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 }}
             >
               <Ionicons name="share-outline" size={15} color={colors.textSecondary} />
               <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Share</Text>
@@ -225,11 +298,11 @@ export default function VideoScreen() {
           </View>
         </View>
 
-        {/* Comment panel — slides up */}
+        {/* Comment panel — slides up, lifts with keyboard */}
         <Animated.View
           style={{
             position: 'absolute',
-            bottom: 0,
+            bottom: keyboardShift,
             left: 0,
             right: 0,
             height: panelHeight,
@@ -241,7 +314,6 @@ export default function VideoScreen() {
             shadowOffset: { width: 0, height: -4 },
             shadowRadius: 16,
             elevation: 12,
-            overflow: 'hidden',
           }}
         >
           {/* Panel header */}
@@ -323,8 +395,7 @@ export default function VideoScreen() {
               position: 'absolute', bottom: 0, left: 0, right: 0,
               backgroundColor: colors.surface,
               borderTopWidth: 1, borderTopColor: colors.border,
-              paddingHorizontal: 12, paddingTop: 8,
-              paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+              paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12,
             }}>
               {commentError ? <Text style={{ color: '#EF4444', fontSize: 12, marginBottom: 4, paddingHorizontal: 4 }}>{commentError}</Text> : null}
               {isSignedIn ? (
@@ -367,7 +438,7 @@ export default function VideoScreen() {
             </View>
           )}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   )
 }

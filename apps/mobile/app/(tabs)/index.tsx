@@ -14,6 +14,7 @@ import { StreakWidget } from '../../components/StreakWidget'
 import { RamadanBanner } from '../../components/RamadanBanner'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useNearMeAlerts } from '../../hooks/useNearMeAlerts'
+import { useTranslation } from 'react-i18next'
 
 const VIDEO_CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   LECTURE:     { bg: '#EDE9FE', text: '#6D28D9' },
@@ -101,6 +102,7 @@ function VideoFeedCard({ item }: { item: any }) {
 export default function HomeScreen() {
   const { user } = useUser()
   const { colors } = useTheme()
+  const { t } = useTranslation()
   useNearMeAlerts()
   const queryClient = useQueryClient()
   const firstName = user?.firstName ?? 'Friend'
@@ -157,15 +159,14 @@ export default function HomeScreen() {
           <TouchableOpacity
             onPress={() => router.push('/messages')}
             style={{
-              backgroundColor: colors.isDark ? '#2D3748' : '#FFFFFF',
+              backgroundColor: colors.primary,
               borderRadius: 22, padding: 11,
-              borderWidth: 1, borderColor: colors.isDark ? '#4A5568' : '#D1D5DB',
-              shadowColor: '#000', shadowOpacity: 0.15,
+              shadowColor: colors.primary, shadowOpacity: 0.35,
               shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
-              elevation: 5,
+              elevation: 4,
             }}
           >
-            <Ionicons name="mail-outline" size={20} color={colors.text} />
+            <Ionicons name="mail-outline" size={20} color="white" />
             {unreadMessages > 0 && (
               <View style={{
                 position: 'absolute', top: 4, right: 4,
@@ -219,13 +220,13 @@ export default function HomeScreen() {
           shadowOffset: { width: 0, height: 6 }, shadowRadius: 16, elevation: 4,
         }}>
           <Text style={{ color: colors.primaryLight, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 6 }}>
-            GET STARTED
+            {t('home_get_started')}
           </Text>
           <Text style={{ color: 'white', fontWeight: '800', fontSize: 18, marginBottom: 6, letterSpacing: -0.3, lineHeight: 24 }}>
-            🕌 Find your mosque
+            🕌 {t('home_find_mosque')}
           </Text>
           <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 20, marginBottom: 16 }}>
-            Follow mosques to see prayer times, events, and announcements right here.
+            {t('home_find_mosque_body')}
           </Text>
           <TouchableOpacity
             style={{
@@ -235,7 +236,7 @@ export default function HomeScreen() {
             }}
             onPress={() => router.push('/(tabs)/discover')}
           >
-            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>Discover Mosques →</Text>
+            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>{t('home_discover_mosques')} →</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -272,9 +273,9 @@ export default function HomeScreen() {
               <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
                 <Text style={{ fontSize: 32 }}>📭</Text>
               </View>
-              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>All caught up</Text>
+              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>{t('home_all_caught_up')}</Text>
               <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-                Your mosques haven't posted anything new yet
+                {t('home_feed_empty_message')}
               </Text>
             </View>
           ) : null

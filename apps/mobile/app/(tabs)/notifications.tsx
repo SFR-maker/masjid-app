@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { api } from '../../lib/api'
 import { useTheme } from '../../contexts/ThemeContext'
+import { useTranslation } from 'react-i18next'
 
 const TYPE_ICONS: Record<string, string> = {
   PRAYER_REMINDER: '🕌',
@@ -21,6 +22,7 @@ const TYPE_ICONS: Record<string, string> = {
 
 export default function NotificationsScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const { data, isLoading, isRefetching, refetch } = useQuery({
@@ -34,6 +36,19 @@ export default function NotificationsScreen() {
     onSuccess: () => {
       queryClient.setQueryData(['notifications-unread-count'], 0)
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+
+  const readOneMutation = useMutation({
+    mutationFn: (id: string) => api.put(`/notifications/${id}/read`, {}),
+    onMutate: (id: string) => {
+      queryClient.setQueryData(['notifications'], (old: any) => {
+        if (!old) return old
+        const wasUnread = old.data?.items?.find((n: any) => n.id === id && !n.isRead)
+        if (!wasUnread) return old
+        queryClient.setQueryData(['notifications-unread-count'], (prev: number) => Math.max(0, (prev ?? 1) - 1))
+        return { ...old, data: { ...old.data, items: old.data.items.map((n: any) => n.id === id ? { ...n, isRead: true } : n) } }
+      })
     },
   })
 
@@ -60,12 +75,12 @@ export default function NotificationsScreen() {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 }}>
         <View>
           <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.6 }}>
-            Notifications
+            {t('notifications_title')}
           </Text>
           {unreadCount > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
               <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary }} />
-              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{unreadCount} unread</Text>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{t('notifications_unread', { count: unreadCount })}</Text>
             </View>
           )}
         </View>
@@ -75,7 +90,7 @@ export default function NotificationsScreen() {
               onPress={() => readAllMutation.mutate()}
               style={{ backgroundColor: colors.primaryLight, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 }}
             >
-              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>Mark read</Text>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>{t('notifications_mark_read')}</Text>
             </TouchableOpacity>
           )}
           {notifications.length > 0 && (
@@ -83,7 +98,7 @@ export default function NotificationsScreen() {
               onPress={() => clearAllMutation.mutate()}
               style={{ backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: colors.border }}
             >
-              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>Clear</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>{t('common_clear')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -106,13 +121,14 @@ export default function NotificationsScreen() {
               <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
                 <Ionicons name="notifications-outline" size={32} color={colors.primary} />
               </View>
-              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>All caught up</Text>
-              <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>Follow mosques to get updates on events and announcements</Text>
+              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>{t('notifications_all_caught_up')}</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>{t('notifications_empty_body')}</Text>
             </View>
           }
           renderItem={({ item }: { item: any }) => (
             <TouchableOpacity
               onPress={() => {
+                if (!item.isRead) readOneMutation.mutate(item.id)
                 const d = item.data ?? {}
                 // Bug 2 fix: admin message replies route to the messages screen
                 if (d.messageId || item.type === 'MESSAGE_REPLY') router.push('/messages' as any)

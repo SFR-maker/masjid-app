@@ -181,7 +181,7 @@ export default function VideoScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         {/* Back button with pill background */}
         <Pressable
           onPress={() => router.back()}

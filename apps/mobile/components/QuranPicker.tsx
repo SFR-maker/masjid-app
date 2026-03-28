@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   View, Text, Modal, TouchableOpacity, TextInput, FlatList,
-  ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet,
+  ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, ScrollView,
 } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
 import { useTheme } from '../contexts/ThemeContext'
@@ -148,14 +148,15 @@ export function QuranPicker({ verse, onSelect }: Props) {
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
         <KeyboardAvoidingView
           style={{ flex: 1, justifyContent: 'flex-end' }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
         >
           <TouchableOpacity
             style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' }}
             activeOpacity={1}
             onPress={() => setOpen(false)}
           />
-          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '82%', minHeight: step === 'surah' ? 480 : 'auto' }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '82%', minHeight: step === 'surah' ? 480 : 0 }}>
             {/* Header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <TouchableOpacity onPress={() => step === 'ayah' ? setStep('surah') : setOpen(false)}>
@@ -214,7 +215,11 @@ export function QuranPicker({ verse, onSelect }: Props) {
                 )}
               </>
             ) : (
-              <View style={{ padding: 20, gap: 14 }}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ padding: 20, gap: 14 }}
+                showsVerticalScrollIndicator={false}
+              >
                 <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                   Select ayah range (1–{selectedSurah?.numberOfAyahs}) · max 3 ayat
                 </Text>
@@ -254,7 +259,7 @@ export function QuranPicker({ verse, onSelect }: Props) {
                     : <Text style={{ color: fromInput ? colors.primaryContrast : colors.textTertiary, fontWeight: '700', fontSize: 15 }}>Add Verse{toInput && parseInt(toInput) > parseInt(fromInput) ? 's' : ''}</Text>
                   }
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
             )}
           </View>
         </KeyboardAvoidingView>

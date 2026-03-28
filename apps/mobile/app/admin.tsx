@@ -1251,7 +1251,7 @@ export default function AdminDashboard() {
         </View>
 
         {/* Section tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 12, paddingRight: 4, paddingVertical: 10, alignItems: 'center' }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingLeft: 12, paddingRight: 4, paddingVertical: 10, alignItems: 'center' }}>
           {SECTIONS.map((s) => (
             <PillTab key={s.key} label={s.label} icon={s.icon} active={section === s.key} onPress={() => setSection(s.key)} />
           ))}

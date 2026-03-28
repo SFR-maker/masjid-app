@@ -19,8 +19,8 @@ const DONATION_TYPES = [
   { key: 'SADAQAH',            label: 'Sadaqah',            icon: '💚' },
   { key: 'SPECIAL_EVENT',      label: 'Special Event',      icon: '🎉' },
   { key: 'MOSQUE_MAINTENANCE', label: 'Mosque Maintenance', icon: '🔧' },
-  { key: 'MEMBERSHIP_DUES',    label: 'Membership Dues',    icon: '🪪' },
-  { key: 'SUBSCRIPTION',       label: 'Subscription',       icon: '🔄' },
+  { key: 'MEMBERSHIP_DUES',    label: 'Mosque Membership',  icon: '🪪' },
+  { key: 'SUBSCRIPTION',       label: 'Monthly Support',    icon: '🔄' },
 ] as const
 
 export default function DonateScreen() {
@@ -372,6 +372,9 @@ export default function DonateScreen() {
           }
         </TouchableOpacity>
 
+        <Text style={{ color: colors.textTertiary, fontSize: 12, textAlign: 'center', lineHeight: 18, marginBottom: 4 }}>
+          🕌 Donations go directly to the mosque — not to Masjidly.
+        </Text>
         <Text style={{ color: colors.textTertiary, fontSize: 11, textAlign: 'center', lineHeight: 16 }}>
           Payments are processed securely via Stripe. A receipt will be emailed to you.
         </Text>

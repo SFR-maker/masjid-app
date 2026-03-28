@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput,
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { formatDistanceToNow } from 'date-fns'
 import { api } from '../lib/api'
 import { useTheme } from '../contexts/ThemeContext'
@@ -13,6 +13,7 @@ export default function MessagesScreen() {
   const { colors } = useTheme()
   const { userId } = useAuth()
   const queryClient = useQueryClient()
+  const { tab: tabParam, groupId: groupIdParam } = useLocalSearchParams<{ tab?: string; groupId?: string }>()
 
   const [tab, setTab] = useState<'direct' | 'groups'>('direct')
 
@@ -118,6 +119,14 @@ export default function MessagesScreen() {
       ]
     )
   }
+
+  // Navigate to group from push notification deep link
+  useEffect(() => {
+    if (tabParam === 'groups') {
+      setTab('groups')
+      if (groupIdParam) setSelectedGroupId(groupIdParam)
+    }
+  }, [tabParam, groupIdParam])
 
   // Scroll to bottom on new replies
   useEffect(() => {

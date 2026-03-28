@@ -746,6 +746,56 @@ export async function mosqueRoutes(app: FastifyInstance) {
     }
   )
 
+  // POST /mosques/:id/followers/group-message — create a named group chat, add all followers, send initial message + push notification
+  app.post(
+    '/:id/followers/group-message',
+    { preHandler: [requireMosqueAdmin((req) => (req.params as any).id)] },
+    async (req, reply) => {
+      const { id: mosqueId } = req.params as { id: string }
+      const { groupName, message } = z.object({
+        groupName: z.string().min(1).max(100),
+        message: z.string().min(1).max(2000),
+      }).parse(req.body)
+
+      // Get all follower user IDs
+      const followers = await prisma.userFollow.findMany({
+        where: { mosqueId },
+        select: { userId: true },
+      })
+      const memberIds = followers.map((f) => f.userId)
+
+      if (memberIds.length === 0) {
+        return reply.status(400).send({ success: false, error: 'This mosque has no followers to message' })
+      }
+
+      // Create group chat and initial message in a transaction
+      const group = await prisma.$transaction(async (tx) => {
+        const created = await tx.groupChat.create({
+          data: {
+            mosqueId,
+            name: groupName,
+            members: { create: memberIds.map((userId) => ({ userId })) },
+          },
+        })
+        await tx.groupChatMessage.create({
+          data: { groupChatId: created.id, body: message, fromAdmin: true },
+        })
+        return created
+      })
+
+      // Send push notifications to all followers
+      notificationQueue.add('mosque_group_message', {
+        type: 'mosque_group_message',
+        userIds: memberIds,
+        title: groupName,
+        body: message,
+        data: { groupId: group.id, mosqueId, type: 'group_message' },
+      }).catch(() => {})
+
+      return reply.status(201).send({ success: true, data: { groupId: group.id, memberCount: memberIds.length } })
+    }
+  )
+
   // DELETE /mosques/:id/admins/:adminId — remove admin
   app.delete(
     '/:id/admins/:adminId',

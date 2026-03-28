@@ -155,6 +155,8 @@ function RootNavigator() {
         router.push(`/mosque/${data.mosqueId}`)
       } else if (data?.type === 'ayah_of_day' && data?.surah && data?.ayah) {
         router.push(`/quran?surah=${data.surah}&ayah=${data.ayah}`)
+      } else if (data?.groupId) {
+        router.push(`/messages?tab=groups&groupId=${data.groupId}` as any)
       } else if (data?.messageId || data?.type === 'MESSAGE_REPLY') {
         router.push('/messages')
       }

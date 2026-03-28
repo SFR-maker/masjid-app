@@ -8,7 +8,7 @@ export const notificationQueue = new Queue('notifications', { connection: redis 
 const expo = new Expo()
 
 export interface NotificationJob {
-  type: 'mosque_announcement' | 'mosque_poll' | 'event_reminder' | 'event_rsvp_update' | 'prayer_reminder'
+  type: 'mosque_announcement' | 'mosque_poll' | 'event_reminder' | 'event_rsvp_update' | 'prayer_reminder' | 'mosque_group_message'
   mosqueId?: string
   eventId?: string
   userIds?: string[]
@@ -42,24 +42,26 @@ new Worker<NotificationJob>(
       userIds = follows.map((f) => f.userId).filter((id) => !optedOutIds.has(id))
     }
 
-    if (type === 'event_rsvp_update' && job.data.userIds?.length) {
+    if ((type === 'event_rsvp_update' || type === 'mosque_group_message') && job.data.userIds?.length) {
       userIds = job.data.userIds
     }
 
     if (!userIds.length) return
 
-    // Save in-app notifications
-    await prisma.notification.createMany({
-      data: userIds.map((userId) => ({
-        userId,
-        mosqueId,
-        type: notifType,
-        title,
-        body,
-        data,
-      })),
-      skipDuplicates: true,
-    })
+    // Save in-app notifications (skip for group messages — the chat itself is the record)
+    if (type !== 'mosque_group_message') {
+      await prisma.notification.createMany({
+        data: userIds.map((userId) => ({
+          userId,
+          mosqueId,
+          type: notifType,
+          title,
+          body,
+          data,
+        })),
+        skipDuplicates: true,
+      })
+    }
 
     // Get push tokens
     const tokens = await prisma.pushToken.findMany({

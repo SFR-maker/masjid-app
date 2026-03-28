@@ -139,6 +139,13 @@ export default function ProfileScreen() {
     )
   }
 
+  const { data: adminData } = useQuery({
+    queryKey: ['admin-mosques'],
+    queryFn: () => api.get<any>('/users/me/admin-mosques'),
+    staleTime: 60_000,
+  })
+  const isAdmin = (adminData?.data?.isSuperAdmin) || ((adminData?.data?.items?.length ?? 0) > 0)
+
   const followedMosques = follows?.data?.items ?? []
 
   async function handleSignOut() {
@@ -229,6 +236,31 @@ export default function ProfileScreen() {
             {user?.primaryEmailAddress?.emailAddress}
           </Text>
         </View>
+
+        {/* ── Admin shortcut (only for mosque admins) ────────────────────── */}
+        {isAdmin && (
+          <TouchableOpacity
+            onPress={() => router.replace('/admin' as any)}
+            activeOpacity={0.82}
+            style={{
+              marginHorizontal: 16, marginBottom: 20,
+              backgroundColor: colors.primary, borderRadius: 18,
+              paddingVertical: 16, paddingHorizontal: 20,
+              flexDirection: 'row', alignItems: 'center',
+              shadowColor: colors.primary, shadowOpacity: 0.3,
+              shadowOffset: { width: 0, height: 6 }, shadowRadius: 14, elevation: 6,
+            }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+              <Ionicons name="grid-outline" size={20} color="white" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 15 }}>Manage Mosque</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 1 }}>Switch to admin dashboard</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        )}
 
         {/* ── SECTION A: RESOURCES ───────────────────────────────────────── */}
         <Text style={sectionLabelStyle}>{t('profile_resources')}</Text>

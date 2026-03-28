@@ -447,16 +447,8 @@ export async function messageRoutes(app: FastifyInstance) {
         mediaType: z.enum(['audio', 'image', 'pdf', 'gif']),
       }).parse(req.body)
 
-      const { generateSignedUploadParams } = await import('../lib/cloudinary')
-      const params = await generateSignedUploadParams(`masjid/group-media/${groupId}`)
+      const { cloudinary } = await import('../lib/cloudinary')
 
-      // Override allowed_formats per type
-      const formatMap: Record<string, string> = {
-        audio: 'mp3,m4a,aac,wav,ogg',
-        image: 'jpg,jpeg,png,webp,gif',
-        pdf: 'pdf',
-        gif: 'gif',
-      }
       const resourceTypeMap: Record<string, string> = {
         audio: 'raw',
         image: 'image',
@@ -464,11 +456,22 @@ export async function messageRoutes(app: FastifyInstance) {
         gif: 'image',
       }
 
+      const folder = `masjid/group-media/${groupId}`
+      const timestamp = Math.round(Date.now() / 1000)
+      // Sign only folder + timestamp — must exactly match what the client sends in FormData
+      const signature = cloudinary.utils.api_sign_request(
+        { timestamp, folder },
+        process.env.CLOUDINARY_API_SECRET!
+      )
+
       return reply.send({
         success: true,
         data: {
-          ...params,
-          allowedFormats: formatMap[mediaType],
+          signature,
+          timestamp,
+          cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+          apiKey: process.env.CLOUDINARY_API_KEY,
+          folder,
           resourceType: resourceTypeMap[mediaType],
         },
       })

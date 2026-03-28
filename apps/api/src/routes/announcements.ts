@@ -8,10 +8,19 @@ export async function announcementRoutes(app: FastifyInstance) {
   // GET /mosques/:id/announcements
   app.get('/mosques/:id/announcements', async (req, reply) => {
     const { id: mosqueId } = req.params as { id: string }
-    const { limit = '20', cursor } = req.query as any
+    const { limit = '20', cursor, admin } = req.query as any
+
+    // Admin flag: include unpublished if caller is a mosque admin
+    let showAll = false
+    if (admin === '1' && req.userId) {
+      const isAdmin = await prisma.mosqueAdmin.findUnique({
+        where: { userId_mosqueId: { userId: req.userId, mosqueId } },
+      })
+      showAll = !!(isAdmin || req.isSuperAdmin)
+    }
 
     const announcements = await prisma.announcement.findMany({
-      where: { mosqueId, isPublished: true },
+      where: { mosqueId, ...(showAll ? {} : { isPublished: true }) },
       take: Number(limit),
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],

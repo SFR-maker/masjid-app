@@ -15,6 +15,7 @@ export default function VideosPage() {
   const [form, setForm] = useState({ title: '', description: '', category: 'GENERAL' })
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
+  const [uploadedVideoId, setUploadedVideoId] = useState<string | null>(null)
   const [editingVideo, setEditingVideo] = useState<any>(null)
   const [editForm, setEditForm] = useState({ title: '', description: '', category: '' })
   const [engagementId, setEngagementId] = useState<string | null>(null)
@@ -82,9 +83,8 @@ export default function VideosPage() {
         method: 'PUT', body: file, headers: { 'Content-Type': file.type },
       })
       setUploadProgress('✓ Video uploaded! Processing begins shortly...')
+      setUploadedVideoId(uploadData.videoId)
       queryClient.invalidateQueries({ queryKey: ['admin-videos', mosqueId] })
-      setShowForm(false)
-      setForm({ title: '', description: '', category: 'GENERAL' })
     } catch {
       setUploadProgress('Upload failed. Please try again.')
     } finally {
@@ -146,9 +146,38 @@ export default function VideosPage() {
                 {uploadProgress}
               </div>
             )}
-            <button onClick={() => setShowForm(false)} className="border border-gray-200 text-gray-600 rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-gray-50">
-              Cancel
-            </button>
+            {uploadedVideoId ? (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    publishMutation.mutate(uploadedVideoId)
+                    setShowForm(false)
+                    setForm({ title: '', description: '', category: 'GENERAL' })
+                    setUploadedVideoId(null)
+                    setUploadProgress('')
+                  }}
+                  disabled={publishMutation.isPending}
+                  className="bg-green-800 text-white rounded-xl px-5 py-2.5 text-sm font-semibold hover:bg-green-900 disabled:opacity-50"
+                >
+                  ▶ Publish Now
+                </button>
+                <button
+                  onClick={() => {
+                    setShowForm(false)
+                    setForm({ title: '', description: '', category: 'GENERAL' })
+                    setUploadedVideoId(null)
+                    setUploadProgress('')
+                  }}
+                  className="border border-gray-200 text-gray-600 rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-gray-50"
+                >
+                  Keep as Draft
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => { setShowForm(false); setUploadProgress(''); setUploadedVideoId(null) }} className="border border-gray-200 text-gray-600 rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-gray-50">
+                Cancel
+              </button>
+            )}
           </div>
         </div>
       )}

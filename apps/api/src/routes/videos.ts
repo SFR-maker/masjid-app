@@ -197,7 +197,7 @@ export async function videoRoutes(app: FastifyInstance) {
           muxPlaybackId: playbackId,
           thumbnailUrl: playbackId ? getMuxThumbnailUrl(playbackId) : undefined,
           duration: Math.round(data.duration ?? 0),
-          isPublished: false, // admin must explicitly publish
+          // isPublished intentionally NOT set here — admin controls this via the Publish button
         },
       })
     }

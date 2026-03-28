@@ -13,3 +13,4 @@ ios/
 android/
 com-masjidapp-mobile-firebase-adminsdk-*.json
 apps/mobile/GoogleService-Info.plist
+.worktrees

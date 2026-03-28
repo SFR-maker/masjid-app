@@ -96,7 +96,7 @@ export default function VideosPage() {
   const statusColors: Record<string, string> = {
     PROCESSING: 'bg-amber-100 text-amber-600',
     READY: 'bg-green-100 text-green-700',
-    ERRORED: 'bg-red-100 text-red-600',
+    ERROR: 'bg-red-100 text-red-600',
   }
 
   return (

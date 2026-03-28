@@ -15,8 +15,14 @@ import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy'
 import { formatDistanceToNow, format } from 'date-fns'
 import { api } from '../lib/api'
 import { useTheme } from '../contexts/ThemeContext'
+import { DashboardHome } from '../components/admin/DashboardHome'
+import { SettingsSection } from '../components/admin/SettingsSection'
+import { TeamSection } from '../components/admin/TeamSection'
+import { ServicesSection } from '../components/admin/ServicesSection'
+import { DocumentsSection } from '../components/admin/DocumentsSection'
+import { VerificationsSection, ReportsSection, PlatformStatsSection } from '../components/admin/SuperAdminSections'
 
-type AdminSection = 'home' | 'announcements' | 'events' | 'prayer' | 'videos' | 'messages' | 'polls' | 'followers'
+type AdminSection = 'home' | 'dashboard' | 'announcements' | 'events' | 'prayer' | 'videos' | 'messages' | 'polls' | 'followers' | 'settings' | 'team' | 'services' | 'documents' | 'verifications' | 'reports' | 'platform'
 
 // ── Pill tab ─────────────────────────────────────────────────────────────────
 function PillTab({ label, icon, active, onPress }: { label: string; icon: string; active: boolean; onPress: () => void }) {
@@ -1119,14 +1125,24 @@ export default function AdminDashboard() {
 
   // ── Mosque sub-sections ──
   if (selectedMosque || (isSuperAdmin && section !== 'home')) {
-    const SECTIONS: { key: AdminSection; label: string; icon: string }[] = [
+    const SECTIONS: { key: AdminSection; label: string; icon: string }[] = selectedMosque ? [
+      { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline' },
       { key: 'announcements', label: 'Posts', icon: 'megaphone-outline' },
       { key: 'events', label: 'Events', icon: 'calendar-outline' },
-      { key: 'prayer', label: 'Prayer Times', icon: 'time-outline' },
+      { key: 'prayer', label: 'Prayer', icon: 'time-outline' },
       { key: 'videos', label: 'Videos', icon: 'videocam-outline' },
       { key: 'polls', label: 'Polls', icon: 'bar-chart-outline' },
-      { key: 'messages', label: 'Messages', icon: 'mail-outline' },
+      { key: 'services', label: 'Services', icon: 'layers-outline' },
+      { key: 'documents', label: 'Documents', icon: 'document-text-outline' },
+      { key: 'team', label: 'Team', icon: 'people-circle-outline' },
       { key: 'followers', label: 'Followers', icon: 'people-outline' },
+      { key: 'messages', label: 'Messages', icon: 'mail-outline' },
+      { key: 'settings', label: 'Settings', icon: 'settings-outline' },
+    ] : [
+      { key: 'videos', label: 'Videos', icon: 'videocam-outline' },
+      { key: 'verifications', label: 'Verifications', icon: 'checkmark-shield-outline' },
+      { key: 'reports', label: 'Reports', icon: 'flag-outline' },
+      { key: 'platform', label: 'Platform Stats', icon: 'stats-chart-outline' },
     ]
 
     return (
@@ -1150,7 +1166,7 @@ export default function AdminDashboard() {
         </View>
 
         {/* Section tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 0 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 12, paddingRight: 4, paddingVertical: 10 }}>
           {SECTIONS.map((s) => (
             <PillTab key={s.key} label={s.label} icon={s.icon} active={section === s.key} onPress={() => setSection(s.key)} />
           ))}
@@ -1158,17 +1174,21 @@ export default function AdminDashboard() {
 
         {/* Section content */}
         <View style={{ flex: 1 }}>
+          {section === 'dashboard' && selectedMosque && (
+            <DashboardHome mosqueId={selectedMosque.id} mosqueName={selectedMosque.name} onNavigate={(s) => setSection(s as AdminSection)} />
+          )}
           {section === 'announcements' && selectedMosque && <AnnouncementsSection mosqueId={selectedMosque.id} />}
           {section === 'events' && selectedMosque && <EventsSection mosqueId={selectedMosque.id} />}
           {section === 'prayer' && selectedMosque && <PrayerTimesSection mosqueId={selectedMosque.id} />}
           {section === 'videos' && (
-            <VideosSection
-              mosqueId={selectedMosque?.id ?? null}
-              isSuperAdmin={isSuperAdmin}
-            />
+            <VideosSection mosqueId={selectedMosque?.id ?? null} isSuperAdmin={isSuperAdmin} />
           )}
           {section === 'polls' && selectedMosque && <PollsSection mosqueId={selectedMosque.id} />}
+          {section === 'services' && selectedMosque && <ServicesSection mosqueId={selectedMosque.id} />}
+          {section === 'documents' && selectedMosque && <DocumentsSection mosqueId={selectedMosque.id} />}
+          {section === 'team' && selectedMosque && <TeamSection mosqueId={selectedMosque.id} />}
           {section === 'followers' && selectedMosque && <FollowersSection mosqueId={selectedMosque.id} />}
+          {section === 'settings' && selectedMosque && <SettingsSection mosqueId={selectedMosque.id} />}
           {section === 'messages' && (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
               <Ionicons name="mail-outline" size={48} color={colors.textTertiary} />
@@ -1181,6 +1201,9 @@ export default function AdminDashboard() {
               </TouchableOpacity>
             </View>
           )}
+          {section === 'verifications' && <VerificationsSection />}
+          {section === 'reports' && <ReportsSection />}
+          {section === 'platform' && <PlatformStatsSection />}
         </View>
       </SafeAreaView>
     )
@@ -1212,21 +1235,33 @@ export default function AdminDashboard() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
       >
-        {/* Super admin global video upload shortcut */}
+        {/* Super admin tools */}
         {isSuperAdmin && (
-          <TouchableOpacity
-            onPress={() => setSection('videos')}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#FEF3C7', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#F59E0B' }}
-          >
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#FDE68A', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="globe-outline" size={22} color="#D97706" />
+          <View style={{ backgroundColor: '#FEF3C7', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#F59E0B', gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Ionicons name="shield-checkmark" size={16} color="#D97706" />
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#92400E' }}>Super Admin Tools</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#92400E' }}>Upload Global Video</Text>
-              <Text style={{ fontSize: 12, color: '#B45309', marginTop: 1 }}>Post videos all users can see in the feed</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#D97706" />
-          </TouchableOpacity>
+            {[
+              { label: 'Upload Global Video', icon: 'videocam-outline', s: 'videos' as AdminSection, desc: 'Post to all users' },
+              { label: 'Mosque Verifications', icon: 'checkmark-shield-outline', s: 'verifications' as AdminSection, desc: 'Approve pending mosques' },
+              { label: 'Content Reports', icon: 'flag-outline', s: 'reports' as AdminSection, desc: 'Review flagged content' },
+              { label: 'Platform Stats', icon: 'stats-chart-outline', s: 'platform' as AdminSection, desc: 'Users, mosques, activity' },
+            ].map((a) => (
+              <TouchableOpacity
+                key={a.s}
+                onPress={() => setSection(a.s)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFBEB', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FDE68A' }}
+              >
+                <Ionicons name={a.icon as any} size={20} color="#D97706" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E' }}>{a.label}</Text>
+                  <Text style={{ fontSize: 11, color: '#B45309' }}>{a.desc}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color="#D97706" />
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
 
         <Text style={{ fontSize: 14, color: colors.textSecondary }}>
@@ -1234,73 +1269,82 @@ export default function AdminDashboard() {
         </Text>
 
         {mosques.map((mosque) => (
-          <TouchableOpacity
+          <View
             key={mosque.id}
-            onPress={() => { setSelectedMosqueId(mosque.id); setSection('announcements') }}
-            activeOpacity={0.85}
-            style={{ backgroundColor: colors.surface, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: colors.border, shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: 1 }}
+            style={{ backgroundColor: colors.surface, borderRadius: 18, borderWidth: 1, borderColor: colors.border, shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: 1, overflow: 'hidden' }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-              {mosque.logoUrl ? (
-                <Image source={{ uri: mosque.logoUrl }} style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: colors.border }} contentFit="cover" />
-              ) : (
-                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 24 }}>🕌</Text>
+            {/* Tappable header — goes to dashboard */}
+            <TouchableOpacity
+              onPress={() => { setSelectedMosqueId(mosque.id); setSection('dashboard') }}
+              activeOpacity={0.85}
+              style={{ padding: 16 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+                {mosque.logoUrl ? (
+                  <Image source={{ uri: mosque.logoUrl }} style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: colors.border }} contentFit="cover" />
+                ) : (
+                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 24 }}>🕌</Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }} numberOfLines={1}>{mosque.name}</Text>
+                    {mosque.isVerified && <Ionicons name="checkmark-circle" size={14} color={colors.primary} />}
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>{mosque.city}, {mosque.state}</Text>
+                  <View style={{ backgroundColor: colors.primaryLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 }}>
+                    <Text style={{ fontSize: 10, color: colors.primary, fontWeight: '700' }}>{mosque.role}</Text>
+                  </View>
                 </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }} numberOfLines={1}>{mosque.name}</Text>
-                  {mosque.isVerified && <Ionicons name="checkmark-circle" size={14} color={colors.primary} />}
-                </View>
-                <Text style={{ fontSize: 12, color: colors.textTertiary }}>{mosque.city}, {mosque.state}</Text>
-                <View style={{ backgroundColor: colors.primaryLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 }}>
-                  <Text style={{ fontSize: 10, color: colors.primary, fontWeight: '700' }}>{mosque.role}</Text>
-                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
               </View>
-            </View>
 
-            {/* Stats row */}
-            <View style={{ flexDirection: 'row', gap: 0 }}>
-              {[
-                { label: 'Followers', value: mosque.followersCount ?? 0, icon: 'people-outline' },
-                { label: 'Events', value: mosque.eventsCount ?? 0, icon: 'calendar-outline' },
-                { label: 'Posts', value: mosque.announcementsCount ?? 0, icon: 'megaphone-outline' },
-                { label: 'Videos', value: mosque.videosCount ?? 0, icon: 'videocam-outline' },
-              ].map((stat, i) => (
-                <View key={stat.label} style={{ flex: 1, alignItems: 'center', borderLeftWidth: i > 0 ? 1 : 0, borderLeftColor: colors.border, paddingVertical: 6 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>{stat.value}</Text>
-                  <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 1 }}>{stat.label}</Text>
-                </View>
-              ))}
-            </View>
+              {/* Stats row */}
+              <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 }}>
+                {[
+                  { label: 'Followers', value: mosque.followersCount ?? 0 },
+                  { label: 'Events', value: mosque.eventsCount ?? 0 },
+                  { label: 'Posts', value: mosque.announcementsCount ?? 0 },
+                  { label: 'Videos', value: mosque.videosCount ?? 0 },
+                ].map((stat, i) => (
+                  <View key={stat.label} style={{ flex: 1, alignItems: 'center', borderLeftWidth: i > 0 ? 1 : 0, borderLeftColor: colors.border, paddingVertical: 4 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>{stat.value}</Text>
+                    <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 1 }}>{stat.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </TouchableOpacity>
 
-            {/* Quick action pills */}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            {/* Quick action pills — separate from card tap to avoid Android bubbling */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 14, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 }}>
               {[
                 { label: 'Posts', icon: 'megaphone-outline', s: 'announcements' as AdminSection },
                 { label: 'Events', icon: 'calendar-outline', s: 'events' as AdminSection },
-                { label: 'Prayer Times', icon: 'time-outline', s: 'prayer' as AdminSection },
+                { label: 'Prayer', icon: 'time-outline', s: 'prayer' as AdminSection },
                 { label: 'Videos', icon: 'videocam-outline', s: 'videos' as AdminSection },
-                { label: 'Polls', icon: 'bar-chart-outline', s: 'polls' as AdminSection },
-                { label: 'Followers', icon: 'people-outline', s: 'followers' as AdminSection },
-                { label: 'Messages', icon: 'mail-outline', s: 'messages' as AdminSection },
+                { label: 'Services', icon: 'layers-outline', s: 'services' as AdminSection },
+                { label: 'Documents', icon: 'document-text-outline', s: 'documents' as AdminSection },
+                { label: 'Team', icon: 'people-circle-outline', s: 'team' as AdminSection },
+                { label: 'Settings', icon: 'settings-outline', s: 'settings' as AdminSection },
               ].map((a) => (
                 <TouchableOpacity
                   key={a.label}
                   onPress={() => { setSelectedMosqueId(mosque.id); setSection(a.s) }}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: colors.border }}
+                  activeOpacity={0.8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: colors.border }}
                 >
                   <Ionicons name={a.icon as any} size={13} color={colors.textSecondary} />
                   <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>{a.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          </TouchableOpacity>
+          </View>
         ))}
 
         <TouchableOpacity
           onPress={() => router.replace('/(tabs)')}
+          activeOpacity={0.7}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 }}
         >
           <Ionicons name="person-outline" size={16} color={colors.textSecondary} />

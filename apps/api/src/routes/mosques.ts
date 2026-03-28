@@ -239,6 +239,59 @@ export async function mosqueRoutes(app: FastifyInstance) {
     }
   )
 
+  // GET /mosques/:id/dashboard-stats — combined stats for admin dashboard
+  app.get(
+    '/:id/dashboard-stats',
+    { preHandler: [requireMosqueAdmin((req) => (req.params as any).id)] },
+    async (req, reply) => {
+      const { id: mosqueId } = req.params as { id: string }
+      const now = new Date()
+
+      const [
+        followersCount, upcomingEventsCount, rsvpCount, videosCount,
+        unreadCount, recentAnnouncements, upcomingEvents, topAnnouncements,
+      ] = await Promise.all([
+        prisma.userFollow.count({ where: { mosqueId } }),
+        prisma.event.count({ where: { mosqueId, isPublished: true, isCancelled: false, startTime: { gte: now } } }),
+        prisma.eventRsvp.count({ where: { event: { mosqueId, startTime: { gte: now } }, status: 'GOING' } }),
+        prisma.video.count({ where: { mosqueId, isPublished: true } }),
+        prisma.directMessage.count({ where: { mosqueId, isRead: false } }),
+        prisma.announcement.findMany({
+          where: { mosqueId },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: { id: true, title: true, priority: true, isPublished: true, createdAt: true, likeCount: true, isPinned: true },
+        }),
+        prisma.event.findMany({
+          where: { mosqueId, isPublished: true, isCancelled: false, startTime: { gte: now } },
+          orderBy: { startTime: 'asc' },
+          take: 5,
+          select: { id: true, title: true, startTime: true, location: true, category: true, _count: { select: { rsvps: { where: { status: 'GOING' } } } } },
+        }),
+        prisma.announcement.findMany({
+          where: { mosqueId, isPublished: true },
+          orderBy: { likeCount: 'desc' },
+          take: 5,
+          select: { id: true, title: true, likeCount: true, commentCount: true, createdAt: true },
+        }),
+      ])
+
+      return reply.send({
+        success: true,
+        data: {
+          followersCount,
+          upcomingEventsCount,
+          rsvpCount,
+          videosCount,
+          unreadCount,
+          recentAnnouncements,
+          upcomingEvents: upcomingEvents.map((e) => ({ ...e, rsvpCount: e._count.rsvps, _count: undefined })),
+          topAnnouncements,
+        },
+      })
+    }
+  )
+
   // POST /mosques/:id/follow — allowed for both claimed and unclaimed mosques
   app.post('/:id/follow', { preHandler: [requireAuth] }, async (req, reply) => {
     const { id: mosqueId } = req.params as { id: string }

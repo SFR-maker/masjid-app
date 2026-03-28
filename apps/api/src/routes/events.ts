@@ -50,14 +50,23 @@ export async function eventRoutes(app: FastifyInstance) {
   // GET /mosques/:id/events
   app.get('/mosques/:id/events', async (req, reply) => {
     const { id: mosqueId } = req.params as { id: string }
-    const { upcoming = 'true', limit = '20', cursor } = req.query as any
+    const { upcoming = 'true', limit = '20', cursor, admin } = req.query as any
     const userId = req.userId
 
     const now = new Date()
 
+    // Admin mode: show ALL events (including drafts/cancelled/past) to verified mosque admins
+    let isAdmin = false
+    if (admin === '1' && userId) {
+      const adminRecord = await prisma.mosqueAdmin.findUnique({
+        where: { userId_mosqueId: { userId, mosqueId } },
+      })
+      isAdmin = !!(adminRecord || req.isSuperAdmin)
+    }
+
     // Check if userId follows this mosque (for private event visibility)
     let isFollower = false
-    if (userId) {
+    if (userId && !isAdmin) {
       const follow = await prisma.userFollow.findUnique({
         where: { userId_mosqueId: { userId, mosqueId } },
       })
@@ -67,10 +76,12 @@ export async function eventRoutes(app: FastifyInstance) {
     const events = await prisma.event.findMany({
       where: {
         mosqueId,
-        isPublished: true,
-        isCancelled: false,
-        ...(upcoming === 'true' ? { startTime: { gte: now } } : {}),
-        ...(!isFollower ? { isPrivate: false } : {}),
+        ...(isAdmin ? {} : {
+          isPublished: true,
+          isCancelled: false,
+          ...(upcoming === 'true' ? { startTime: { gte: now } } : {}),
+          ...(!isFollower ? { isPrivate: false } : {}),
+        }),
       },
       take: Math.min(100, Number(limit) || 20),
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),

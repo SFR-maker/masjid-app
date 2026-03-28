@@ -106,7 +106,15 @@ export async function videoRoutes(app: FastifyInstance) {
         orderBy: { createdAt: 'desc' },
       })
 
-      return reply.send({ success: true, data: { items: videos } })
+      return reply.send({
+        success: true,
+        data: {
+          items: videos.map((v) => ({
+            ...v,
+            thumbnailUrl: v.muxPlaybackId ? getMuxThumbnailUrl(v.muxPlaybackId) : null,
+          })),
+        },
+      })
     }
   )
 
@@ -449,6 +457,29 @@ export async function videoRoutes(app: FastifyInstance) {
     if (r.userId !== userId) return reply.status(403).send({ success: false, error: 'Forbidden' })
     await prisma.videoCommentReply.delete({ where: { id: replyId } })
     return reply.send({ success: true })
+  })
+
+  // GET /super-admin/videos — list all global (super admin) videos
+  app.get('/super-admin/videos', { preHandler: [requireAuth] }, async (req, reply) => {
+    if (!req.isSuperAdmin) return reply.status(403).send({ success: false, error: 'Super admin only' })
+    const { limit = '30', cursor } = req.query as any
+    const videos = await prisma.video.findMany({
+      where: { isSuperAdminPost: true },
+      take: Math.min(100, Number(limit) || 30),
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { createdAt: 'desc' },
+    })
+    return reply.send({
+      success: true,
+      data: {
+        items: videos.map((v) => ({
+          ...v,
+          thumbnailUrl: v.muxPlaybackId ? getMuxThumbnailUrl(v.muxPlaybackId) : null,
+        })),
+        cursor: videos[videos.length - 1]?.id,
+        hasMore: videos.length === Number(limit),
+      },
+    })
   })
 
   // POST /super-admin/videos/upload — super admin posts global VO to feed

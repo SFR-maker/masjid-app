@@ -155,7 +155,23 @@ function CommentItem({ comment, colors, currentUserId, onDelete, onLike, onReply
               <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>{r.user?.name ?? 'Anonymous'}</Text>
               <Text style={{ color: colors.textTertiary, fontSize: 10 }}>{formatTimeAgo(new Date(r.createdAt))}</Text>
               {r.userId === currentUserId && (
-                <TouchableOpacity onPress={() => setReplies((prev) => prev.filter((x) => x.id !== r.id))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} style={{ marginLeft: 'auto' }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert('Delete reply', 'Remove this reply?', [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Delete', style: 'destructive', onPress: async () => {
+                          setReplies((prev) => prev.filter((x) => x.id !== r.id))
+                          try {
+                            await api.delete(`/videos/${comment.videoId}/comments/${comment.id}/replies/${r.id}`)
+                          } catch { /* optimistic removal already applied */ }
+                        },
+                      },
+                    ])
+                  }}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  style={{ marginLeft: 'auto' }}
+                >
                   <Ionicons name="trash-outline" size={12} color={colors.textTertiary} />
                 </TouchableOpacity>
               )}

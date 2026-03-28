@@ -11,6 +11,7 @@ import { Image } from 'expo-image'
 import { router } from 'expo-router'
 import { useAuth } from '@clerk/clerk-expo'
 import * as ImagePicker from 'expo-image-picker'
+import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy'
 import { formatDistanceToNow, format } from 'date-fns'
 import { api } from '../lib/api'
 import { useTheme } from '../contexts/ThemeContext'
@@ -341,11 +342,12 @@ function VideosSection({ mosqueId, isSuperAdmin }: { mosqueId: string | null; is
   const [form, setForm] = useState({ title: '', description: '', category: 'GENERAL' })
   const [uploading, setUploading] = useState(false)
 
-  const apiPath = isSuperAdmin && !mosqueId ? null : mosqueId
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['admin-videos', mosqueId],
-    queryFn: () => api.get(`/mosques/${mosqueId}/videos`),
-    enabled: !!mosqueId,
+    queryKey: ['admin-videos', mosqueId ?? 'global'],
+    queryFn: () =>
+      isSuperAdmin && !mosqueId
+        ? api.get('/super-admin/videos')
+        : api.get(`/mosques/${mosqueId}/videos`),
     staleTime: 0,
   })
   const items: any[] = data?.data?.items ?? []
@@ -378,15 +380,15 @@ function VideosSection({ mosqueId, isSuperAdmin }: { mosqueId: string | null; is
       const res = await api.post<any>(endpoint, { title: form.title, description: form.description || undefined, category: form.category })
       const { uploadUrl } = res.data
 
-      // Upload directly to Mux
+      // Upload directly to Mux using binary upload (fetch body doesn't support file URIs natively)
       const asset = result.assets[0]
-      const uploadRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'video/*' },
-        body: { uri: asset.uri, type: 'video/mp4', name: 'video.mp4' } as any,
+      const uploadRes = await uploadAsync(uploadUrl, asset.uri, {
+        httpMethod: 'PUT',
+        mimeType: asset.mimeType ?? 'video/mp4',
+        uploadType: FileSystemUploadType.BINARY_CONTENT,
       })
 
-      if (!uploadRes.ok) throw new Error('Upload failed')
+      if (uploadRes.status < 200 || uploadRes.status >= 300) throw new Error('Upload failed')
 
       queryClient.invalidateQueries({ queryKey: ['admin-videos', mosqueId] })
       setShowCreate(false)

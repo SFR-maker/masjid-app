@@ -254,7 +254,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── Admin shortcut (only for mosque admins) ────────────────────── */}
-        {isAdmin && (
+        {isSignedIn && isAdmin && (
           <TouchableOpacity
             onPress={() => router.replace('/admin' as any)}
             activeOpacity={0.82}

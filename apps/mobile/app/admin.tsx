@@ -16,7 +16,7 @@ import { formatDistanceToNow, format } from 'date-fns'
 import { api } from '../lib/api'
 import { useTheme } from '../contexts/ThemeContext'
 
-type AdminSection = 'home' | 'announcements' | 'events' | 'videos' | 'messages' | 'polls' | 'followers'
+type AdminSection = 'home' | 'announcements' | 'events' | 'prayer' | 'videos' | 'messages' | 'polls' | 'followers'
 
 // ── Pill tab ─────────────────────────────────────────────────────────────────
 function PillTab({ label, icon, active, onPress }: { label: string; icon: string; active: boolean; onPress: () => void }) {
@@ -732,6 +732,340 @@ function FollowersSection({ mosqueId }: { mosqueId: string }) {
   )
 }
 
+// ── Prayer Times section ──────────────────────────────────────────────────────
+const PRAYERS = [
+  { key: 'fajr',    label: 'Fajr',    adhan: 'fajrAdhan',    iqamah: 'fajrIqamah' },
+  { key: 'dhuhr',   label: 'Dhuhr',   adhan: 'dhuhrAdhan',   iqamah: 'dhuhrIqamah' },
+  { key: 'asr',     label: 'Asr',     adhan: 'asrAdhan',     iqamah: 'asrIqamah' },
+  { key: 'maghrib', label: 'Maghrib', adhan: 'maghribAdhan', iqamah: 'maghribIqamah' },
+  { key: 'isha',    label: 'Isha',    adhan: 'ishaAdhan',    iqamah: 'ishaIqamah' },
+]
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function PrayerTimesSection({ mosqueId }: { mosqueId: string }) {
+  const { colors } = useTheme()
+  const queryClient = useQueryClient()
+
+  // Which date we're editing
+  const [selectedDate, setSelectedDate] = useState(todayStr())
+  const [tab, setTab] = useState<'daily' | 'jumuah' | 'taraweeh'>('daily')
+
+  // Daily prayer times form
+  const emptyTimes = { fajrAdhan: '', fajrIqamah: '', dhuhrAdhan: '', dhuhrIqamah: '', asrAdhan: '', asrIqamah: '', maghribAdhan: '', maghribIqamah: '', ishaAdhan: '', ishaIqamah: '', sunriseTime: '' }
+  const [times, setTimes] = useState<Record<string, string>>(emptyTimes)
+
+  // Jumu'ah form
+  const [jumuahRows, setJumuahRows] = useState([{ khutbahTime: '', iqamahTime: '', language: 'English', imam: '' }])
+
+  // Taraweeh form
+  const [taraweehRows, setTaraweehRows] = useState([{ startTime: '', rakats: '20', imam: '' }])
+
+  // Fetch saved times for selected date
+  const { data: scheduleData, isLoading: scheduleLoading, refetch } = useQuery({
+    queryKey: ['admin-prayer', mosqueId, selectedDate],
+    queryFn: () => api.get(`/mosques/${mosqueId}/prayer-times?date=${selectedDate}`),
+    staleTime: 0,
+  })
+
+  // Fetch Jumu'ah schedules
+  const { data: jumuahData, refetch: refetchJumuah } = useQuery({
+    queryKey: ['admin-jumuah', mosqueId],
+    queryFn: () => api.get(`/mosques/${mosqueId}/jumuah`),
+    staleTime: 0,
+  })
+
+  // Populate form when data loads
+  const savedSchedule: any = scheduleData?.data ?? null
+  const savedJumuah: any[] = jumuahData?.data?.items ?? jumuahData?.data ?? []
+
+  // When saved schedule loads, fill form
+  const [formLoaded, setFormLoaded] = useState('')
+  if (savedSchedule && formLoaded !== selectedDate) {
+    const next: Record<string, string> = { ...emptyTimes }
+    for (const key of Object.keys(emptyTimes)) {
+      next[key] = savedSchedule[key] ?? ''
+    }
+    setTimes(next)
+    setFormLoaded(selectedDate)
+  }
+  if (!savedSchedule && formLoaded === selectedDate) {
+    setTimes(emptyTimes)
+    setFormLoaded('')
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const payload: Record<string, string | null> = { date: selectedDate }
+      for (const [k, v] of Object.entries(times)) {
+        payload[k] = v.match(/^\d{2}:\d{2}$/) ? v : null
+      }
+      return api.post(`/mosques/${mosqueId}/prayer-times`, payload)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-prayer', mosqueId, selectedDate] })
+      Alert.alert('Saved', 'Prayer times updated.')
+      refetch()
+    },
+    onError: (e: any) => Alert.alert('Error', e.message ?? 'Could not save.'),
+  })
+
+  const saveJumuahMutation = useMutation({
+    mutationFn: () => {
+      const valid = jumuahRows.filter((r) => r.khutbahTime.match(/^\d{2}:\d{2}$/) && r.iqamahTime.match(/^\d{2}:\d{2}$/))
+      if (!valid.length) throw new Error('Add at least one valid row (HH:MM format)')
+      return api.put(`/mosques/${mosqueId}/jumuah`, { schedules: valid.map((r) => ({ ...r, rakats: undefined })) })
+    },
+    onSuccess: () => { refetchJumuah(); Alert.alert('Saved', 'Jumu\'ah schedule updated.') },
+    onError: (e: any) => Alert.alert('Error', e.message ?? 'Could not save.'),
+  })
+
+  const saveTaraweehMutation = useMutation({
+    mutationFn: () => {
+      const valid = taraweehRows.filter((r) => r.startTime.match(/^\d{2}:\d{2}$/))
+      if (!valid.length) throw new Error('Add at least one valid row (HH:MM format)')
+      return api.put(`/mosques/${mosqueId}/taraweeh`, { schedules: valid.map((r) => ({ startTime: r.startTime, rakats: Number(r.rakats) || 20, imam: r.imam || undefined })) })
+    },
+    onSuccess: () => Alert.alert('Saved', 'Taraweeh schedule updated.'),
+    onError: (e: any) => Alert.alert('Error', e.message ?? 'Could not save.'),
+  })
+
+  const inputStyle = {
+    flex: 1, backgroundColor: colors.inputBackground ?? colors.surfaceSecondary,
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10,
+    fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.border,
+    textAlign: 'center' as const,
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Sub-tabs */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 0 }}>
+        {([['daily', 'Daily Times'], ['jumuah', "Jumu'ah"], ['taraweeh', 'Taraweeh']] as const).map(([k, label]) => (
+          <PillTab key={k} label={label} icon={k === 'daily' ? 'time-outline' : k === 'jumuah' ? 'people-outline' : 'moon-outline'} active={tab === k} onPress={() => setTab(k)} />
+        ))}
+      </ScrollView>
+
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+
+        {/* ── Daily times ── */}
+        {tab === 'daily' && (
+          <>
+            {/* Date selector */}
+            <View>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>Date (YYYY-MM-DD)</Text>
+              <TextInput
+                style={{ backgroundColor: colors.inputBackground ?? colors.surfaceSecondary, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.border }}
+                value={selectedDate}
+                onChangeText={(t) => { setSelectedDate(t); setFormLoaded('') }}
+                placeholder="2026-04-01"
+                placeholderTextColor={colors.textTertiary}
+                maxLength={10}
+              />
+            </View>
+
+            {scheduleLoading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <>
+                {/* Column headers */}
+                <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+                  <Text style={{ width: 70, fontSize: 11, fontWeight: '700', color: colors.textTertiary }}>Prayer</Text>
+                  <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: colors.textTertiary, textAlign: 'center' }}>Adhan</Text>
+                  <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: colors.textTertiary, textAlign: 'center' }}>Iqamah</Text>
+                </View>
+
+                {PRAYERS.map(({ key, label, adhan, iqamah }) => (
+                  <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ width: 70, fontSize: 13, fontWeight: '700', color: colors.text }}>{label}</Text>
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="05:30"
+                      placeholderTextColor={colors.textTertiary}
+                      value={times[adhan]}
+                      onChangeText={(t) => setTimes((prev) => ({ ...prev, [adhan]: t }))}
+                      maxLength={5}
+                    />
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="05:45"
+                      placeholderTextColor={colors.textTertiary}
+                      value={times[iqamah]}
+                      onChangeText={(t) => setTimes((prev) => ({ ...prev, [iqamah]: t }))}
+                      maxLength={5}
+                    />
+                  </View>
+                ))}
+
+                {/* Sunrise */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ width: 70, fontSize: 13, fontWeight: '700', color: colors.textTertiary }}>Sunrise</Text>
+                  <TextInput
+                    style={inputStyle}
+                    placeholder="06:45"
+                    placeholderTextColor={colors.textTertiary}
+                    value={times.sunriseTime}
+                    onChangeText={(t) => setTimes((prev) => ({ ...prev, sunriseTime: t }))}
+                    maxLength={5}
+                  />
+                  <View style={{ flex: 1 }} />
+                </View>
+
+                <Text style={{ fontSize: 11, color: colors.textTertiary, textAlign: 'center' }}>Use 24-hour format — e.g. 05:30, 13:15</Text>
+
+                <TouchableOpacity
+                  onPress={() => saveMutation.mutate()}
+                  disabled={saveMutation.isPending}
+                  style={{ backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                >
+                  {saveMutation.isPending ? <ActivityIndicator color={colors.primaryContrast} /> : <Ionicons name="save-outline" size={18} color={colors.primaryContrast} />}
+                  <Text style={{ color: colors.primaryContrast, fontSize: 15, fontWeight: '700' }}>
+                    {saveMutation.isPending ? 'Saving…' : `Save Times for ${selectedDate}`}
+                  </Text>
+                </TouchableOpacity>
+
+                {savedSchedule && (
+                  <View style={{ backgroundColor: '#D1FAE5', borderRadius: 10, padding: 10, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, color: '#065F46', fontWeight: '600' }}>✓ Times saved for this date</Text>
+                  </View>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── Jumu'ah ── */}
+        {tab === 'jumuah' && (
+          <>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+              Set up one or more Friday prayer sessions. Saving replaces all current Jumu'ah schedules.
+            </Text>
+
+            {jumuahRows.map((row, i) => (
+              <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Session {i + 1}</Text>
+                  {jumuahRows.length > 1 && (
+                    <TouchableOpacity onPress={() => setJumuahRows((prev) => prev.filter((_, j) => j !== i))}>
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {[
+                  { label: 'Khutbah Time (HH:MM)', key: 'khutbahTime', placeholder: '12:30' },
+                  { label: 'Iqamah Time (HH:MM)', key: 'iqamahTime', placeholder: '13:00' },
+                  { label: 'Language', key: 'language', placeholder: 'English' },
+                  { label: 'Imam (optional)', key: 'imam', placeholder: 'Sheikh Ahmed' },
+                ].map(({ label, key, placeholder }) => (
+                  <View key={key}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 }}>{label}</Text>
+                    <TextInput
+                      style={{ backgroundColor: colors.inputBackground ?? colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.border }}
+                      placeholder={placeholder}
+                      placeholderTextColor={colors.textTertiary}
+                      value={(row as any)[key]}
+                      onChangeText={(t) => setJumuahRows((prev) => prev.map((r, j) => j === i ? { ...r, [key]: t } : r))}
+                      maxLength={key.includes('Time') ? 5 : 100}
+                    />
+                  </View>
+                ))}
+              </View>
+            ))}
+
+            <TouchableOpacity onPress={() => setJumuahRows((prev) => [...prev, { khutbahTime: '', iqamahTime: '', language: 'English', imam: '' }])} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+              <Text style={{ fontSize: 14, color: colors.primary, fontWeight: '600' }}>Add another session</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => saveJumuahMutation.mutate()}
+              disabled={saveJumuahMutation.isPending}
+              style={{ backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+            >
+              {saveJumuahMutation.isPending ? <ActivityIndicator color={colors.primaryContrast} /> : <Ionicons name="save-outline" size={18} color={colors.primaryContrast} />}
+              <Text style={{ color: colors.primaryContrast, fontSize: 15, fontWeight: '700' }}>
+                {saveJumuahMutation.isPending ? 'Saving…' : "Save Jumu'ah Schedule"}
+              </Text>
+            </TouchableOpacity>
+
+            {savedJumuah.length > 0 && (
+              <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: colors.border, gap: 8 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text }}>Current Schedule</Text>
+                {savedJumuah.map((s: any, i: number) => (
+                  <View key={i} style={{ flexDirection: 'row', gap: 12 }}>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                      Session {i + 1}: Khutbah {s.khutbahTime} · Iqamah {s.iqamahTime} · {s.language}
+                      {s.imam ? ` · ${s.imam}` : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
+        )}
+
+        {/* ── Taraweeh ── */}
+        {tab === 'taraweeh' && (
+          <>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+              Set Taraweeh prayer schedules for Ramadan. Saving replaces all current Taraweeh schedules.
+            </Text>
+
+            {taraweehRows.map((row, i) => (
+              <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Entry {i + 1}</Text>
+                  {taraweehRows.length > 1 && (
+                    <TouchableOpacity onPress={() => setTaraweehRows((prev) => prev.filter((_, j) => j !== i))}>
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {[
+                  { label: 'Start Time (HH:MM)', key: 'startTime', placeholder: '21:30' },
+                  { label: 'Rakats', key: 'rakats', placeholder: '20' },
+                  { label: 'Imam (optional)', key: 'imam', placeholder: 'Sheikh Ahmed' },
+                ].map(({ label, key, placeholder }) => (
+                  <View key={key}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 }}>{label}</Text>
+                    <TextInput
+                      style={{ backgroundColor: colors.inputBackground ?? colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.border }}
+                      placeholder={placeholder}
+                      placeholderTextColor={colors.textTertiary}
+                      value={(row as any)[key]}
+                      onChangeText={(t) => setTaraweehRows((prev) => prev.map((r, j) => j === i ? { ...r, [key]: t } : r))}
+                      keyboardType={key === 'rakats' ? 'numeric' : 'default'}
+                      maxLength={key === 'startTime' ? 5 : 50}
+                    />
+                  </View>
+                ))}
+              </View>
+            ))}
+
+            <TouchableOpacity onPress={() => setTaraweehRows((prev) => [...prev, { startTime: '', rakats: '20', imam: '' }])} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+              <Text style={{ fontSize: 14, color: colors.primary, fontWeight: '600' }}>Add another entry</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => saveTaraweehMutation.mutate()}
+              disabled={saveTaraweehMutation.isPending}
+              style={{ backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+            >
+              {saveTaraweehMutation.isPending ? <ActivityIndicator color={colors.primaryContrast} /> : <Ionicons name="save-outline" size={18} color={colors.primaryContrast} />}
+              <Text style={{ color: colors.primaryContrast, fontSize: 15, fontWeight: '700' }}>
+                {saveTaraweehMutation.isPending ? 'Saving…' : 'Save Taraweeh Schedule'}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
+    </View>
+  )
+}
+
 // ── Main dashboard ────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { colors } = useTheme()
@@ -788,6 +1122,7 @@ export default function AdminDashboard() {
     const SECTIONS: { key: AdminSection; label: string; icon: string }[] = [
       { key: 'announcements', label: 'Posts', icon: 'megaphone-outline' },
       { key: 'events', label: 'Events', icon: 'calendar-outline' },
+      { key: 'prayer', label: 'Prayer Times', icon: 'time-outline' },
       { key: 'videos', label: 'Videos', icon: 'videocam-outline' },
       { key: 'polls', label: 'Polls', icon: 'bar-chart-outline' },
       { key: 'messages', label: 'Messages', icon: 'mail-outline' },
@@ -825,6 +1160,7 @@ export default function AdminDashboard() {
         <View style={{ flex: 1 }}>
           {section === 'announcements' && selectedMosque && <AnnouncementsSection mosqueId={selectedMosque.id} />}
           {section === 'events' && selectedMosque && <EventsSection mosqueId={selectedMosque.id} />}
+          {section === 'prayer' && selectedMosque && <PrayerTimesSection mosqueId={selectedMosque.id} />}
           {section === 'videos' && (
             <VideosSection
               mosqueId={selectedMosque?.id ?? null}
@@ -944,6 +1280,7 @@ export default function AdminDashboard() {
               {[
                 { label: 'Posts', icon: 'megaphone-outline', s: 'announcements' as AdminSection },
                 { label: 'Events', icon: 'calendar-outline', s: 'events' as AdminSection },
+                { label: 'Prayer Times', icon: 'time-outline', s: 'prayer' as AdminSection },
                 { label: 'Videos', icon: 'videocam-outline', s: 'videos' as AdminSection },
                 { label: 'Polls', icon: 'bar-chart-outline', s: 'polls' as AdminSection },
                 { label: 'Followers', icon: 'people-outline', s: 'followers' as AdminSection },

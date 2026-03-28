@@ -22,6 +22,7 @@ import { router, useFocusEffect } from 'expo-router'
 import { useAuth } from '@clerk/clerk-expo'
 import { api } from '../../lib/api'
 import { PersonalizationOptInModal, usePersonalizationState } from '../../components/PersonalizationOptIn'
+import { useTranslation } from 'react-i18next'
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
 const PANEL_HEIGHT = Math.round(SCREEN_H * 0.58)
@@ -412,6 +413,7 @@ function VideoHeader({
   onSearch: (q: string) => void
 }) {
   const insets = useSafeAreaInsets()
+  const { t } = useTranslation()
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const searchAnim = useRef(new Animated.Value(0)).current
@@ -485,7 +487,7 @@ function VideoHeader({
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
-            placeholder="Search lectures, khutbah..."
+            placeholder={t('videos_search')}
             placeholderTextColor="rgba(255,255,255,0.35)"
             value={searchText}
             onChangeText={setSearchText}

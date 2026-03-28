@@ -12,6 +12,7 @@ import { router } from 'expo-router'
 import { api } from '../../lib/api'
 import { MosqueListItem } from '../../components/MosqueListItem'
 import { useTheme } from '../../contexts/ThemeContext'
+import { useTranslation } from 'react-i18next'
 import type { MosqueListItem as TMosqueListItem } from '@masjid/types'
 
 // Queries that look like mosque names should skip geocoding and go straight to text search
@@ -97,14 +98,15 @@ function buildSections(items: TMosqueListItem[]): Section[] {
   const rest = items.filter((m) => !m.isFollowing && !m.isFavorite)
 
   const sections: Section[] = []
-  if (favorite.length > 0) sections.push({ title: 'Your Mosque', data: favorite })
-  if (following.length > 0) sections.push({ title: 'Following', data: following })
-  if (rest.length > 0) sections.push({ title: favorite.length + following.length > 0 ? 'All Mosques' : '', data: rest })
+  if (favorite.length > 0) sections.push({ title: 'discover_your_mosque', data: favorite })
+  if (following.length > 0) sections.push({ title: 'discover_following_section', data: following })
+  if (rest.length > 0) sections.push({ title: favorite.length + following.length > 0 ? 'discover_all' : '', data: rest })
   return sections
 }
 
 export default function DiscoverScreen() {
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const { isSignedIn } = useAuth()
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -298,10 +300,10 @@ export default function DiscoverScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <View>
             <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: -0.7, color: colors.text }}>
-              Discover
+              {t('discover_title')}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textTertiary, fontWeight: '500', marginTop: 2 }}>
-              {statusLine ?? 'Find mosques near you'}
+              {statusLine ?? t('discover_subtitle')}
             </Text>
           </View>
           {/* Near Me pill */}
@@ -334,7 +336,7 @@ export default function DiscoverScreen() {
               fontSize: 12.5, fontWeight: '700',
               color: nearMeActive ? (colors.isDark ? '#0F2D1F' : '#fff') : colors.primary,
             }}>
-              {nearMeActive ? 'Near Me ✕' : 'Near Me'}
+              {nearMeActive ? `${t('discover_near_me')} ✕` : t('discover_near_me')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -360,7 +362,7 @@ export default function DiscoverScreen() {
           />
           <TextInput
             style={{ flex: 1, marginLeft: 9, fontSize: 15, color: colors.text, fontWeight: '500' }}
-            placeholder="Name, city, state, or zip…"
+            placeholder={t('discover_search_placeholder')}
             placeholderTextColor={colors.textTertiary}
             value={query}
             onChangeText={setQuery}
@@ -386,7 +388,7 @@ export default function DiscoverScreen() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
           <ActivityIndicator color={colors.primary} />
           {geocoding && (
-            <Text style={{ color: colors.textTertiary, fontSize: 13, fontWeight: '500' }}>Looking up location…</Text>
+            <Text style={{ color: colors.textTertiary, fontSize: 13, fontWeight: '500' }}>{t('discover_geocoding')}</Text>
           )}
         </View>
       ) : isError ? (
@@ -394,9 +396,9 @@ export default function DiscoverScreen() {
           <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.isDark ? '#3B0A0A' : '#FEE2E2', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
             <Ionicons name="wifi-outline" size={28} color={colors.isDark ? '#F87171' : '#EF4444'} />
           </View>
-          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>Connection error</Text>
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>{t('discover_connection_error')}</Text>
           <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-            Make sure the API is running and try again
+            {t('discover_connection_error_body')}
           </Text>
         </View>
       ) : mergedItems.length === 0 ? (
@@ -404,7 +406,7 @@ export default function DiscoverScreen() {
           <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <Text style={{ fontSize: 34 }}>🕌</Text>
           </View>
-          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>No mosques found</Text>
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>{t('discover_no_results')}</Text>
           <Text style={{ color: colors.textTertiary, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
             {stateFilter
               ? `No mosques found in ${stateFilter}`
@@ -412,7 +414,7 @@ export default function DiscoverScreen() {
               ? `No mosques within 20 miles of ${zipLocation.zip}`
               : query
               ? `No results for "${query}"`
-              : 'Try searching by name, city, state, or zip code'}
+              : t('discover_no_results_body')}
           </Text>
         </View>
       ) : hasEngagement ? (
@@ -427,9 +429,9 @@ export default function DiscoverScreen() {
                 <Text style={{
                   fontSize: 11, fontWeight: '800', letterSpacing: 0.6,
                   textTransform: 'uppercase',
-                  color: section.title === 'Your Mosque' ? '#C9963A' : colors.textTertiary,
+                  color: section.title === 'discover_your_mosque' ? '#C9963A' : colors.textTertiary,
                 }}>
-                  {section.title}
+                  {t(section.title as any)}
                 </Text>
               </View>
             ) : null

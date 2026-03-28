@@ -214,5 +214,29 @@
   "common_copied": "تم النسخ!",
   "common_today": "اليوم",
   "common_tomorrow": "غداً",
-  "common_yesterday": "أمس"
+  "common_yesterday": "أمس",
+  "common_clear": "مسح",
+
+  "home_get_started": "ابدأ الآن",
+  "home_find_mosque": "ابحث عن مسجدك",
+  "home_find_mosque_body": "تابع المساجد لرؤية أوقات الصلاة والفعاليات والإعلانات هنا.",
+  "home_all_caught_up": "لا يوجد جديد",
+  "home_feed_empty_message": "مساجدك لم تنشر أي شيء جديد بعد",
+
+  "notifications_unread": "{{count}} غير مقروءة",
+  "notifications_mark_read": "تحديد كمقروء",
+  "notifications_all_caught_up": "لا يوجد جديد",
+  "notifications_empty_body": "تابع المساجد للحصول على تحديثات الفعاليات والإعلانات",
+
+  "discover_subtitle": "ابحث عن مساجد قريبة منك",
+  "discover_near_me": "بالقرب مني",
+  "discover_search_placeholder": "اسم، مدينة، ولاية، أو رمز بريدي…",
+  "discover_your_mosque": "مسجدك",
+  "discover_following_section": "المتابَعة",
+  "discover_geocoding": "جارٍ البحث عن الموقع…",
+  "discover_connection_error": "خطأ في الاتصال",
+  "discover_connection_error_body": "تأكد من تشغيل الخادم وحاول مجدداً",
+  "discover_no_results_body": "جرب البحث بالاسم أو المدينة أو الولاية أو الرمز البريدي",
+
+  "videos_search": "ابحث عن مقاطع…"
 }

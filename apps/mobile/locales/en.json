@@ -214,5 +214,29 @@
   "common_copied": "Copied!",
   "common_today": "Today",
   "common_tomorrow": "Tomorrow",
-  "common_yesterday": "Yesterday"
+  "common_yesterday": "Yesterday",
+  "common_clear": "Clear",
+
+  "home_get_started": "GET STARTED",
+  "home_find_mosque": "Find your mosque",
+  "home_find_mosque_body": "Follow mosques to see prayer times, events, and announcements right here.",
+  "home_all_caught_up": "All caught up",
+  "home_feed_empty_message": "Your mosques haven't posted anything new yet",
+
+  "notifications_unread": "{{count}} unread",
+  "notifications_mark_read": "Mark read",
+  "notifications_all_caught_up": "All caught up",
+  "notifications_empty_body": "Follow mosques to get updates on events and announcements",
+
+  "discover_subtitle": "Find mosques near you",
+  "discover_near_me": "Near Me",
+  "discover_search_placeholder": "Name, city, state, or zip…",
+  "discover_your_mosque": "Your Mosque",
+  "discover_following_section": "Following",
+  "discover_geocoding": "Looking up location…",
+  "discover_connection_error": "Connection error",
+  "discover_connection_error_body": "Make sure the API is running and try again",
+  "discover_no_results_body": "Try searching by name, city, state, or zip code",
+
+  "videos_search": "Search for videos…"
 }

@@ -45,10 +45,13 @@ function formatTimeAgo(date: Date): string {
 }
 
 // ── Comment row ───────────────────────────────────────────────────────────────
-function CommentItem({ comment, colors }: { comment: any; colors: any }) {
+function CommentItem({ comment, colors, currentUserId, onDelete }: {
+  comment: any; colors: any; currentUserId?: string | null; onDelete?: (id: string) => void
+}) {
   const name = comment.user?.name ?? 'Anonymous'
   const initial = name.charAt(0).toUpperCase()
   const timeAgo = formatTimeAgo(new Date(comment.createdAt))
+  const isOwn = currentUserId && comment.user?.id === currentUserId
 
   return (
     <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingVertical: 10 }}>
@@ -66,6 +69,18 @@ function CommentItem({ comment, colors }: { comment: any; colors: any }) {
         </View>
         <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20 }}>{comment.text}</Text>
       </View>
+      {isOwn && onDelete && (
+        <TouchableOpacity
+          onPress={() => Alert.alert('Delete comment', 'Remove this comment?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => onDelete(comment.id) },
+          ])}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{ justifyContent: 'center', paddingLeft: 4 }}
+        >
+          <Ionicons name="trash-outline" size={15} color={colors.textTertiary} />
+        </TouchableOpacity>
+      )}
     </View>
   )
 }
@@ -78,7 +93,7 @@ export default function VideoScreen() {
   const videoRef = useRef<Video>(null)
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null)
   const { colors } = useTheme()
-  const { isSignedIn } = useAuth()
+  const { isSignedIn, userId: currentUserId } = useAuth()
 
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [sortBy, setSortBy] = useState<'top' | 'new'>('top')
@@ -152,6 +167,17 @@ export default function VideoScreen() {
       setCommentError('')
     },
     onError: () => setCommentError('Failed to post. Please try again.'),
+  })
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: string) => api.delete(`/videos/${id}/comments/${commentId}`),
+    onMutate: (commentId: string) => {
+      queryClient.setQueryData(['video-comments', id], (old: any) => {
+        if (!old) return old
+        return { ...old, data: { ...old.data, items: (old.data?.items ?? []).filter((c: any) => c.id !== commentId) } }
+      })
+    },
+    onError: () => queryClient.invalidateQueries({ queryKey: ['video-comments', id] }),
   })
 
   function handlePostComment() {
@@ -372,7 +398,7 @@ export default function VideoScreen() {
             <FlatList
               data={comments}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <CommentItem comment={item} colors={colors} />}
+              renderItem={({ item }) => <CommentItem comment={item} colors={colors} currentUserId={currentUserId} onDelete={(commentId) => deleteCommentMutation.mutate(commentId)} />}
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingBottom: 100 }}
               showsVerticalScrollIndicator={false}

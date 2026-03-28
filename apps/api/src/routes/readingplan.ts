@@ -69,6 +69,23 @@ export async function readingPlanRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: updated })
   })
 
+  // PATCH /reading-plan/reset — reset progress, keep plan type
+  app.patch('/reset', { preHandler: [requireAuth] }, async (req, reply) => {
+    const userId = req.userId!
+    const plan = await prisma.quranReadingPlan.findUnique({ where: { userId } })
+    if (!plan) return reply.status(404).send({ success: false, error: 'No active reading plan' })
+
+    const today = new Date()
+    const startDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
+
+    const updated = await prisma.quranReadingPlan.update({
+      where: { userId },
+      data: { completedJuzs: [], currentJuz: 1, isCompleted: false, completedAt: null, startDate },
+    })
+
+    return reply.send({ success: true, data: updated })
+  })
+
   // DELETE /reading-plan — abandon plan
   app.delete('/', { preHandler: [requireAuth] }, async (req, reply) => {
     await prisma.quranReadingPlan.deleteMany({ where: { userId: req.userId! } })

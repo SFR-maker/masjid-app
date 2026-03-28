@@ -54,6 +54,14 @@ export function ReadingPlanWidget() {
     },
   })
 
+  const resetPlan = useMutation({
+    mutationFn: () => api.patch('/reading-plan/reset', {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reading-plan'] })
+      setShowManage(false)
+    },
+  })
+
   if (!isSignedIn || isLoading) return null
 
   const plan = data?.data
@@ -112,7 +120,19 @@ export function ReadingPlanWidget() {
   }
 
   const completedCount = plan.completedJuzs?.length ?? 0
-  const currentJuz = plan.currentJuz ?? 1
+  const completedSet: number[] = plan.completedJuzs ?? []
+  // Find the next juz the user hasn't completed yet (fixes stuck state)
+  const nextIncomplete = (() => {
+    for (let j = (plan.currentJuz ?? 1); j <= 30; j++) {
+      if (!completedSet.includes(j)) return j
+    }
+    // All from currentJuz onward are done — scan from 1
+    for (let j = 1; j <= 30; j++) {
+      if (!completedSet.includes(j)) return j
+    }
+    return null
+  })()
+  const currentJuz = nextIncomplete ?? (plan.currentJuz ?? 1)
   const progress = completedCount / 30
 
   if (plan.isCompleted) {
@@ -154,8 +174,8 @@ export function ReadingPlanWidget() {
           <Text style={{ color: colors.textTertiary, fontSize: 11 }}>{completedCount}/30 juz complete</Text>
         </View>
 
-        {/* Mark current juz done */}
-        {!plan.completedJuzs?.includes(currentJuz) && (
+        {/* Mark current juz done — always shown while plan is active (nextIncomplete ensures it's never already done) */}
+        {nextIncomplete !== null && (
           <TouchableOpacity
             onPress={() => markJuz.mutate(currentJuz)}
             disabled={markJuz.isPending}
@@ -186,6 +206,20 @@ export function ReadingPlanWidget() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 15 }}>Change Goal</Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>Switch between 30-day and 1-year plan</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => resetPlan.mutate()}
+              disabled={resetPlan.isPending}
+              style={[styles.planOption, { backgroundColor: '#FFF7ED', borderWidth: 1.5, borderColor: '#FED7AA' }]}
+            >
+              <Text style={{ fontSize: 24 }}>↩️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#C2410C', fontWeight: '700', fontSize: 15 }}>
+                  {resetPlan.isPending ? 'Resetting...' : 'Reset Progress'}
+                </Text>
+                <Text style={{ color: '#EA580C', fontSize: 12, marginTop: 2 }}>Start over from Juz 1</Text>
               </View>
             </TouchableOpacity>
 

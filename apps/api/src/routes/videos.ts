@@ -319,6 +319,19 @@ export async function videoRoutes(app: FastifyInstance) {
     })
   })
 
+  // DELETE /videos/:id/comments/:commentId — requires auth, only owner can delete
+  app.delete('/videos/:id/comments/:commentId', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { commentId } = req.params as { id: string; commentId: string }
+    const userId = req.userId!
+
+    const comment = await prisma.videoComment.findUnique({ where: { id: commentId } })
+    if (!comment) return reply.status(404).send({ success: false, error: 'Comment not found' })
+    if (comment.userId !== userId) return reply.status(403).send({ success: false, error: 'Forbidden' })
+
+    await prisma.videoComment.delete({ where: { id: commentId } })
+    return reply.send({ success: true })
+  })
+
   // POST /videos/:id/comments — requires auth
   app.post('/videos/:id/comments', { preHandler: [requireAuth] }, async (req, reply) => {
     const { id: videoId } = req.params as { id: string }

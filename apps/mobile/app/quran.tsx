@@ -196,7 +196,9 @@ export default function QuranScreen() {
   const didMountRef = useRef(false)
   const flatListRef = useRef<FlatList>(null)
   const scrollViewRef = useRef<ScrollView>(null)
-  // Y offset of each translation row within the ScrollView content
+  // Y offset of each Arabic ayah row within the ScrollView content
+  const arabicAyahOffsets = useRef<number[]>([])
+  // Y offset of each translation row within the ScrollView content (kept for translation highlighting)
   const readingAyahOffsets = useRef<number[]>([])
   // Y offset of the translation container itself (set once on layout)
   const translationSectionY = useRef(0)
@@ -236,20 +238,20 @@ export default function QuranScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playingAyah, readingMode])
 
-  // Reading mode: scroll once when content loads (e.g. returning via NowPlayingBar)
+  // Reading mode: scroll to the Arabic ayah whenever playingAyah changes
   useEffect(() => {
     if (!ayahs.length || !playingAyah || readingMode !== 'reading') return
     const index = playingAyah - 1
     if (index < 0) return
     const t = setTimeout(() => {
-      const rowY = readingAyahOffsets.current[index]
+      const rowY = arabicAyahOffsets.current[index]
       if (rowY !== undefined) {
-        scrollViewRef.current?.scrollTo({ y: translationSectionY.current + rowY - 20, animated: true })
+        scrollViewRef.current?.scrollTo({ y: Math.max(0, rowY - 20), animated: true })
       }
     }, 500)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ayahs.length, readingMode])
+  }, [playingAyah, readingMode])
 
   // Sync selected surah when notification/deep-link params change
   // (useState initial value only runs once, so we need this effect for param changes)
@@ -481,29 +483,38 @@ export default function QuranScreen() {
               <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 6 }}>In the name of Allah, the Most Gracious, the Most Merciful</Text>
             </View>
           )}
-          {/* Arabic block — one Text node per ayah; tap anywhere in an ayah to play it */}
-          <Text style={{ fontSize: 22, lineHeight: 48, textAlign: 'right', fontFamily: Platform.OS === 'ios' ? 'GeezaPro' : 'serif', marginBottom: 24 }}>
+          {/* Arabic block — one View per ayah so we can track position and scroll to it */}
+          <View style={{ marginBottom: 24 }}>
             {ayahs.map((a, i) => {
               const ayahActive = playingAyah === a.numberInSurah
-              // Strip leading Bismillah from first ayah when the banner already shows it
               let text = a.text as string
               if (i === 0 && selectedSurah !== 1 && selectedSurah !== 9) {
                 const words = text.split(/\s+/)
                 if (words.length > 4) text = words.slice(4).join(' ')
               }
               return (
-                <Text
+                <TouchableOpacity
                   key={i}
                   onPress={() => handlePlaySingle(a, i)}
-                  style={{ color: ayahActive ? colors.primary : colors.textSecondary, fontWeight: ayahActive ? '600' : '400' }}
+                  activeOpacity={0.75}
+                  onLayout={(e) => { arabicAyahOffsets.current[i] = e.nativeEvent.layout.y }}
+                  style={{
+                    backgroundColor: ayahActive ? colors.primaryLight : 'transparent',
+                    borderRadius: ayahActive ? 10 : 0,
+                    paddingHorizontal: ayahActive ? 8 : 0,
+                    paddingVertical: ayahActive ? 4 : 2,
+                    marginHorizontal: ayahActive ? -8 : 0,
+                    marginBottom: 4,
+                  }}
                 >
-                  {text}{' '}
-                  <Text style={{ fontSize: 16, color: ayahActive ? colors.primary : colors.textTertiary }}>﴿{a.numberInSurah}﴾</Text>
-                  {' '}
-                </Text>
+                  <Text style={{ fontSize: 22, lineHeight: 48, textAlign: 'right', fontFamily: Platform.OS === 'ios' ? 'GeezaPro' : 'serif', color: ayahActive ? colors.primary : colors.text, fontWeight: ayahActive ? '600' : '400' }}>
+                    {text}{' '}
+                    <Text style={{ fontSize: 16, color: ayahActive ? colors.primary : colors.textTertiary }}>﴿{a.numberInSurah}﴾</Text>
+                  </Text>
+                </TouchableOpacity>
               )
             })}
-          </Text>
+          </View>
           {/* English translation block */}
           <View
             onLayout={(e) => { translationSectionY.current = e.nativeEvent.layout.y }}

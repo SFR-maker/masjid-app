@@ -555,35 +555,29 @@ export default function QuranScreen() {
               <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 6 }}>In the name of Allah, the Most Gracious, the Most Merciful</Text>
             </View>
           )}
-          {/* Arabic block — flows as continuous RTL text; each ayah tracked for scroll */}
-          <View style={{ marginBottom: 24, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Arabic block — single Text for true continuous RTL flow; tap to play, long-press to bookmark */}
+          <Text style={{ fontSize: 22, lineHeight: 52, textAlign: 'right', fontFamily: Platform.OS === 'ios' ? 'GeezaPro' : 'serif', marginBottom: 8, writingDirection: 'rtl' }}>
             {ayahs.map((a, i) => {
               const ayahActive = playingAyah === a.numberInSurah
+              const isThisBookmarked = bookmark?.surah === selectedSurah && bookmark?.ayah === a.numberInSurah
               let text = a.text as string
               if (i === 0 && selectedSurah !== 1 && selectedSurah !== 9) {
                 const words = text.split(/\s+/)
                 if (words.length > 4) text = words.slice(4).join(' ')
               }
               return (
-                <TouchableOpacity
+                <Text
                   key={i}
                   onPress={() => handlePlaySingle(a, i)}
-                  activeOpacity={0.75}
-                  onLayout={(e) => { arabicAyahOffsets.current[i] = e.nativeEvent.layout.y }}
-                  style={{
-                    backgroundColor: ayahActive ? colors.primaryLight : 'transparent',
-                    borderRadius: ayahActive ? 6 : 0,
-                    paddingHorizontal: ayahActive ? 4 : 0,
-                    paddingVertical: ayahActive ? 2 : 0,
-                  }}
+                  onLongPress={() => handleBookmark(selectedSurah!, a.numberInSurah, selectedSurahInfo?.englishName ?? '', a.text)}
+                  style={{ color: ayahActive ? colors.primary : colors.text, fontWeight: ayahActive ? '600' : '400', backgroundColor: isThisBookmarked ? `${colors.primary}22` : ayahActive ? colors.primaryLight : undefined }}
                 >
-                  <Text style={{ fontSize: 22, lineHeight: 48, textAlign: 'right', fontFamily: Platform.OS === 'ios' ? 'GeezaPro' : 'serif', color: ayahActive ? colors.primary : colors.text, fontWeight: ayahActive ? '600' : '400' }}>
-                    {text}{' '}<Text style={{ fontSize: 16, color: ayahActive ? colors.primary : colors.textTertiary }}>﴿{a.numberInSurah}﴾</Text>{' '}
-                  </Text>
-                </TouchableOpacity>
+                  {text}{' '}<Text style={{ fontSize: 16, color: isThisBookmarked ? colors.primary : ayahActive ? colors.primary : colors.textTertiary }}>﴿{a.numberInSurah}﴾</Text>{' '}
+                </Text>
               )
             })}
-          </View>
+          </Text>
+          <Text style={{ fontSize: 11, color: colors.textTertiary, textAlign: 'center', marginBottom: 20 }}>Long-press any ayah to bookmark</Text>
           {/* English translation block */}
           <View
             onLayout={(e) => { translationSectionY.current = e.nativeEvent.layout.y }}
@@ -600,16 +594,12 @@ export default function QuranScreen() {
                   onLayout={(e) => { readingAyahOffsets.current[i] = e.nativeEvent.layout.y }}
                   style={{ flexDirection: 'row', gap: 10, marginBottom: 14, backgroundColor: active ? colors.primaryLight : 'transparent', borderRadius: 10, padding: active ? 8 : 0, marginHorizontal: active ? -8 : 0 }}
                 >
-                  <TouchableOpacity
-                    onPress={() => handleBookmark(selectedSurah!, ayahNum, selectedSurahInfo?.englishName ?? '', ayahs[i]?.text)}
-                    style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: readingBookmarked ? colors.primary : active ? colors.primary : colors.primaryLight, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
+                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: readingBookmarked ? colors.primary : active ? colors.primary : colors.primaryLight, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
                     {readingBookmarked
                       ? <Ionicons name="bookmark" size={12} color={colors.primaryContrast} />
                       : <Text style={{ fontSize: 10, fontWeight: '700', color: active ? colors.primaryContrast : colors.primary }}>{ayahNum}</Text>
                     }
-                  </TouchableOpacity>
+                  </View>
                   <Text style={{ flex: 1, fontSize: 14, color: active ? colors.text : colors.textSecondary, lineHeight: 22, fontWeight: active ? '500' : '400' }}>{t.text}</Text>
                 </View>
               )

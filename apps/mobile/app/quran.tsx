@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQuranAudioStore } from '../lib/quranAudioStore'
 import {
   setAyahsForPlayback,
@@ -169,6 +169,7 @@ async function fetchSurahCombined(number: number, reciter: string, translation: 
 
 export default function QuranScreen() {
   const { colors } = useTheme()
+  const queryClient = useQueryClient()
   const { surah: surahParam, ayah: ayahParam } = useLocalSearchParams<{ surah?: string; ayah?: string }>()
 
   // If audio is already playing/paused (e.g. user tapped NowPlayingBar), restore that context
@@ -250,13 +251,23 @@ export default function QuranScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ayahs.length, readingMode])
 
-  // Scroll to the ayah from notification params once content is ready.
-  // getItemLayout gives FlatList precise offsets so this is a single instant jump — no choppiness.
+  // Sync selected surah when notification/deep-link params change
+  // (useState initial value only runs once, so we need this effect for param changes)
+  useEffect(() => {
+    if (surahParam) setSelectedSurah(Number(surahParam))
+  }, [surahParam])
+
+  // Scroll to the notification ayah once the surah content has loaded
   useEffect(() => {
     if (!ayahParam || !ayahs.length) return
-    const index = Number(ayahParam) - 1
-    if (index < 0 || index >= ayahs.length) return
-    flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
+    const index = Math.max(0, Math.min(Number(ayahParam) - 1, ayahs.length - 1))
+    // Delay gives FlatList time to commit the initial render batch
+    // (initialNumToRender is set to cover the target index, so scrollToIndex
+    //  should succeed without triggering onScrollToIndexFailed)
+    const t = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
+    }, 300)
+    return () => clearTimeout(t)
   }, [ayahParam, ayahs])
 
   // Update global surah info and stop audio when surah/reciter changes.
@@ -358,7 +369,14 @@ export default function QuranScreen() {
             keyExtractor={item => String(item.number)}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
             renderItem={({ item: s }) => (
-              <TouchableOpacity onPress={() => setSelectedSurah(s.number)}
+              <TouchableOpacity onPress={() => {
+                queryClient.prefetchQuery({
+                  queryKey: ['surah-combined', s.number, reciter, translation],
+                  queryFn: () => fetchSurahCombined(s.number, reciter, translation),
+                  staleTime: Infinity,
+                })
+                setSelectedSurah(s.number)
+              }}
                 style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                 <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                   <Text style={{ fontSize: 13, fontWeight: 'bold', color: colors.primary }}>{s.number}</Text>
@@ -463,21 +481,23 @@ export default function QuranScreen() {
               <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 6 }}>In the name of Allah, the Most Gracious, the Most Merciful</Text>
             </View>
           )}
-          {/* Arabic block */}
+          {/* Arabic block — one Text node per ayah; tap anywhere in an ayah to play it */}
           <Text style={{ fontSize: 22, lineHeight: 48, textAlign: 'right', fontFamily: Platform.OS === 'ios' ? 'GeezaPro' : 'serif', marginBottom: 24 }}>
             {ayahs.map((a, i) => {
               const ayahActive = playingAyah === a.numberInSurah
               // Strip leading Bismillah from first ayah when the banner already shows it
-              // (all surahs except Al-Fatiha (1) and At-Tawba (9))
               let text = a.text as string
               if (i === 0 && selectedSurah !== 1 && selectedSurah !== 9) {
-                // Bismillah is always the first 4 words — skip them regardless of diacritic encoding
                 const words = text.split(/\s+/)
                 if (words.length > 4) text = words.slice(4).join(' ')
               }
               return (
-                <Text key={i}>
-                  <Text style={{ color: ayahActive ? colors.primary : colors.textSecondary, fontWeight: ayahActive ? '600' : '400' }}>{text}{' '}</Text>
+                <Text
+                  key={i}
+                  onPress={() => handlePlaySingle(a, i)}
+                  style={{ color: ayahActive ? colors.primary : colors.textSecondary, fontWeight: ayahActive ? '600' : '400' }}
+                >
+                  {text}{' '}
                   <Text style={{ fontSize: 16, color: ayahActive ? colors.primary : colors.textTertiary }}>﴿{a.numberInSurah}﴾</Text>
                   {' '}
                 </Text>
@@ -513,23 +533,16 @@ export default function QuranScreen() {
           data={ayahs}
           keyExtractor={item => String(item.numberInSurah)}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 }}
-          windowSize={5}
-          initialNumToRender={15}
-          maxToRenderPerBatch={10}
-          // Empirically measured: average ayah card height ≈ 128px.
-          // Bismillah header (shown for all surahs except 1 & 9) ≈ 116px.
-          // These values let scrollToIndex jump precisely without a two-step scroll.
-          getItemLayout={(_, index) => {
-            const headerH = selectedSurah !== 1 && selectedSurah !== 9 ? 116 : 0
-            return { length: 128, offset: headerH + 128 * index, index }
-          }}
-          initialScrollIndex={ayahParam ? Math.max(0, Math.min(Number(ayahParam) - 1, ayahs.length - 1)) : undefined}
+          windowSize={7}
+          initialNumToRender={ayahParam ? Number(ayahParam) + 5 : 12}
+          maxToRenderPerBatch={8}
           onScrollToIndexFailed={({ index, averageItemLength }) => {
-            // Fallback if item isn't rendered yet — rough jump then precise retry
-            flatListRef.current?.scrollToOffset({ offset: index * (averageItemLength || 128), animated: false })
+            // Target not yet rendered — scroll to estimated offset, then retry once items are visible
+            const estimated = (averageItemLength || 160) * index
+            flatListRef.current?.scrollToOffset({ offset: estimated, animated: false })
             setTimeout(() => {
               flatListRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.15 })
-            }, 150)
+            }, 300)
           }}
           ListHeaderComponent={
             selectedSurah !== 1 && selectedSurah !== 9 ? (

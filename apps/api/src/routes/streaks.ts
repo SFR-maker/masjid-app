@@ -103,25 +103,39 @@ export async function streakRoutes(app: FastifyInstance) {
       if (streak?.lastLoggedDate) {
         const lastLogged = toDateOnly(new Date(streak.lastLoggedDate))
         if (daysBetween(today, lastLogged) === 0) {
-          // Find the most recent previous date that had all 5 prayers (for lastLoggedDate)
+          // Recalculate streak from actual prayer log history (don't blindly subtract 1)
           const prevDates = await prisma.prayerLog.findMany({
             where: { userId, date: { lt: today } },
             distinct: ['date'],
             select: { date: true },
             orderBy: { date: 'desc' },
-            take: 30,
+            take: 100,
           })
-          let prevFullDate: Date | null = null
+
+          let newStreak = 0
+          let newLastLoggedDate: Date | null = null
+          let chainDate: Date | null = null
+
           for (const { date } of prevDates) {
             const count = await prisma.prayerLog.count({ where: { userId, date } })
-            if (count >= 5) { prevFullDate = toDateOnly(new Date(date)); break }
+            if (count < 5) continue // partial day — skip but don't break chain yet
+
+            const d = toDateOnly(new Date(date))
+            if (!newLastLoggedDate) {
+              newLastLoggedDate = d
+              chainDate = d
+              newStreak = 1
+            } else if (chainDate && daysBetween(chainDate, d) === 1) {
+              newStreak++
+              chainDate = d
+            } else {
+              break // gap in the chain
+            }
           }
+
           await prisma.userStreak.update({
             where: { userId_type: { userId, type: 'PRAYER' } },
-            data: {
-              currentStreak: Math.max(0, streak.currentStreak - 1),
-              lastLoggedDate: prevFullDate,
-            },
+            data: { currentStreak: newStreak, lastLoggedDate: newLastLoggedDate },
           })
         }
       }

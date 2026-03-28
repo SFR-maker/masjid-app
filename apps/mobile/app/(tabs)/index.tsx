@@ -26,6 +26,7 @@ const VIDEO_CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
 function VideoFeedCard({ item }: { item: any }) {
   const { colors } = useTheme()
   const categoryStyle = VIDEO_CATEGORY_COLORS[item.category] ?? { bg: '#F3F4F6', text: '#4B5563' }
+  const mosqueId = item.mosque?.id ?? item.mosqueId
 
   return (
     <TouchableOpacity
@@ -42,8 +43,8 @@ function VideoFeedCard({ item }: { item: any }) {
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 10 }}>
         <TouchableOpacity
-          onPress={(e) => { e.stopPropagation?.(); item.mosque?.id && router.push(`/mosque/${item.mosque.id}` as any) }}
-          disabled={!item.mosque?.id}
+          onPress={(e) => { e.stopPropagation?.(); mosqueId && router.push(`/mosque/${mosqueId}` as any) }}
+          disabled={!mosqueId}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
           activeOpacity={0.7}
         >
@@ -128,6 +129,13 @@ export default function HomeScreen() {
     staleTime: 60_000,
   })
 
+  const { data: messagesData } = useQuery({
+    queryKey: ['my-messages'],
+    queryFn: () => api.get('/users/me/messages'),
+    staleTime: 30_000,
+  })
+  const unreadMessages: number = messagesData?.data?.unreadCount ?? 0
+
   const feedItems = feedData?.pages.flatMap((p: any) => p?.data?.items ?? []) ?? []
   const followedMosques = followed?.data?.items ?? []
   const favoriteMosque = followedMosques.find((m: any) => m.isFavorite) ?? followedMosques[0] ?? null
@@ -144,18 +152,48 @@ export default function HomeScreen() {
             {firstName} ✦
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push('/chat')}
-          style={{
-            backgroundColor: colors.primary,
-            borderRadius: 22, padding: 11,
-            shadowColor: colors.primary, shadowOpacity: 0.35,
-            shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
-            elevation: 4,
-          }}
-        >
-          <Ionicons name="chatbubble-ellipses" size={20} color="white" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {/* Messages bubble */}
+          <TouchableOpacity
+            onPress={() => router.push('/messages')}
+            style={{
+              backgroundColor: colors.isDark ? colors.surface : colors.surfaceSecondary,
+              borderRadius: 22, padding: 11,
+              borderWidth: 1, borderColor: colors.border,
+              shadowColor: '#000', shadowOpacity: 0.08,
+              shadowOffset: { width: 0, height: 3 }, shadowRadius: 8,
+              elevation: 3,
+            }}
+          >
+            <Ionicons name="mail-outline" size={20} color={colors.text} />
+            {unreadMessages > 0 && (
+              <View style={{
+                position: 'absolute', top: 4, right: 4,
+                backgroundColor: '#EF4444', borderRadius: 8,
+                minWidth: 16, height: 16,
+                alignItems: 'center', justifyContent: 'center',
+                paddingHorizontal: 3,
+              }}>
+                <Text style={{ color: 'white', fontSize: 9, fontWeight: 'bold' }}>
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {/* AI chat bubble */}
+          <TouchableOpacity
+            onPress={() => router.push('/chat')}
+            style={{
+              backgroundColor: colors.primary,
+              borderRadius: 22, padding: 11,
+              shadowColor: colors.primary, shadowOpacity: 0.35,
+              shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+              elevation: 4,
+            }}
+          >
+            <Ionicons name="chatbubble-ellipses" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Ramadan banner (only visible during Ramadan) */}

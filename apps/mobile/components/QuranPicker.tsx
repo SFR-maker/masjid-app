@@ -177,7 +177,7 @@ export function QuranPicker({ verse, onSelect }: Props) {
                     onChangeText={setSearch}
                     placeholder="Search surahs…"
                     placeholderTextColor={colors.textTertiary}
-                    style={{ backgroundColor: colors.inputBackground, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: colors.border, color: colors.text }}
+                    style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: colors.border, color: colors.text }}
                     autoFocus
                   />
                 </View>
@@ -227,7 +227,7 @@ export function QuranPicker({ verse, onSelect }: Props) {
                       keyboardType="number-pad"
                       placeholder="e.g. 1"
                       placeholderTextColor={colors.textTertiary}
-                      style={{ backgroundColor: colors.inputBackground, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontWeight: '600', borderWidth: 1, borderColor: colors.border, color: colors.text, textAlign: 'center' }}
+                      style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontWeight: '600', borderWidth: 1, borderColor: colors.border, color: colors.text, textAlign: 'center' }}
                       autoFocus
                     />
                   </View>
@@ -239,7 +239,7 @@ export function QuranPicker({ verse, onSelect }: Props) {
                       keyboardType="number-pad"
                       placeholder="e.g. 3"
                       placeholderTextColor={colors.textTertiary}
-                      style={{ backgroundColor: colors.inputBackground, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontWeight: '600', borderWidth: 1, borderColor: colors.border, color: colors.text, textAlign: 'center' }}
+                      style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontWeight: '600', borderWidth: 1, borderColor: colors.border, color: colors.text, textAlign: 'center' }}
                     />
                   </View>
                 </View>

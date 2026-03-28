@@ -39,7 +39,7 @@ async function _updateMediaNotification(isPlaying: boolean) {
         categoryIdentifier: isPlaying ? 'quran_playing' : 'quran_paused',
         data: { type: 'quran_player' },
       },
-      trigger: Platform.OS === 'android' ? { channelId: 'quran_player' } as any : null,
+      trigger: Platform.OS === 'android' ? ({ type: 'channel', channelId: 'quran_player' } as any) : null,
     })
   } catch {}
 }

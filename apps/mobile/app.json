@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.masjidapp.mobile",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to find nearby mosques.",
-        "NSCameraUsageDescription": "Used to upload your profile photo."
+        "NSCameraUsageDescription": "Used to upload your profile photo.",
+        "UIBackgroundModes": ["audio", "fetch"]
       }
     },
     "android": {
@@ -29,7 +30,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
       "intentFilters": [
         {

@@ -8,13 +8,13 @@ cloudinary.config({
 
 export { cloudinary }
 
-export async function generateSignedUploadParams(folder: string) {
+export async function generateSignedUploadParams(folder: string, allowedFormats = 'jpg,jpeg,png,webp,gif', maxBytes = 10_000_000) {
   const timestamp = Math.round(new Date().getTime() / 1000)
   const params = {
     timestamp,
     folder,
-    allowed_formats: 'jpg,jpeg,png,webp,gif',
-    max_bytes: 10_000_000, // 10 MB
+    allowed_formats: allowedFormats,
+    max_bytes: maxBytes,
   }
   const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET!)
   return {

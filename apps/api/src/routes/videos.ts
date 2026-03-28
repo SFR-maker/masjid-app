@@ -316,6 +316,7 @@ export async function videoRoutes(app: FastifyInstance) {
   app.get('/videos/:id/comments', async (req, reply) => {
     const { id: videoId } = req.params as { id: string }
     const { limit = '50', cursor } = req.query as any
+    const userId = req.userId
 
     const comments = await prisma.videoComment.findMany({
       where: { videoId },
@@ -324,13 +325,23 @@ export async function videoRoutes(app: FastifyInstance) {
       orderBy: { createdAt: 'asc' },
       include: {
         user: { select: { id: true, name: true, avatarUrl: true } },
+        _count: { select: { replies: true } },
+        ...(userId ? { likes: { where: { userId }, select: { id: true } } } : {}),
       },
     })
+
+    const items = comments.map((c) => ({
+      ...c,
+      replyCount: (c as any)._count?.replies ?? 0,
+      userLiked: userId ? ((c as any).likes?.length ?? 0) > 0 : false,
+      likes: undefined,
+      _count: undefined,
+    }))
 
     return reply.send({
       success: true,
       data: {
-        items: comments,
+        items,
         cursor: comments[comments.length - 1]?.id,
         hasMore: comments.length === Number(limit),
       },
@@ -370,6 +381,85 @@ export async function videoRoutes(app: FastifyInstance) {
       include: { user: { select: { id: true, name: true, avatarUrl: true } } },
     })
 
-    return reply.status(201).send({ success: true, data: comment })
+    return reply.status(201).send({ success: true, data: { ...comment, replyCount: 0, userLiked: false } })
+  })
+
+  // POST /videos/:id/comments/:commentId/like — toggle like
+  app.post('/videos/:id/comments/:commentId/like', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { commentId } = req.params as { id: string; commentId: string }
+    const userId = req.userId!
+
+    const existing = await prisma.videoCommentLike.findUnique({
+      where: { commentId_userId: { commentId, userId } },
+    })
+
+    if (existing) {
+      await prisma.$transaction([
+        prisma.videoCommentLike.delete({ where: { commentId_userId: { commentId, userId } } }),
+        prisma.videoComment.update({ where: { id: commentId }, data: { likeCount: { decrement: 1 } } }),
+      ])
+      return reply.send({ success: true, liked: false })
+    }
+
+    await prisma.$transaction([
+      prisma.videoCommentLike.create({ data: { commentId, userId } }),
+      prisma.videoComment.update({ where: { id: commentId }, data: { likeCount: { increment: 1 } } }),
+    ])
+    return reply.send({ success: true, liked: true })
+  })
+
+  // GET /videos/:id/comments/:commentId/replies
+  app.get('/videos/:id/comments/:commentId/replies', async (req, reply) => {
+    const { commentId } = req.params as { id: string; commentId: string }
+    const replies = await prisma.videoCommentReply.findMany({
+      where: { commentId },
+      orderBy: { createdAt: 'asc' },
+      include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+    })
+    return reply.send({ success: true, data: { items: replies } })
+  })
+
+  // POST /videos/:id/comments/:commentId/replies — requires auth
+  app.post('/videos/:id/comments/:commentId/replies', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { commentId } = req.params as { id: string; commentId: string }
+    const userId = req.userId!
+    const { text } = z.object({ text: z.string().min(1).max(1000) }).parse(req.body)
+
+    const reply_ = await prisma.videoCommentReply.create({
+      data: { commentId, userId, text: text.trim() },
+      include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+    })
+    return reply.status(201).send({ success: true, data: reply_ })
+  })
+
+  // DELETE /videos/:id/comments/:commentId/replies/:replyId — requires auth, only owner
+  app.delete('/videos/:id/comments/:commentId/replies/:replyId', { preHandler: [requireAuth] }, async (req, reply) => {
+    const { replyId } = req.params as { id: string; commentId: string; replyId: string }
+    const userId = req.userId!
+    const r = await prisma.videoCommentReply.findUnique({ where: { id: replyId } })
+    if (!r) return reply.status(404).send({ success: false, error: 'Not found' })
+    if (r.userId !== userId) return reply.status(403).send({ success: false, error: 'Forbidden' })
+    await prisma.videoCommentReply.delete({ where: { id: replyId } })
+    return reply.send({ success: true })
+  })
+
+  // POST /super-admin/videos/upload — super admin posts global VO to feed
+  app.post('/super-admin/videos/upload', { preHandler: [requireAuth] }, async (req, reply) => {
+    if (!req.isSuperAdmin) return reply.status(403).send({ success: false, error: 'Super admin only' })
+
+    const { title, description, category } = z.object({
+      title: z.string().min(3),
+      description: z.string().optional(),
+      category: z.enum(['GENERAL','LECTURE','QURAN','DUA','KHUTBAH','EDUCATIONAL','EVENT','OTHER']).default('GENERAL'),
+    }).parse(req.body)
+
+    const { createMuxUploadUrl } = await import('../lib/mux')
+    const { uploadUrl, uploadId } = await createMuxUploadUrl()
+
+    const video = await prisma.video.create({
+      data: { mosqueId: null, isSuperAdminPost: true, title, description, category, muxUploadId: uploadId, status: 'PROCESSING', isPublished: true },
+    })
+
+    return reply.send({ success: true, data: { uploadUrl, uploadId, videoId: video.id } })
   })
 }

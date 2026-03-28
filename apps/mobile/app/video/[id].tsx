@@ -45,42 +45,125 @@ function formatTimeAgo(date: Date): string {
 }
 
 // ── Comment row ───────────────────────────────────────────────────────────────
-function CommentItem({ comment, colors, currentUserId, onDelete }: {
-  comment: any; colors: any; currentUserId?: string | null; onDelete?: (id: string) => void
+function CommentItem({ comment, colors, currentUserId, onDelete, onLike, onReply }: {
+  comment: any; colors: any; currentUserId?: string | null
+  onDelete?: (id: string) => void
+  onLike?: (id: string, liked: boolean) => void
+  onReply?: (comment: any) => void
 }) {
   const name = comment.user?.name ?? 'Anonymous'
   const initial = name.charAt(0).toUpperCase()
   const timeAgo = formatTimeAgo(new Date(comment.createdAt))
   const isOwn = currentUserId && comment.user?.id === currentUserId
+  const [showReplies, setShowReplies] = useState(false)
+  const [replies, setReplies] = useState<any[]>([])
+  const [loadingReplies, setLoadingReplies] = useState(false)
+
+  async function loadReplies() {
+    if (loadingReplies) return
+    setLoadingReplies(true)
+    try {
+      const res = await api.get<any>(`/videos/${comment.videoId}/comments/${comment.id}/replies`)
+      setReplies(res?.data?.items ?? [])
+      setShowReplies(true)
+    } catch {}
+    setLoadingReplies(false)
+  }
+
+  function toggleReplies() {
+    if (showReplies) { setShowReplies(false); return }
+    loadReplies()
+  }
 
   return (
-    <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingVertical: 10 }}>
-      {comment.user?.avatarUrl ? (
-        <Image source={{ uri: comment.user.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
-      ) : (
-        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: colors.primaryContrast, fontSize: 13, fontWeight: '700' }}>{initial}</Text>
+    <View>
+      <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingVertical: 10 }}>
+        {comment.user?.avatarUrl ? (
+          <Image source={{ uri: comment.user.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
+        ) : (
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: colors.primaryContrast, fontSize: 13, fontWeight: '700' }}>{initial}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{name}</Text>
+            <Text style={{ color: colors.textTertiary, fontSize: 11 }}>{timeAgo}</Text>
+          </View>
+          <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20 }}>{comment.text}</Text>
+          {/* Action row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 6 }}>
+            <TouchableOpacity
+              onPress={() => onLike?.(comment.id, comment.userLiked)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name={comment.userLiked ? 'heart' : 'heart-outline'} size={14} color={comment.userLiked ? '#EF4444' : colors.textTertiary} />
+              {(comment.likeCount ?? 0) > 0 && (
+                <Text style={{ fontSize: 12, color: comment.userLiked ? '#EF4444' : colors.textTertiary }}>{comment.likeCount}</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onReply?.(comment)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="chatbubble-outline" size={13} color={colors.textTertiary} />
+              <Text style={{ fontSize: 12, color: colors.textTertiary }}>Reply</Text>
+            </TouchableOpacity>
+            {(comment.replyCount ?? 0) > 0 && (
+              <TouchableOpacity onPress={toggleReplies} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                {loadingReplies ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <Ionicons name={showReplies ? 'chevron-up' : 'chevron-down'} size={12} color={colors.primary} />
+                    <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>
+                      {showReplies ? 'Hide' : `${comment.replyCount} ${comment.replyCount === 1 ? 'reply' : 'replies'}`}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      )}
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{name}</Text>
-          <Text style={{ color: colors.textTertiary, fontSize: 11 }}>{timeAgo}</Text>
-        </View>
-        <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20 }}>{comment.text}</Text>
+        {isOwn && onDelete && (
+          <TouchableOpacity
+            onPress={() => Alert.alert('Delete comment', 'Remove this comment?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Delete', style: 'destructive', onPress: () => onDelete(comment.id) },
+            ])}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{ justifyContent: 'center', paddingLeft: 4 }}
+          >
+            <Ionicons name="trash-outline" size={15} color={colors.textTertiary} />
+          </TouchableOpacity>
+        )}
       </View>
-      {isOwn && onDelete && (
-        <TouchableOpacity
-          onPress={() => Alert.alert('Delete comment', 'Remove this comment?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => onDelete(comment.id) },
-          ])}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ justifyContent: 'center', paddingLeft: 4 }}
-        >
-          <Ionicons name="trash-outline" size={15} color={colors.textTertiary} />
-        </TouchableOpacity>
-      )}
+      {/* Replies */}
+      {showReplies && replies.map((r) => (
+        <View key={r.id} style={{ flexDirection: 'row', gap: 8, paddingLeft: 62, paddingRight: 16, paddingVertical: 6 }}>
+          {r.user?.avatarUrl ? (
+            <Image source={{ uri: r.user.avatarUrl }} style={{ width: 28, height: 28, borderRadius: 14 }} contentFit="cover" />
+          ) : (
+            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>{(r.user?.name ?? '?')[0].toUpperCase()}</Text>
+            </View>
+          )}
+          <View style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+              <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>{r.user?.name ?? 'Anonymous'}</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 10 }}>{formatTimeAgo(new Date(r.createdAt))}</Text>
+              {r.userId === currentUserId && (
+                <TouchableOpacity onPress={() => setReplies((prev) => prev.filter((x) => x.id !== r.id))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} style={{ marginLeft: 'auto' }}>
+                  <Ionicons name="trash-outline" size={12} color={colors.textTertiary} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>{r.text}</Text>
+          </View>
+        </View>
+      ))}
     </View>
   )
 }
@@ -99,6 +182,7 @@ export default function VideoScreen() {
   const [sortBy, setSortBy] = useState<'top' | 'new'>('top')
   const [commentText, setCommentText] = useState('')
   const [commentError, setCommentError] = useState('')
+  const [replyingTo, setReplyingTo] = useState<{ id: string; videoId: string; userName: string } | null>(null)
 
   // Animation values
   const panelAnim = useRef(new Animated.Value(0)).current   // 0 = closed, 1 = open
@@ -180,12 +264,50 @@ export default function VideoScreen() {
     onError: () => queryClient.invalidateQueries({ queryKey: ['video-comments', id] }),
   })
 
+  const likeCommentMutation = useMutation({
+    mutationFn: ({ commentId }: { commentId: string; liked: boolean }) =>
+      api.post(`/videos/${id}/comments/${commentId}/like`, {}),
+    onMutate: ({ commentId, liked }) => {
+      queryClient.setQueryData(['video-comments', id], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            items: (old.data?.items ?? []).map((c: any) =>
+              c.id === commentId
+                ? { ...c, userLiked: !liked, likeCount: (c.likeCount ?? 0) + (liked ? -1 : 1) }
+                : c
+            ),
+          },
+        }
+      })
+    },
+    onError: () => queryClient.invalidateQueries({ queryKey: ['video-comments', id] }),
+  })
+
+  const replyMutation = useMutation({
+    mutationFn: ({ commentId, text }: { commentId: string; text: string }) =>
+      api.post(`/videos/${id}/comments/${commentId}/replies`, { text }),
+    onSuccess: () => {
+      setCommentText('')
+      setReplyingTo(null)
+      queryClient.invalidateQueries({ queryKey: ['video-comments', id] })
+    },
+    onError: () => setCommentError('Failed to post reply. Please try again.'),
+  })
+
   function handlePostComment() {
     const trimmed = commentText.trim()
-    if (trimmed.length < 2) { setCommentError('Comment must be at least 2 characters.'); return }
+    if (trimmed.length < 1) { setCommentError('Comment cannot be empty.'); return }
     if (containsBlockedContent(trimmed)) { setCommentError('Your comment contains inappropriate content.'); return }
     setCommentError('')
-    commentMutation.mutate(trimmed)
+    if (replyingTo) {
+      replyMutation.mutate({ commentId: replyingTo.id, text: trimmed })
+    } else {
+      if (trimmed.length < 2) { setCommentError('Comment must be at least 2 characters.'); return }
+      commentMutation.mutate(trimmed)
+    }
   }
 
   const video = data?.data
@@ -398,7 +520,19 @@ export default function VideoScreen() {
             <FlatList
               data={comments}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <CommentItem comment={item} colors={colors} currentUserId={currentUserId} onDelete={(commentId) => deleteCommentMutation.mutate(commentId)} />}
+              renderItem={({ item }) => (
+                <CommentItem
+                  comment={{ ...item, videoId: id }}
+                  colors={colors}
+                  currentUserId={currentUserId}
+                  onDelete={(commentId) => deleteCommentMutation.mutate(commentId)}
+                  onLike={(commentId, liked) => likeCommentMutation.mutate({ commentId, liked })}
+                  onReply={(c) => {
+                    setReplyingTo({ id: c.id, videoId: id as string, userName: c.user?.name ?? 'Anonymous' })
+                    setCommentsOpen(true)
+                  }}
+                />
+              )}
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingBottom: 100 }}
               showsVerticalScrollIndicator={false}
@@ -423,6 +557,16 @@ export default function VideoScreen() {
               borderTopWidth: 1, borderTopColor: colors.border,
               paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12,
             }}>
+              {replyingTo && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 6 }}>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                    Replying to <Text style={{ fontWeight: '700', color: colors.text }}>{replyingTo.userName}</Text>
+                  </Text>
+                  <TouchableOpacity onPress={() => setReplyingTo(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close" size={16} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                </View>
+              )}
               {commentError ? <Text style={{ color: '#EF4444', fontSize: 12, marginBottom: 4, paddingHorizontal: 4 }}>{commentError}</Text> : null}
               {isSignedIn ? (
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
@@ -434,7 +578,7 @@ export default function VideoScreen() {
                       backgroundColor: colors.inputBackground,
                       color: colors.text, borderColor: colors.border,
                     }}
-                    placeholder="Add a comment..."
+                    placeholder={replyingTo ? `Reply to ${replyingTo.userName}...` : 'Add a comment...'}
                     placeholderTextColor={colors.textTertiary}
                     value={commentText}
                     onChangeText={(t) => { setCommentText(t); if (commentError) setCommentError('') }}
@@ -443,14 +587,14 @@ export default function VideoScreen() {
                   />
                   <TouchableOpacity
                     onPress={handlePostComment}
-                    disabled={commentMutation.isPending || commentText.trim().length < 2}
+                    disabled={(commentMutation.isPending || replyMutation.isPending) || commentText.trim().length < 1}
                     style={{
                       width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: commentMutation.isPending || commentText.trim().length < 2 ? colors.border : colors.primary,
+                      backgroundColor: (commentMutation.isPending || replyMutation.isPending) || commentText.trim().length < 1 ? colors.border : colors.primary,
                     }}
                     activeOpacity={0.8}
                   >
-                    {commentMutation.isPending
+                    {(commentMutation.isPending || replyMutation.isPending)
                       ? <ActivityIndicator size="small" color={colors.primaryContrast} />
                       : <Ionicons name="send" size={16} color={colors.primaryContrast} />
                     }

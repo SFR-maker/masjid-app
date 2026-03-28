@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert, KeyboardAvoidingView, Platform, Linking } from 'react-native'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { formatDistanceToNow } from 'date-fns'
+import { Audio } from 'expo-av'
+import * as ImagePicker from 'expo-image-picker'
+import * as DocumentPicker from 'expo-document-picker'
+import { Image } from 'expo-image'
 import { api } from '../lib/api'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '@clerk/clerk-expo'
@@ -26,6 +30,11 @@ export default function MessagesScreen() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [groupText, setGroupText] = useState('')
   const groupScrollRef = useRef<ScrollView>(null)
+
+  // Voice recording state
+  const [recording, setRecording] = useState<Audio.Recording | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [mediaUploading, setMediaUploading] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-messages'],
@@ -63,8 +72,8 @@ export default function MessagesScreen() {
   })
 
   const groupReplyMutation = useMutation({
-    mutationFn: ({ groupId, mosqueId, body }: { groupId: string; mosqueId: string; body: string }) =>
-      api.post(`/mosques/${mosqueId}/groups/${groupId}/user-message`, { body }),
+    mutationFn: ({ groupId, mosqueId, body, mediaUrl, mediaType }: { groupId: string; mosqueId: string; body: string; mediaUrl?: string; mediaType?: string }) =>
+      api.post(`/mosques/${mosqueId}/groups/${groupId}/user-message`, { body, mediaUrl, mediaType }),
     onSuccess: (_, { groupId }) => {
       setGroupText('')
       queryClient.invalidateQueries({ queryKey: ['my-groups'] })
@@ -88,6 +97,101 @@ export default function MessagesScreen() {
     onError: () => Alert.alert('Error', 'Could not leave group. Try again.'),
   })
 
+  const deleteGroupMessageMutation = useMutation({
+    mutationFn: ({ groupId, mosqueId, messageId }: { groupId: string; mosqueId: string; messageId: string }) =>
+      api.delete(`/mosques/${mosqueId}/groups/${groupId}/messages/${messageId}`),
+    onSuccess: (_, { groupId }) => {
+      queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] })
+    },
+    onError: () => Alert.alert('Error', 'Could not delete message.'),
+  })
+
+  async function uploadMediaToCloudinary(
+    fileUri: string,
+    mimeType: string,
+    mediaType: 'audio' | 'image' | 'pdf' | 'gif',
+    mosqueId: string,
+    groupId: string
+  ): Promise<{ mediaUrl: string; mediaType: string } | null> {
+    try {
+      setMediaUploading(true)
+      // Get signed upload params
+      const res = await api.post<any>(`/mosques/${mosqueId}/groups/${groupId}/media-upload-url`, { mediaType })
+      const { signature, timestamp, cloudName, apiKey, folder, resourceType } = res.data
+
+      const formData = new FormData()
+      formData.append('file', { uri: fileUri, type: mimeType, name: `media.${mimeType.split('/')[1] ?? 'bin'}` } as any)
+      formData.append('signature', signature)
+      formData.append('timestamp', String(timestamp))
+      formData.append('api_key', apiKey)
+      formData.append('folder', folder)
+
+      const uploadRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType === 'raw' ? 'raw' : 'image'}/upload`,
+        { method: 'POST', body: formData as any }
+      )
+      const uploadData = await uploadRes.json() as any
+      if (!uploadData.secure_url) throw new Error('Upload failed')
+      return { mediaUrl: uploadData.secure_url as string, mediaType }
+    } catch (e) {
+      Alert.alert('Upload failed', 'Could not upload media. Try again.')
+      return null
+    } finally {
+      setMediaUploading(false)
+    }
+  }
+
+  async function handleAttachImage() {
+    if (!selectedGroup) return
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) { Alert.alert('Permission required', 'Allow photo access to attach images.'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 })
+    if (result.canceled || !result.assets[0]) return
+    const asset = result.assets[0]
+    const isGif = asset.uri.toLowerCase().includes('.gif') || asset.mimeType === 'image/gif'
+    const media = await uploadMediaToCloudinary(asset.uri, asset.mimeType ?? 'image/jpeg', isGif ? 'gif' : 'image', selectedGroup.mosque?.id, selectedGroup.id)
+    if (media) {
+      groupReplyMutation.mutate({ groupId: selectedGroup.id, mosqueId: selectedGroup.mosque?.id, body: '', mediaUrl: media.mediaUrl, mediaType: media.mediaType })
+    }
+  }
+
+  async function handleAttachPdf() {
+    if (!selectedGroup) return
+    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' })
+    if (result.canceled || !result.assets?.[0]) return
+    const asset = result.assets[0]
+    const media = await uploadMediaToCloudinary(asset.uri, 'application/pdf', 'pdf', selectedGroup.mosque?.id, selectedGroup.id)
+    if (media) {
+      groupReplyMutation.mutate({ groupId: selectedGroup.id, mosqueId: selectedGroup.mosque?.id, body: '', mediaUrl: media.mediaUrl, mediaType: media.mediaType })
+    }
+  }
+
+  async function handleStartRecording() {
+    try {
+      const perm = await Audio.requestPermissionsAsync()
+      if (!perm.granted) { Alert.alert('Permission required', 'Allow microphone access to record voice messages.'); return }
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })
+      const { recording: rec } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY)
+      setRecording(rec)
+      setIsRecording(true)
+    } catch { Alert.alert('Error', 'Could not start recording.') }
+  }
+
+  async function handleStopRecording() {
+    if (!recording || !selectedGroup) return
+    try {
+      setIsRecording(false)
+      await recording.stopAndUnloadAsync()
+      const uri = recording.getURI()
+      setRecording(null)
+      if (!uri) return
+      const media = await uploadMediaToCloudinary(uri, 'audio/m4a', 'audio', selectedGroup.mosque?.id, selectedGroup.id)
+      if (media) {
+        groupReplyMutation.mutate({ groupId: selectedGroup.id, mosqueId: selectedGroup.mosque?.id, body: '🎤 Voice message', mediaUrl: media.mediaUrl, mediaType: 'audio' })
+      }
+    } catch { Alert.alert('Error', 'Could not process recording.') }
+  }
+
   function handleSendReply() {
     if (!replyText.trim() || !selectedThread) return
     replyMutation.mutate({ messageId: selectedThread.id, body: replyText.trim() })
@@ -95,7 +199,7 @@ export default function MessagesScreen() {
 
   function handleSendGroupMessage() {
     if (!groupText.trim() || !selectedGroup) return
-    groupReplyMutation.mutate({ groupId: selectedGroup.id, mosqueId: selectedGroup.mosque?.id, body: groupText.trim() })
+    groupReplyMutation.mutate({ groupId: selectedGroup.id, mosqueId: selectedGroup.mosque?.id, body: groupText.trim(), mediaUrl: undefined, mediaType: undefined })
   }
 
   function confirmDelete(messageId: string) {
@@ -318,8 +422,20 @@ export default function MessagesScreen() {
               const isMe = !msg.fromAdmin && msg.fromUserId === userId
               const isAdmin = msg.fromAdmin
               const isRight = isMe || isAdmin
+              const isDeleted = msg.isDeleted
               return (
-                <View key={msg.id} style={{ alignItems: isRight ? 'flex-end' : 'flex-start' }}>
+                <TouchableOpacity
+                  key={msg.id}
+                  activeOpacity={0.85}
+                  onLongPress={() => {
+                    if (!isMe || isDeleted) return
+                    Alert.alert('Delete message', 'Remove this message?', [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: () => deleteGroupMessageMutation.mutate({ groupId: selectedGroup!.id, mosqueId: selectedGroup!.mosque?.id, messageId: msg.id }) },
+                    ])
+                  }}
+                  style={{ alignItems: isRight ? 'flex-end' : 'flex-start' }}
+                >
                   {!isRight && (
                     <Text style={{ color: colors.textTertiary, fontSize: 10, fontWeight: '700', marginBottom: 2, marginLeft: 4 }}>
                       {msg.fromUser?.name ?? 'Member'}
@@ -327,49 +443,94 @@ export default function MessagesScreen() {
                   )}
                   <View style={{
                     maxWidth: '80%',
-                    backgroundColor: isRight ? colors.primary : colors.surface,
+                    backgroundColor: isDeleted ? colors.surfaceSecondary : (isRight ? colors.primary : colors.surface),
                     borderRadius: 18,
                     borderBottomRightRadius: isRight ? 4 : 18,
                     borderBottomLeftRadius: isRight ? 18 : 4,
                     paddingHorizontal: 14,
                     paddingVertical: 10,
-                    borderWidth: isRight ? 0 : 1,
+                    borderWidth: isRight && !isDeleted ? 0 : 1,
                     borderColor: colors.border,
                   }}>
-                    <Text style={{ color: isRight ? colors.primaryContrast : colors.text, fontSize: 14, lineHeight: 20 }}>
-                      {msg.body}
-                    </Text>
+                    {isDeleted ? (
+                      <Text style={{ color: colors.textTertiary, fontSize: 13, fontStyle: 'italic' }}>Message deleted</Text>
+                    ) : msg.mediaType === 'audio' ? (
+                      <TouchableOpacity onPress={() => msg.mediaUrl && Linking.openURL(msg.mediaUrl)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Ionicons name="mic" size={18} color={isRight ? colors.primaryContrast : colors.primary} />
+                        <Text style={{ color: isRight ? colors.primaryContrast : colors.text, fontSize: 14 }}>Voice message</Text>
+                        <Ionicons name="play-circle" size={20} color={isRight ? colors.primaryContrast : colors.primary} />
+                      </TouchableOpacity>
+                    ) : msg.mediaType === 'pdf' ? (
+                      <TouchableOpacity onPress={() => msg.mediaUrl && Linking.openURL(msg.mediaUrl)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Ionicons name="document-text" size={18} color={isRight ? colors.primaryContrast : colors.primary} />
+                        <Text style={{ color: isRight ? colors.primaryContrast : colors.text, fontSize: 14 }}>PDF document</Text>
+                      </TouchableOpacity>
+                    ) : msg.mediaType === 'image' || msg.mediaType === 'gif' ? (
+                      <View>
+                        <Image source={{ uri: msg.mediaUrl }} style={{ width: 200, height: 150, borderRadius: 10 }} contentFit="cover" />
+                        {msg.body ? <Text style={{ color: isRight ? colors.primaryContrast : colors.text, fontSize: 14, marginTop: 6 }}>{msg.body}</Text> : null}
+                      </View>
+                    ) : (
+                      <Text style={{ color: isRight ? colors.primaryContrast : colors.text, fontSize: 14, lineHeight: 20 }}>
+                        {msg.body}
+                      </Text>
+                    )}
                   </View>
                   <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 3, marginHorizontal: 4, textAlign: isRight ? 'right' : 'left' }}>
                     {isAdmin ? 'Mosque' : (isMe ? 'You' : msg.fromUser?.name ?? 'Member')} · {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                   </Text>
-                </View>
+                </TouchableOpacity>
               )
             })}
             <View style={{ height: 8 }} />
           </ScrollView>
 
           {/* Input */}
-          <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
-            <TextInput
-              value={groupText}
-              onChangeText={setGroupText}
-              placeholder="Message the group…"
-              placeholderTextColor={colors.textTertiary}
-              multiline
-              maxLength={1000}
-              style={{ flex: 1, backgroundColor: colors.inputBackground, borderRadius: 20, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, fontSize: 14, color: colors.text, maxHeight: 100, borderWidth: 1, borderColor: colors.border }}
-            />
-            <TouchableOpacity
-              onPress={handleSendGroupMessage}
-              disabled={!groupText.trim() || groupReplyMutation.isPending}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: groupText.trim() ? colors.primary : colors.border, alignItems: 'center', justifyContent: 'center' }}
-            >
-              {groupReplyMutation.isPending
-                ? <ActivityIndicator size="small" color={colors.primaryContrast} />
-                : <Ionicons name="arrow-up" size={18} color={groupText.trim() ? colors.primaryContrast : colors.textTertiary} />
-              }
-            </TouchableOpacity>
+          <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface }}>
+            {mediaUploading && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingBottom: 8 }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={{ fontSize: 12, color: colors.textSecondary }}>Uploading media…</Text>
+              </View>
+            )}
+            {/* Attach buttons */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <TouchableOpacity onPress={handleAttachImage} disabled={mediaUploading} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="image-outline" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleAttachPdf} disabled={mediaUploading} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="document-text-outline" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={isRecording ? handleStopRecording : handleStartRecording}
+                disabled={mediaUploading}
+                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: isRecording ? '#FEE2E2' : colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name={isRecording ? 'stop-circle' : 'mic-outline'} size={18} color={isRecording ? '#EF4444' : colors.textSecondary} />
+              </TouchableOpacity>
+              {isRecording && <Text style={{ fontSize: 12, color: '#EF4444', fontWeight: '600' }}>Recording…</Text>}
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+              <TextInput
+                value={groupText}
+                onChangeText={setGroupText}
+                placeholder="Message the group…"
+                placeholderTextColor={colors.textTertiary}
+                multiline
+                maxLength={1000}
+                style={{ flex: 1, backgroundColor: colors.inputBackground, borderRadius: 20, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, fontSize: 14, color: colors.text, maxHeight: 100, borderWidth: 1, borderColor: colors.border }}
+              />
+              <TouchableOpacity
+                onPress={handleSendGroupMessage}
+                disabled={!groupText.trim() || groupReplyMutation.isPending}
+                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: groupText.trim() ? colors.primary : colors.border, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {groupReplyMutation.isPending
+                  ? <ActivityIndicator size="small" color={colors.primaryContrast} />
+                  : <Ionicons name="arrow-up" size={18} color={groupText.trim() ? colors.primaryContrast : colors.textTertiary} />
+                }
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

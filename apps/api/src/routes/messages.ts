@@ -395,14 +395,83 @@ export async function messageRoutes(app: FastifyInstance) {
         where: { groupChatId: groupId, userId: req.userId! },
       })
       if (!member) return reply.status(403).send({ success: false, error: 'Not a member' })
-      const { body } = z.object({ body: z.string().min(1).max(2000) }).parse(req.body)
+      const { body, mediaUrl, mediaType } = z.object({
+        body: z.string().max(2000).default(''),
+        mediaUrl: z.string().url().optional(),
+        mediaType: z.enum(['audio', 'image', 'pdf', 'gif', 'link']).optional(),
+      }).parse(req.body)
+      if (!body && !mediaUrl) return reply.status(400).send({ success: false, error: 'Body or media required' })
       const [msg] = await prisma.$transaction([
         prisma.groupChatMessage.create({
-          data: { groupChatId: groupId, body, fromAdmin: false, fromUserId: req.userId! },
+          data: { groupChatId: groupId, body, fromAdmin: false, fromUserId: req.userId!, mediaUrl, mediaType },
         }),
         prisma.groupChat.update({ where: { id: groupId }, data: { updatedAt: new Date() } }),
       ])
       return reply.status(201).send({ success: true, data: msg })
+    }
+  )
+
+  // DELETE /mosques/:id/groups/:groupId/messages/:messageId — soft delete (own messages only)
+  app.delete(
+    '/mosques/:id/groups/:groupId/messages/:messageId',
+    { preHandler: [requireAuth] },
+    async (req, reply) => {
+      const { groupId, messageId } = req.params as { id: string; groupId: string; messageId: string }
+      const msg = await prisma.groupChatMessage.findUnique({ where: { id: messageId } })
+      if (!msg) return reply.status(404).send({ success: false, error: 'Not found' })
+      if (msg.groupChatId !== groupId) return reply.status(404).send({ success: false, error: 'Not found' })
+      // Only owner or admin can delete
+      const isMsgOwner = msg.fromUserId === req.userId
+      if (!isMsgOwner && !req.isSuperAdmin) {
+        const isAdmin = await prisma.mosqueAdmin.findFirst({ where: { userId: req.userId!, mosqueId: (req.params as any).id } })
+        if (!isAdmin) return reply.status(403).send({ success: false, error: 'Forbidden' })
+      }
+      await prisma.groupChatMessage.update({ where: { id: messageId }, data: { isDeleted: true, body: '' } })
+      return reply.send({ success: true })
+    }
+  )
+
+  // POST /mosques/:id/groups/:groupId/media-upload-url — get signed Cloudinary upload URL for media
+  app.post(
+    '/mosques/:id/groups/:groupId/media-upload-url',
+    { preHandler: [requireAuth] },
+    async (req, reply) => {
+      const { groupId } = req.params as { id: string; groupId: string }
+      // Verify user is a member
+      const member = await prisma.groupChatMember.findFirst({
+        where: { groupChatId: groupId, userId: req.userId! },
+      })
+      if (!member) return reply.status(403).send({ success: false, error: 'Not a member' })
+
+      const { mediaType } = z.object({
+        mediaType: z.enum(['audio', 'image', 'pdf', 'gif']),
+      }).parse(req.body)
+
+      const { generateSignedUploadParams } = await import('../lib/cloudinary')
+      const params = await generateSignedUploadParams(`masjid/group-media/${groupId}`)
+
+      // Override allowed_formats per type
+      const formatMap: Record<string, string> = {
+        audio: 'mp3,m4a,aac,wav,ogg',
+        image: 'jpg,jpeg,png,webp,gif',
+        pdf: 'pdf',
+        gif: 'gif',
+      }
+      const resourceTypeMap: Record<string, string> = {
+        audio: 'raw',
+        image: 'image',
+        pdf: 'raw',
+        gif: 'image',
+      }
+
+      return reply.send({
+        success: true,
+        data: {
+          ...params,
+          allowedFormats: formatMap[mediaType],
+          resourceType: resourceTypeMap[mediaType],
+        },
+      })
     }
   )
 

@@ -41,6 +41,8 @@ model User {
   videoLikes           VideoLike[]
   videoViews           VideoView[]
   videoComments        VideoComment[]
+  videoCommentLikes    VideoCommentLike[]
+  videoCommentReplies  VideoCommentReply[]
   announcementLikes    AnnouncementLike[]
   announcementComments AnnouncementComment[]
   reports              Report[]
@@ -327,6 +329,9 @@ model GroupChatMessage {
   fromAdmin   Boolean  @default(false)
   fromUserId  String?
   body        String
+  mediaUrl    String?
+  mediaType   String?  // 'audio' | 'image' | 'pdf' | 'gif' | 'link'
+  isDeleted   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   groupChat GroupChat @relation(fields: [groupChatId], references: [id], onDelete: Cascade)
@@ -625,7 +630,8 @@ enum VideoCategory {
 
 model Video {
   id            String        @id @default(cuid())
-  mosqueId      String
+  mosqueId      String?
+  isSuperAdminPost Boolean    @default(false)
   title         String
   description   String?
   category      VideoCategory @default(GENERAL)
@@ -642,7 +648,7 @@ model Video {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  mosque   MosqueProfile @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  mosque   MosqueProfile? @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
   likes    VideoLike[]
   views    VideoView[]
   comments VideoComment[]
@@ -658,14 +664,46 @@ model VideoComment {
   videoId   String
   userId    String
   text      String
+  likeCount Int      @default(0)
   createdAt DateTime @default(now())
 
-  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video   Video              @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes   VideoCommentLike[]
+  replies VideoCommentReply[]
 
   @@index([videoId])
   @@index([userId])
   @@map("video_comments")
+}
+
+model VideoCommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment VideoComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@map("video_comment_likes")
+}
+
+model VideoCommentReply {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+
+  comment VideoComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([commentId, createdAt])
+  @@index([userId])
+  @@map("video_comment_replies")
 }
 
 model VideoLike {

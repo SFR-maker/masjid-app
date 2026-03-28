@@ -239,6 +239,36 @@ export async function userRoutes(app: FastifyInstance) {
     })
   })
 
+  // GET /users/me/admin-mosques — mosques the user administers (for mobile admin dashboard)
+  app.get('/me/admin-mosques', { preHandler: [requireAuth] }, async (req, reply) => {
+    const adminRecords = await prisma.mosqueAdmin.findMany({
+      where: { userId: req.userId! },
+      include: {
+        mosque: {
+          select: {
+            id: true, name: true, logoUrl: true, city: true, state: true, isVerified: true,
+            _count: { select: { follows: true, events: true, announcements: true, videos: true } },
+          },
+        },
+      },
+    })
+    return reply.send({
+      success: true,
+      data: {
+        isSuperAdmin: req.isSuperAdmin,
+        items: adminRecords.map((a) => ({
+          role: a.role,
+          ...a.mosque,
+          followersCount: a.mosque._count.follows,
+          eventsCount: a.mosque._count.events,
+          announcementsCount: a.mosque._count.announcements,
+          videosCount: a.mosque._count.videos,
+          _count: undefined,
+        })),
+      },
+    })
+  })
+
   // DELETE /users/me/messages/:messageId — user deletes their conversation
   app.delete('/me/messages/:messageId', { preHandler: [requireAuth] }, async (req, reply) => {
     const { messageId } = req.params as { messageId: string }

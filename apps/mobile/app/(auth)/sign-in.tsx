@@ -8,13 +8,17 @@ import * as WebBrowser from 'expo-web-browser'
 import { Link, router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../../contexts/ThemeContext'
+import { api } from '../../lib/api'
 
 WebBrowser.maybeCompleteAuthSession()
+
+type LoginMode = 'user' | 'mosque'
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn()
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' })
   const { colors } = useTheme()
+  const [mode, setMode] = useState<LoginMode>('user')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,7 +31,7 @@ export default function SignInScreen() {
       const result = await signIn.create({ identifier: email, password })
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId })
-        router.replace('/(tabs)')
+        await redirectAfterLogin()
       }
     } catch (err: any) {
       Alert.alert('Sign In Failed', err.errors?.[0]?.message ?? 'Please check your credentials.')
@@ -42,14 +46,32 @@ export default function SignInScreen() {
       const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow()
       if (createdSessionId) {
         await setActiveOAuth!({ session: createdSessionId })
-        router.replace('/(tabs)')
+        await redirectAfterLogin()
       }
     } catch (err: any) {
       Alert.alert('Google Sign In Failed', err.errors?.[0]?.message ?? 'Please try again.')
     } finally {
       setGoogleLoading(false)
     }
-  }, [startOAuthFlow])
+  }, [startOAuthFlow, mode])
+
+  async function redirectAfterLogin() {
+    if (mode === 'mosque') {
+      try {
+        const res = await api.get<any>('/users/me/admin-mosques')
+        const { isSuperAdmin, items } = res?.data ?? {}
+        if (isSuperAdmin || (items?.length ?? 0) > 0) {
+          router.replace('/admin' as any)
+          return
+        }
+        Alert.alert('No mosque access', 'Your account is not linked to any mosque as an admin. Contact your mosque to be added as an admin.')
+      } catch {
+        router.replace('/(tabs)')
+      }
+    } else {
+      router.replace('/(tabs)')
+    }
+  }
 
   const inputStyle = {
     borderWidth: 1, borderColor: colors.border, borderRadius: 12,
@@ -68,12 +90,31 @@ export default function SignInScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Logo */}
-          <View style={{ alignItems: 'center', marginBottom: 48 }}>
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
             <Text style={{ color: 'white', fontSize: 48, fontWeight: 'bold' }}>مسجد</Text>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 22, marginTop: 4 }}>Masjid</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 22, marginTop: 4 }}>Masjidi</Text>
             <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 4 }}>
               Your mosque community
             </Text>
+          </View>
+
+          {/* Mode Tabs */}
+          <View style={{ flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 14, padding: 4, marginBottom: 20 }}>
+            {(['user', 'mosque'] as LoginMode[]).map((m) => (
+              <TouchableOpacity
+                key={m}
+                onPress={() => setMode(m)}
+                style={{
+                  flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+                  backgroundColor: mode === m ? 'white' : 'transparent',
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: mode === m ? '#1B4332' : 'rgba(255,255,255,0.7)' }}>
+                  {m === 'user' ? '🙋 User' : '🕌 Mosque Admin'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           {/* Form */}
@@ -88,9 +129,15 @@ export default function SignInScreen() {
               elevation: 8,
             }}
           >
-            <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 24 }}>
-              Welcome back
+            <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 6 }}>
+              {mode === 'mosque' ? 'Admin Sign In' : 'Welcome back'}
             </Text>
+            {mode === 'mosque' && (
+              <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 20, lineHeight: 18 }}>
+                Sign in with your mosque admin account to access your dashboard.
+              </Text>
+            )}
+            {mode === 'user' && <View style={{ height: 16 }} />}
 
             {/* Google Sign In */}
             <TouchableOpacity
@@ -156,7 +203,9 @@ export default function SignInScreen() {
               {loading ? (
                 <ActivityIndicator color={colors.primaryContrast} />
               ) : (
-                <Text style={{ color: colors.primaryContrast, fontWeight: '600', fontSize: 16 }}>Sign In</Text>
+                <Text style={{ color: colors.primaryContrast, fontWeight: '600', fontSize: 16 }}>
+                  {mode === 'mosque' ? 'Sign In as Admin' : 'Sign In'}
+                </Text>
               )}
             </TouchableOpacity>
 

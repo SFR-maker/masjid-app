@@ -185,6 +185,7 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
   const [panelVisible, setPanelVisible] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [replyingTo, setReplyingTo] = useState<{ id: string; userName: string } | null>(null)
+  const commentInputRef = useRef<TextInput>(null)
   const panelAnim = useRef(new Animated.Value(0)).current
   const backdropAnim = useRef(new Animated.Value(0)).current
   const panelTranslateY = panelAnim.interpolate({ inputRange: [0, 1], outputRange: [PANEL_HEIGHT, 0] })
@@ -267,9 +268,32 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
     mutationFn: () => replyingTo
       ? api.post(`/videos/${item.id}/comments/${replyingTo.id}/replies`, { text: commentText.trim() })
       : api.post(`/videos/${item.id}/comments`, { text: commentText.trim() }),
+    onMutate: () => {
+      // Optimistically bump replyCount on the parent comment when posting a reply
+      if (replyingTo) {
+        queryClient.setQueryData(['video-comments', item.id], (old: any) => {
+          if (!old) return old
+          return {
+            ...old,
+            data: {
+              ...old.data,
+              items: (old.data?.items ?? []).map((c: any) =>
+                c.id === replyingTo.id
+                  ? { ...c, replyCount: (c.replyCount ?? 0) + 1 }
+                  : c
+              ),
+            },
+          }
+        })
+      }
+    },
     onSuccess: () => {
       setCommentText('')
       setReplyingTo(null)
+      queryClient.invalidateQueries({ queryKey: ['video-comments', item.id] })
+    },
+    onError: () => {
+      // Roll back optimistic replyCount bump
       queryClient.invalidateQueries({ queryKey: ['video-comments', item.id] })
     },
   })
@@ -515,6 +539,7 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
                     onReply={(comment) => {
                       setReplyingTo({ id: comment.id, userName: comment.user?.name ?? 'Anonymous' })
                       setCommentText('')
+                      setTimeout(() => commentInputRef.current?.focus(), 50)
                     }}
                   />
                 ))
@@ -522,11 +547,11 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
             </ScrollView>
 
             {/* Input — in normal flow, KAV pushes it above keyboard */}
-            <View style={[styles.commentInputRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <View style={[styles.commentInputArea, { paddingBottom: Math.max(insets.bottom, 16) }]}>
               {isSignedIn ? (
                 <>
                   {replyingTo && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(34,197,94,0.1)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 8, width: '100%' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(34,197,94,0.1)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 8 }}>
                       <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
                         Replying to <Text style={{ fontWeight: '700', color: '#22C55E' }}>{replyingTo.userName}</Text>
                       </Text>
@@ -535,30 +560,33 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
                       </TouchableOpacity>
                     </View>
                   )}
-                  <TextInput
-                    style={styles.commentInput}
-                    placeholder={replyingTo ? `Reply to ${replyingTo.userName}...` : 'Write a comment...'}
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    value={commentText}
-                    onChangeText={setCommentText}
-                    maxLength={1000}
-                    multiline
-                    returnKeyType="send"
-                    blurOnSubmit={false}
-                  />
-                  <TouchableOpacity
-                    onPress={() => postComment.mutate()}
-                    disabled={postComment.isPending || commentText.trim().length < 2}
-                    style={[styles.commentSendBtn, commentText.trim().length >= 2 && styles.commentSendBtnActive]}
-                  >
-                    {postComment.isPending
-                      ? <ActivityIndicator size="small" color="#fff" />
-                      : <Ionicons name="send" size={16} color="#fff" />
-                    }
-                  </TouchableOpacity>
+                  <View style={styles.commentInputRow}>
+                    <TextInput
+                      ref={commentInputRef}
+                      style={styles.commentInput}
+                      placeholder={replyingTo ? `Reply to ${replyingTo.userName}...` : 'Write a comment...'}
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      value={commentText}
+                      onChangeText={setCommentText}
+                      maxLength={1000}
+                      multiline
+                      returnKeyType="send"
+                      blurOnSubmit={false}
+                    />
+                    <TouchableOpacity
+                      onPress={() => postComment.mutate()}
+                      disabled={postComment.isPending || commentText.trim().length < 2}
+                      style={[styles.commentSendBtn, commentText.trim().length >= 2 && styles.commentSendBtnActive]}
+                    >
+                      {postComment.isPending
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Ionicons name="send" size={16} color="#fff" />
+                      }
+                    </TouchableOpacity>
+                  </View>
                 </>
               ) : (
-                <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, textAlign: 'center', flex: 1, paddingVertical: 4 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, textAlign: 'center', paddingVertical: 4 }}>
                   Sign in to leave a comment
                 </Text>
               )}
@@ -1022,15 +1050,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  commentInputRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-end',
-    gap: 10,
+  commentInputArea: {
     paddingHorizontal: 16,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.07)',
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
   },
   commentInput: {
     flex: 1,

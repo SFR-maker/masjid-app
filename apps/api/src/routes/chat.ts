@@ -183,7 +183,7 @@ export async function chatRoutes(app: FastifyInstance) {
           return reply.send({ success: true, data: assistantMessage })
         }
       } else {
-        // No Voyage AI key — fall back to direct Anthropic call
+        // No Voyage AI key — call Anthropic and store answer for exact-match hits
         const response = await anthropic.messages.create({
           model: 'claude-sonnet-4-6',
           max_tokens: 1024,
@@ -192,6 +192,12 @@ export async function chatRoutes(app: FastifyInstance) {
         })
 
         const assistantContent = response.content[0].type === 'text' ? response.content[0].text : ''
+
+        // Store with empty embedding so exact-match cache works next time
+        prisma.chatCache
+          .create({ data: { question: normalizedQuestion, answer: assistantContent, embedding: [] } })
+          .catch(() => {})
+
         const assistantMessage = await prisma.chatMessage.create({
           data: { conversationId, role: 'ASSISTANT', content: assistantContent, tokensUsed: response.usage.output_tokens },
         })

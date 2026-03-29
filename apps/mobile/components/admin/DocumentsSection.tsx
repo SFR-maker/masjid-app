@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Linking } from 'react-native'
+import * as WebBrowser from 'expo-web-browser'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
@@ -29,6 +30,22 @@ export function DocumentsSection({ mosqueId }: { mosqueId: string }) {
   const [uploading, setUploading] = useState(false)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
+  const [openingId, setOpeningId] = useState<string | null>(null)
+
+  async function handleOpen(doc: any) {
+    setOpeningId(doc.id)
+    try {
+      const res = await api.get<any>(`/mosques/${mosqueId}/documents/${doc.id}/download`)
+      const url = res?.data?.url ?? doc.fileUrl
+      await WebBrowser.openBrowserAsync(url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      })
+    } catch {
+      Linking.openURL(doc.fileUrl).catch(() => {})
+    } finally {
+      setOpeningId(null)
+    }
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['mosque-documents', mosqueId],
@@ -169,10 +186,14 @@ export function DocumentsSection({ mosqueId }: { mosqueId: string }) {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
-                      onPress={() => Linking.openURL(doc.fileUrl)}
+                      onPress={() => handleOpen(doc)}
+                      disabled={openingId === doc.id}
                       style={{ padding: 7, backgroundColor: colors.primaryLight, borderRadius: 8 }}
                     >
-                      <Ionicons name="open-outline" size={16} color={colors.primary} />
+                      {openingId === doc.id
+                        ? <ActivityIndicator size="small" color={colors.primary} />
+                        : <Ionicons name="open-outline" size={16} color={colors.primary} />
+                      }
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => { setRenaming(doc.id); setNewName(doc.name) }}

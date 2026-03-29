@@ -589,10 +589,14 @@ export async function mosqueRoutes(app: FastifyInstance) {
     }
     // Extract public ID from Cloudinary URL
     // URL format: https://res.cloudinary.com/{cloud}/raw/upload/v{version}/{publicId}
-    const urlMatch = doc.fileUrl.match(/\/(?:raw|image|video)\/upload\/(?:v\d+\/)?(.+)$/)
-    const publicId = urlMatch ? urlMatch[1].replace(/\.[^/.]+$/, '') : null
-    if (!publicId) return reply.send({ success: true, data: { url: doc.fileUrl } })
+    const urlMatch = doc.fileUrl.match(/\/(?:raw|image|video)\/upload\/(?:v\d+\/)?(.+?)(?:\?.*)?$/)
     const resourceType = doc.mimeType?.startsWith('image/') ? 'image' : 'raw'
+    // For raw resources the extension is part of the public ID — only strip it for images
+    const rawPublicId = urlMatch ? urlMatch[1] : null
+    const publicId = rawPublicId
+      ? (resourceType === 'image' ? rawPublicId.replace(/\.[^/.]+$/, '') : rawPublicId)
+      : null
+    if (!publicId) return reply.send({ success: true, data: { url: doc.fileUrl } })
     const signedUrl = generateSignedDownloadUrl(publicId, resourceType)
     return reply.send({ success: true, data: { url: signedUrl, name: doc.name, mimeType: doc.mimeType } })
   })

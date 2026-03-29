@@ -105,7 +105,7 @@ function RootNavigator() {
     AsyncStorage.getItem(key).then(async (last) => {
       if (last !== today) {
         await AsyncStorage.setItem(key, today)
-        api.post('/streaks/login', {})
+        api.post('/streaks/login', { localDate: today })
           .then(() => queryClient.invalidateQueries({ queryKey: ['streaks'] }))
           .catch(() => {})
       }

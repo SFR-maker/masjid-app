@@ -93,7 +93,7 @@ export default function PrayerScreen() {
 
   const { data: streakData } = useQuery({
     queryKey: ['streaks', todayKey],
-    queryFn: () => api.get<any>('/streaks/me'),
+    queryFn: () => api.get<any>(`/streaks/me?localDate=${todayKey}`),
     enabled: !!isSignedIn,
     staleTime: 1000 * 60 * 5,
   })
@@ -105,7 +105,7 @@ export default function PrayerScreen() {
   }, [streakData])
 
   const { mutate: markPrayed } = useMutation({
-    mutationFn: (prayer: string) => api.post('/streaks/prayer', { prayer }),
+    mutationFn: (prayer: string) => api.post('/streaks/prayer', { prayer, localDate: todayKey }),
     onMutate: (prayer) => {
       setPrayedToday((prev) => new Set([...prev, prayer]))
     },
@@ -118,7 +118,7 @@ export default function PrayerScreen() {
   })
 
   const { mutate: unmarkPrayed } = useMutation({
-    mutationFn: (prayer: string) => api.delete(`/streaks/prayer?prayer=${prayer}`),
+    mutationFn: (prayer: string) => api.delete(`/streaks/prayer?prayer=${prayer}&localDate=${todayKey}`),
     onMutate: (prayer) => {
       setPrayedToday((prev) => { const s = new Set(prev); s.delete(prayer); return s })
     },

@@ -20,13 +20,13 @@ export function StreakWidget() {
 
   const { data } = useQuery({
     queryKey: ['streaks', todayKey],
-    queryFn: () => api.get<any>('/streaks/me'),
+    queryFn: () => api.get<any>(`/streaks/me?localDate=${todayKey}`),
     enabled: !!isSignedIn,
     staleTime: 1000 * 60 * 5,
   })
 
   const markMutation = useMutation({
-    mutationFn: (prayer: string) => api.post('/streaks/prayer', { prayer }),
+    mutationFn: (prayer: string) => api.post('/streaks/prayer', { prayer, localDate: todayKey }),
     onMutate: (prayer) => {
       queryClient.setQueryData(['streaks', todayKey], (old: any) => {
         if (!old) return old
@@ -39,7 +39,7 @@ export function StreakWidget() {
   })
 
   const unmarkMutation = useMutation({
-    mutationFn: (prayer: string) => api.delete(`/streaks/prayer?prayer=${prayer}`),
+    mutationFn: (prayer: string) => api.delete(`/streaks/prayer?prayer=${prayer}&localDate=${todayKey}`),
     onMutate: (prayer) => {
       queryClient.setQueryData(['streaks', todayKey], (old: any) => {
         if (!old) return old

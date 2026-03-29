@@ -9,13 +9,18 @@ function toDateOnly(date: Date): Date {
   return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
 }
 
+// Parse a YYYY-MM-DD string (local date sent by the client) as UTC midnight
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d))
+}
+
 function daysBetween(a: Date, b: Date): number {
   const msPerDay = 86400000
   return Math.round(Math.abs(a.getTime() - b.getTime()) / msPerDay)
 }
 
-async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN'): Promise<void> {
-  const today = toDateOnly(new Date())
+async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN', today: Date): Promise<void> {
 
   // Use upsert to avoid TOCTOU race when the same user has concurrent requests
   const existing = await prisma.userStreak.findUnique({
@@ -55,11 +60,11 @@ export async function streakRoutes(app: FastifyInstance) {
   // POST /streaks/prayer — mark a prayer as prayed today
   app.post('/prayer', { preHandler: [requireAuth] }, async (req, reply) => {
     const userId = req.userId!
-    const { prayer } = z
-      .object({ prayer: z.enum(PRAYER_NAMES) })
+    const { prayer, localDate } = z
+      .object({ prayer: z.enum(PRAYER_NAMES), localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
       .parse(req.body)
 
-    const today = toDateOnly(new Date())
+    const today = localDate ? parseLocalDate(localDate) : toDateOnly(new Date())
 
     // Idempotent: upsert the prayer log for today
     await prisma.prayerLog.upsert({
@@ -75,7 +80,7 @@ export async function streakRoutes(app: FastifyInstance) {
 
     // Prayer streak advances when all 5 are completed today
     if (todayCount >= 5) {
-      await updateStreak(userId, 'PRAYER')
+      await updateStreak(userId, 'PRAYER', today)
     }
 
     return reply.send({ success: true, todayCount })
@@ -84,11 +89,11 @@ export async function streakRoutes(app: FastifyInstance) {
   // DELETE /streaks/prayer?prayer=FAJR — unmark a prayer for today
   app.delete('/prayer', { preHandler: [requireAuth] }, async (req, reply) => {
     const userId = req.userId!
-    const { prayer } = z
-      .object({ prayer: z.enum(PRAYER_NAMES) })
+    const { prayer, localDate } = z
+      .object({ prayer: z.enum(PRAYER_NAMES), localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
       .parse(req.query)
 
-    const today = toDateOnly(new Date())
+    const today = localDate ? parseLocalDate(localDate) : toDateOnly(new Date())
 
     await prisma.prayerLog.deleteMany({
       where: { userId, prayer, date: today },
@@ -147,14 +152,21 @@ export async function streakRoutes(app: FastifyInstance) {
   // POST /streaks/login — record a daily login (call on app open)
   app.post('/login', { preHandler: [requireAuth] }, async (req, reply) => {
     const userId = req.userId!
-    await updateStreak(userId, 'LOGIN')
+    const { localDate } = z
+      .object({ localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
+      .parse(req.body)
+    const today = localDate ? parseLocalDate(localDate) : toDateOnly(new Date())
+    await updateStreak(userId, 'LOGIN', today)
     return reply.send({ success: true })
   })
 
   // GET /streaks/me — return streak data + today's prayed prayers
   app.get('/me', { preHandler: [requireAuth] }, async (req, reply) => {
     const userId = req.userId!
-    const today = toDateOnly(new Date())
+    const { localDate } = z
+      .object({ localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
+      .parse(req.query)
+    const today = localDate ? parseLocalDate(localDate) : toDateOnly(new Date())
 
     const [streaks, todayLogs] = await Promise.all([
       prisma.userStreak.findMany({ where: { userId } }),

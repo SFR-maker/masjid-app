@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Keyboard,
 } from 'react-native'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -26,6 +26,13 @@ export default function ChatScreen() {
   const convIdRef = useRef<string | null>(null)
   const listRef = useRef<FlatList>(null)
   const queryClient = useQueryClient()
+
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100)
+    })
+    return () => sub.remove()
+  }, [])
   // Optimistic message shown while awaiting AI response
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
 
@@ -73,7 +80,12 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <Stack.Screen
         options={{
           headerShown: true,
@@ -82,8 +94,6 @@ export default function ChatScreen() {
           headerStyle: { backgroundColor: colors.background },
         }}
       />
-
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {/* Disclaimer */}
         <View style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: colors.isDark ? '#422006' : '#FFFBEB', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: colors.isDark ? '#854d0e' : '#FDE68A' }}>
           <Text style={{ color: colors.isDark ? '#fde68a' : '#92400E', fontSize: 11, textAlign: 'center' }}>{DISCLAIMER}</Text>
@@ -156,7 +166,7 @@ export default function ChatScreen() {
             <Ionicons name="send" size={18} color={input.trim() ? colors.primaryContrast : colors.textTertiary} />
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   )
 }

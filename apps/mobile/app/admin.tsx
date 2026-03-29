@@ -374,34 +374,62 @@ function EventsSection({ mosqueId }: { mosqueId: string }) {
 
               {/* Native date/time picker */}
               {pickerField !== null && (
-                <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                      {pickerField === 'start' ? 'Start' : 'End'} — {pickerMode === 'date' ? 'Pick Date' : 'Pick Time'}
-                    </Text>
-                    <TouchableOpacity onPress={() => {
-                      if (pickerMode === 'date') { setPickerMode('time') }
-                      else {
-                        if (pickerField === 'start') setStartDate(new Date(tempDate))
-                        else setEndDate(new Date(tempDate))
-                        setPickerField(null)
-                        setPickerMode('date')
-                      }
-                    }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>
-                        {pickerMode === 'date' ? 'Next →' : 'Done ✓'}
+                Platform.OS === 'ios' ? (
+                  <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                        {pickerField === 'start' ? 'Start' : 'End'} — {pickerMode === 'date' ? 'Pick Date' : 'Pick Time'}
                       </Text>
-                    </TouchableOpacity>
+                      <TouchableOpacity onPress={() => {
+                        if (pickerMode === 'date') { setPickerMode('time') }
+                        else {
+                          if (pickerField === 'start') setStartDate(new Date(tempDate))
+                          else setEndDate(new Date(tempDate))
+                          setPickerField(null)
+                          setPickerMode('date')
+                        }
+                      }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>
+                          {pickerMode === 'date' ? 'Next →' : 'Done ✓'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode={pickerMode}
+                      display="spinner"
+                      onChange={(_e: any, date?: Date) => { if (date) setTempDate(date) }}
+                      textColor={colors.text}
+                      style={{ width: '100%' }}
+                    />
                   </View>
+                ) : (
                   <DateTimePicker
                     value={tempDate}
                     mode={pickerMode}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(_e: any, date?: Date) => { if (date) setTempDate(date) }}
-                    textColor={colors.text}
-                    style={{ width: '100%' }}
+                    display="default"
+                    onChange={(e: any, date?: Date) => {
+                      if (!date || e.type === 'dismissed') {
+                        // User cancelled — close everything
+                        setPickerField(null)
+                        setPickerMode('date')
+                        return
+                      }
+                      const updated = new Date(date)
+                      setTempDate(updated)
+                      if (pickerMode === 'date') {
+                        // Auto-advance to time picker
+                        setPickerMode('time')
+                      } else {
+                        // Done — save and close
+                        if (pickerField === 'start') setStartDate(updated)
+                        else setEndDate(updated)
+                        setPickerField(null)
+                        setPickerMode('date')
+                      }
+                    }}
                   />
-                </View>
+                )
               )}
               <View>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>Category</Text>

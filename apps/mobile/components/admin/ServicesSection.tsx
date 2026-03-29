@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { api } from '../../lib/api'
@@ -199,8 +200,8 @@ export function ServicesSection({ mosqueId }: { mosqueId: string }) {
 
       {/* Add Service Modal */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>Add Service</Text>
             <TouchableOpacity onPress={() => setShowForm(false)} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 8 }}>
               <Ionicons name="close" size={24} color={colors.text} />
@@ -254,7 +255,7 @@ export function ServicesSection({ mosqueId }: { mosqueId: string }) {
               )}
             </TouchableOpacity>
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   )

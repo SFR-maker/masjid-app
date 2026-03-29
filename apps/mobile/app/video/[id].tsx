@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   View, Text, Pressable, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity, Platform, Alert, Share,
-  FlatList, Animated, Dimensions, Keyboard,
+  FlatList, Animated, useWindowDimensions, Keyboard,
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -14,11 +14,7 @@ import { api } from '../../lib/api'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '@clerk/clerk-expo'
 
-const SCREEN_HEIGHT = Dimensions.get('window').height
-const VIDEO_FULL_HEIGHT = Math.round(SCREEN_HEIGHT * 0.38)
-const VIDEO_COMPACT_HEIGHT = Math.round(SCREEN_HEIGHT * 0.28)
 const PANEL_PEEK = 56    // handle + header row visible when closed
-const PANEL_OPEN = Math.round(SCREEN_HEIGHT * 0.62)
 
 // ── Moderation ───────────────────────────────────────────────────────────────
 const BLOCKED_TERMS = [
@@ -193,6 +189,10 @@ export default function VideoScreen() {
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null)
   const { colors } = useTheme()
   const { isSignedIn, userId: currentUserId } = useAuth()
+  const { height: screenHeight } = useWindowDimensions()
+  const VIDEO_FULL_HEIGHT = Math.round(screenHeight * 0.38)
+  const VIDEO_COMPACT_HEIGHT = Math.round(screenHeight * 0.28)
+  const PANEL_OPEN = Math.round(screenHeight * 0.62)
 
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [sortBy, setSortBy] = useState<'top' | 'new'>('top')

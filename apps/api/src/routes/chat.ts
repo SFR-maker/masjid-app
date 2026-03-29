@@ -113,67 +113,100 @@ export async function chatRoutes(app: FastifyInstance) {
       history.push({ role: 'user', content })
     }
 
-    // ── Semantic cache check ─────────────────────────────────────────────────
-    const queryEmbedding = await generateEmbedding(content)
+    // ── Cache check (exact match first, then semantic) ───────────────────────
+    const normalizedQuestion = content.trim().toLowerCase()
     let cachedAnswer: string | null = null
+    let cacheHitId: string | null = null
 
-    if (queryEmbedding) {
-      // Load top 500 most-hit cache entries and find the best semantic match
-      const cacheEntries = await prisma.chatCache.findMany({
-        orderBy: { hitCount: 'desc' },
-        take: 500,
-        select: { id: true, answer: true, embedding: true },
-      })
+    // 1. Exact match — instant, no API call needed
+    const exactHit = await prisma.chatCache.findFirst({
+      where: { question: { equals: normalizedQuestion, mode: 'insensitive' } },
+      orderBy: { hitCount: 'desc' },
+      select: { id: true, answer: true },
+    })
 
-      let bestScore = 0
-      let bestId: string | null = null
-      let bestAnswer: string | null = null
+    if (exactHit) {
+      cachedAnswer = exactHit.answer
+      cacheHitId = exactHit.id
+    }
 
-      for (const entry of cacheEntries) {
-        if (entry.embedding.length === 0) continue
-        const score = cosineSimilarity(queryEmbedding, entry.embedding)
-        if (score > bestScore) {
-          bestScore = score
-          bestId = entry.id
-          bestAnswer = entry.answer
+    // 2. Semantic match — only if exact miss and Voyage AI key is configured
+    if (!cachedAnswer) {
+      const queryEmbedding = await generateEmbedding(content)
+
+      if (queryEmbedding) {
+        const cacheEntries = await prisma.chatCache.findMany({
+          orderBy: { hitCount: 'desc' },
+          take: 500,
+          select: { id: true, answer: true, embedding: true },
+        })
+
+        let bestScore = 0
+
+        for (const entry of cacheEntries) {
+          if (entry.embedding.length === 0) continue
+          const score = cosineSimilarity(queryEmbedding, entry.embedding)
+          if (score > bestScore) {
+            bestScore = score
+            cacheHitId = entry.id
+            cachedAnswer = entry.answer
+          }
         }
-      }
 
-      if (bestScore >= SIMILARITY_THRESHOLD && bestId && bestAnswer) {
-        cachedAnswer = bestAnswer
-        // Increment hit count asynchronously (don't await — don't block response)
-        prisma.chatCache.update({ where: { id: bestId }, data: { hitCount: { increment: 1 } } }).catch(() => {})
+        if (bestScore < SIMILARITY_THRESHOLD) {
+          cachedAnswer = null
+          cacheHitId = null
+        }
+
+        // On a miss, call Anthropic then store result for future lookups
+        if (!cachedAnswer) {
+          const response = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1024,
+            system: SYSTEM_PROMPT,
+            messages: history,
+          })
+
+          cachedAnswer = response.content[0].type === 'text' ? response.content[0].text : ''
+
+          prisma.chatCache
+            .create({
+              data: { question: normalizedQuestion, answer: cachedAnswer, embedding: queryEmbedding },
+            })
+            .catch(() => {})
+
+          const assistantMessage = await prisma.chatMessage.create({
+            data: { conversationId, role: 'ASSISTANT', content: cachedAnswer, tokensUsed: response.usage.output_tokens },
+          })
+          await prisma.chatConversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } })
+          if (cacheHitId) prisma.chatCache.update({ where: { id: cacheHitId }, data: { hitCount: { increment: 1 } } }).catch(() => {})
+          return reply.send({ success: true, data: assistantMessage })
+        }
+      } else {
+        // No Voyage AI key — fall back to direct Anthropic call
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: SYSTEM_PROMPT,
+          messages: history,
+        })
+
+        const assistantContent = response.content[0].type === 'text' ? response.content[0].text : ''
+        const assistantMessage = await prisma.chatMessage.create({
+          data: { conversationId, role: 'ASSISTANT', content: assistantContent, tokensUsed: response.usage.output_tokens },
+        })
+        await prisma.chatConversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } })
+        return reply.send({ success: true, data: assistantMessage })
       }
+    }
+
+    if (cacheHitId) {
+      prisma.chatCache.update({ where: { id: cacheHitId }, data: { hitCount: { increment: 1 } } }).catch(() => {})
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    let assistantContent: string
-    let tokensUsed: number | undefined
-
-    if (cachedAnswer) {
-      assistantContent = cachedAnswer
-      tokensUsed = undefined
-    } else {
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: history,
-      })
-
-      assistantContent =
-        response.content[0].type === 'text' ? response.content[0].text : ''
-      tokensUsed = response.usage.output_tokens
-
-      // Store in cache asynchronously — don't block the response
-      if (queryEmbedding) {
-        prisma.chatCache
-          .create({
-            data: { question: content, answer: assistantContent, embedding: queryEmbedding },
-          })
-          .catch(() => {})
-      }
-    }
+    const assistantContent = cachedAnswer ?? ''
+    const tokensUsed = undefined
 
     const assistantMessage = await prisma.chatMessage.create({
       data: {

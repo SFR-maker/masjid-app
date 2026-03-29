@@ -2,7 +2,10 @@ const VOYAGE_API_KEY = process.env.VOYAGE_AI_API_KEY
 export const SIMILARITY_THRESHOLD = 0.88
 
 export async function generateEmbedding(text: string): Promise<number[] | null> {
-  if (!VOYAGE_API_KEY) return null
+  if (!VOYAGE_API_KEY) {
+    console.log('[cache] VOYAGE_AI_API_KEY not set — semantic cache disabled')
+    return null
+  }
 
   try {
     const response = await fetch('https://api.voyageai.com/v1/embeddings', {
@@ -14,7 +17,11 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
       body: JSON.stringify({ input: [text.slice(0, 2000)], model: 'voyage-3-lite' }),
     })
 
-    if (!response.ok) return null
+    if (!response.ok) {
+      console.log(`[cache] Voyage AI error: ${response.status} ${response.statusText}`)
+      return null
+    }
+    console.log('[cache] Voyage AI embedding generated successfully')
 
     const data = (await response.json()) as { data: Array<{ embedding: number[] }> }
     return data.data[0]?.embedding ?? null

@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { prisma } from '@masjid/database'
 import { requireAuth } from '../plugins/auth'
+import { generateEmbedding, cosineSimilarity, SIMILARITY_THRESHOLD } from '../lib/embeddings'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -112,22 +113,74 @@ export async function chatRoutes(app: FastifyInstance) {
       history.push({ role: 'user', content })
     }
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: history,
-    })
+    // ── Semantic cache check ─────────────────────────────────────────────────
+    const queryEmbedding = await generateEmbedding(content)
+    let cachedAnswer: string | null = null
 
-    const assistantContent =
-      response.content[0].type === 'text' ? response.content[0].text : ''
+    if (queryEmbedding) {
+      // Load top 500 most-hit cache entries and find the best semantic match
+      const cacheEntries = await prisma.chatCache.findMany({
+        orderBy: { hitCount: 'desc' },
+        take: 500,
+        select: { id: true, answer: true, embedding: true },
+      })
+
+      let bestScore = 0
+      let bestId: string | null = null
+      let bestAnswer: string | null = null
+
+      for (const entry of cacheEntries) {
+        if (entry.embedding.length === 0) continue
+        const score = cosineSimilarity(queryEmbedding, entry.embedding)
+        if (score > bestScore) {
+          bestScore = score
+          bestId = entry.id
+          bestAnswer = entry.answer
+        }
+      }
+
+      if (bestScore >= SIMILARITY_THRESHOLD && bestId && bestAnswer) {
+        cachedAnswer = bestAnswer
+        // Increment hit count asynchronously (don't await — don't block response)
+        prisma.chatCache.update({ where: { id: bestId }, data: { hitCount: { increment: 1 } } }).catch(() => {})
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    let assistantContent: string
+    let tokensUsed: number | undefined
+
+    if (cachedAnswer) {
+      assistantContent = cachedAnswer
+      tokensUsed = undefined
+    } else {
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: history,
+      })
+
+      assistantContent =
+        response.content[0].type === 'text' ? response.content[0].text : ''
+      tokensUsed = response.usage.output_tokens
+
+      // Store in cache asynchronously — don't block the response
+      if (queryEmbedding) {
+        prisma.chatCache
+          .create({
+            data: { question: content, answer: assistantContent, embedding: queryEmbedding },
+          })
+          .catch(() => {})
+      }
+    }
 
     const assistantMessage = await prisma.chatMessage.create({
       data: {
         conversationId,
         role: 'ASSISTANT',
         content: assistantContent,
-        tokensUsed: response.usage.output_tokens,
+        tokensUsed,
       },
     })
 

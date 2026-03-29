@@ -71,6 +71,105 @@ function LikeButton({ liked, count, onPress }: { liked: boolean; count: number; 
   )
 }
 
+// ── Comment row with like + reply + expandable replies ───────────────────────
+function CommentRow({ c, videoId, onLike, onReply }: {
+  c: any; videoId: string
+  onLike: (commentId: string, liked: boolean) => void
+  onReply: (comment: any) => void
+}) {
+  const [repliesOpen, setRepliesOpen] = useState(false)
+  const [replies, setReplies] = useState<any[]>([])
+  const [loadingReplies, setLoadingReplies] = useState(false)
+
+  async function loadReplies() {
+    if (loadingReplies) return
+    setLoadingReplies(true)
+    try {
+      const res = await api.get<any>(`/videos/${videoId}/comments/${c.id}/replies`)
+      setReplies(res?.data?.items ?? [])
+      setRepliesOpen(true)
+    } catch {}
+    setLoadingReplies(false)
+  }
+
+  function toggleReplies() {
+    if (repliesOpen) { setRepliesOpen(false); return }
+    loadReplies()
+  }
+
+  return (
+    <View>
+      <View style={styles.commentRow}>
+        <View style={styles.commentAvatar}>
+          {c.user?.avatarUrl
+            ? <Image source={{ uri: c.user.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
+            : <Text style={{ fontSize: 16 }}>👤</Text>
+          }
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={styles.commentBubble}>
+            <Text style={styles.commentUsername}>{c.user?.name ?? 'Anonymous'}</Text>
+            <Text style={styles.commentText}>{c.text}</Text>
+          </View>
+          {/* Action row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 7, paddingLeft: 4 }}>
+            <TouchableOpacity
+              onPress={() => onLike(c.id, c.userLiked)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name={c.userLiked ? 'heart' : 'heart-outline'} size={13} color={c.userLiked ? '#FF3B5C' : 'rgba(255,255,255,0.4)'} />
+              {(c.likeCount ?? 0) > 0 && (
+                <Text style={{ fontSize: 11, color: c.userLiked ? '#FF3B5C' : 'rgba(255,255,255,0.4)', fontWeight: '600' }}>{c.likeCount}</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onReply(c)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="chatbubble-outline" size={12} color="rgba(255,255,255,0.4)" />
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Reply</Text>
+            </TouchableOpacity>
+            {(c.replyCount ?? 0) > 0 && (
+              <TouchableOpacity
+                onPress={toggleReplies}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {loadingReplies
+                  ? <ActivityIndicator size="small" color="#22C55E" />
+                  : <>
+                      <Ionicons name={repliesOpen ? 'chevron-up' : 'chevron-down'} size={11} color="#22C55E" />
+                      <Text style={{ fontSize: 11, color: '#22C55E', fontWeight: '600' }}>
+                        {repliesOpen ? 'Hide' : `${c.replyCount} ${c.replyCount === 1 ? 'reply' : 'replies'}`}
+                      </Text>
+                    </>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
+          {/* Replies */}
+          {repliesOpen && replies.map((r) => (
+            <View key={r.id} style={{ flexDirection: 'row', gap: 8, paddingLeft: 8, marginTop: 10 }}>
+              <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {r.user?.avatarUrl
+                  ? <Image source={{ uri: r.user.avatarUrl }} style={{ width: 26, height: 26, borderRadius: 13 }} contentFit="cover" />
+                  : <Text style={{ fontSize: 12 }}>👤</Text>
+                }
+              </View>
+              <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 11, paddingHorizontal: 10, paddingVertical: 7 }}>
+                <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '700', marginBottom: 2 }}>{r.user?.name ?? 'Anonymous'}</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.82)', fontSize: 13, lineHeight: 18 }}>{r.text}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  )
+}
+
 // ── Single full-screen video card ─────────────────────────────────────────────
 function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any; isActive: boolean; isScreenFocused: boolean; personalize: boolean }) {
   const insets = useSafeAreaInsets()
@@ -85,6 +184,7 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
   const [showComments, setShowComments] = useState(false)
   const [panelVisible, setPanelVisible] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const [replyingTo, setReplyingTo] = useState<{ id: string; userName: string } | null>(null)
   const panelAnim = useRef(new Animated.Value(0)).current
   const backdropAnim = useRef(new Animated.Value(0)).current
   const panelTranslateY = panelAnim.interpolate({ inputRange: [0, 1], outputRange: [PANEL_HEIGHT, 0] })
@@ -100,6 +200,7 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
 
   function closeComments() {
     Keyboard.dismiss()
+    setReplyingTo(null)
     Animated.parallel([
       Animated.spring(panelAnim, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }),
       Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
@@ -163,11 +264,36 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
   const comments: any[] = commentsData?.data?.items ?? []
 
   const postComment = useMutation({
-    mutationFn: () => api.post(`/videos/${item.id}/comments`, { text: commentText.trim() }),
+    mutationFn: () => replyingTo
+      ? api.post(`/videos/${item.id}/comments/${replyingTo.id}/replies`, { text: commentText.trim() })
+      : api.post(`/videos/${item.id}/comments`, { text: commentText.trim() }),
     onSuccess: () => {
       setCommentText('')
+      setReplyingTo(null)
       queryClient.invalidateQueries({ queryKey: ['video-comments', item.id] })
     },
+  })
+
+  const likeCommentMutation = useMutation({
+    mutationFn: ({ commentId }: { commentId: string; liked: boolean }) =>
+      api.post(`/videos/${item.id}/comments/${commentId}/like`, {}),
+    onMutate: ({ commentId, liked }) => {
+      queryClient.setQueryData(['video-comments', item.id], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            items: (old.data?.items ?? []).map((c: any) =>
+              c.id === commentId
+                ? { ...c, userLiked: !liked, likeCount: (c.likeCount ?? 0) + (liked ? -1 : 1) }
+                : c
+            ),
+          },
+        }
+      })
+    },
+    onError: () => queryClient.invalidateQueries({ queryKey: ['video-comments', item.id] }),
   })
 
   const catStyle = CATEGORY_COLORS[item.category] ?? { bg: 'rgba(75,85,99,0.75)', text: '#F3F4F6' }
@@ -381,18 +507,16 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
                 </View>
               ) : (
                 comments.map((c: any) => (
-                  <View key={c.id} style={styles.commentRow}>
-                    <View style={styles.commentAvatar}>
-                      {c.user?.avatarUrl
-                        ? <Image source={{ uri: c.user.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
-                        : <Text style={{ fontSize: 16 }}>👤</Text>
-                      }
-                    </View>
-                    <View style={styles.commentBubble}>
-                      <Text style={styles.commentUsername}>{c.user?.name ?? 'Anonymous'}</Text>
-                      <Text style={styles.commentText}>{c.text}</Text>
-                    </View>
-                  </View>
+                  <CommentRow
+                    key={c.id}
+                    c={c}
+                    videoId={item.id}
+                    onLike={(commentId, liked) => likeCommentMutation.mutate({ commentId, liked })}
+                    onReply={(comment) => {
+                      setReplyingTo({ id: comment.id, userName: comment.user?.name ?? 'Anonymous' })
+                      setCommentText('')
+                    }}
+                  />
                 ))
               )}
             </ScrollView>
@@ -401,9 +525,19 @@ function VideoCard({ item, isActive, isScreenFocused, personalize }: { item: any
             <View style={[styles.commentInputRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>
               {isSignedIn ? (
                 <>
+                  {replyingTo && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(34,197,94,0.1)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 8, width: '100%' }}>
+                      <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+                        Replying to <Text style={{ fontWeight: '700', color: '#22C55E' }}>{replyingTo.userName}</Text>
+                      </Text>
+                      <TouchableOpacity onPress={() => setReplyingTo(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="close" size={15} color="rgba(255,255,255,0.45)" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   <TextInput
                     style={styles.commentInput}
-                    placeholder="Write a comment..."
+                    placeholder={replyingTo ? `Reply to ${replyingTo.userName}...` : 'Write a comment...'}
                     placeholderTextColor="rgba(255,255,255,0.3)"
                     value={commentText}
                     onChangeText={setCommentText}
@@ -871,7 +1005,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   commentBubble: {
-    flex: 1,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 14,
     paddingHorizontal: 12,
@@ -891,6 +1024,7 @@ const styles = StyleSheet.create({
   },
   commentInputRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'flex-end',
     gap: 10,
     paddingHorizontal: 16,

@@ -37,14 +37,20 @@ async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN', today: Dat
   }
 
   // Already logged today — no change
-  if (existing.lastLoggedDate) {
-    const last = toDateOnly(new Date(existing.lastLoggedDate))
-    if (daysBetween(today, last) === 0) return existing.currentStreak
-  }
+  const lastRaw = existing.lastLoggedDate
+  const last = lastRaw ? toDateOnly(new Date(lastRaw)) : null
+  const gap = last ? daysBetween(today, last) : 999
 
-  const gap = existing.lastLoggedDate
-    ? daysBetween(today, toDateOnly(new Date(existing.lastLoggedDate)))
-    : 999
+  console.log('[streak] updateStreak', {
+    type,
+    today: today.toISOString(),
+    lastRaw: lastRaw ? (lastRaw instanceof Date ? lastRaw.toISOString() : lastRaw) : null,
+    lastNormalized: last ? last.toISOString() : null,
+    gap,
+    existingCurrent: existing.currentStreak,
+  })
+
+  if (gap === 0) return existing.currentStreak
 
   // Consecutive day: extend streak. Gap > 1: reset to 1.
   const newCurrent = gap === 1 ? existing.currentStreak + 1 : 1

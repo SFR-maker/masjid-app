@@ -95,23 +95,25 @@ function RootNavigator() {
   useApiTokenSync()
   // ── Push notifications: register device token with backend on sign-in ──
   usePushNotificationSetup()
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn, userId } = useAuth()
 
   // ── Login streak: call once per calendar day when signed in ──────────────
   useEffect(() => {
-    if (!isSignedIn) return
+    if (!isSignedIn || !userId) return
     const d = new Date()
     const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const key = `login_streak_date`
-    AsyncStorage.getItem(key).then(async (last) => {
+    const key = `login_streak_date_${userId}`
+    AsyncStorage.getItem(key).then((last) => {
       if (last !== today) {
-        await AsyncStorage.setItem(key, today)
         api.post('/streaks/login', { localDate: today })
-          .then(() => queryClient.invalidateQueries({ queryKey: ['streaks'] }))
+          .then(() => {
+            AsyncStorage.setItem(key, today)
+            queryClient.invalidateQueries({ queryKey: ['streaks'] })
+          })
           .catch(() => {})
       }
     })
-  }, [isSignedIn])
+  }, [isSignedIn, userId])
   const [fontsLoaded] = useFonts({ ...Ionicons.font })
   const { i18n } = useTranslation()
 

@@ -107,7 +107,7 @@ export default function PrayerScreen() {
   const todayPrayed: string[] = streakData?.data?.todayPrayed ?? []
 
   const { mutate: markPrayed } = useMutation({
-    mutationFn: (prayer: string) => api.post('/streaks/prayer', { prayer, localDate: todayKey }),
+    mutationFn: (prayer: string) => api.post<{ success: boolean; todayCount: number; prayerStreak?: number }>('/streaks/prayer', { prayer, localDate: todayKey }),
     onMutate: (prayer) => {
       queryClient.setQueryData(['streaks', todayKey], (old: any) => {
         if (!old) return old
@@ -115,6 +115,14 @@ export default function PrayerScreen() {
         if (prev.includes(prayer)) return old
         return { ...old, data: { ...old.data, todayPrayed: [...prev, prayer] } }
       })
+    },
+    onSuccess: (res) => {
+      if (res.prayerStreak !== undefined) {
+        queryClient.setQueryData(['streaks', todayKey], (old: any) => {
+          if (!old) return old
+          return { ...old, data: { ...old.data, prayer: { ...old.data?.prayer, current: res.prayerStreak } } }
+        })
+      }
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
   })

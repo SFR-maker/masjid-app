@@ -20,7 +20,7 @@ function daysBetween(a: Date, b: Date): number {
   return Math.round(Math.abs(a.getTime() - b.getTime()) / msPerDay)
 }
 
-async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN', today: Date): Promise<void> {
+async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN', today: Date): Promise<number> {
 
   // Use upsert to avoid TOCTOU race when the same user has concurrent requests
   const existing = await prisma.userStreak.findUnique({
@@ -33,13 +33,13 @@ async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN', today: Dat
       create: { userId, type, currentStreak: 1, longestStreak: 1, lastLoggedDate: today },
       update: {},
     })
-    return
+    return 1
   }
 
   // Already logged today — no change
   if (existing.lastLoggedDate) {
     const last = toDateOnly(new Date(existing.lastLoggedDate))
-    if (daysBetween(today, last) === 0) return
+    if (daysBetween(today, last) === 0) return existing.currentStreak
   }
 
   const gap = existing.lastLoggedDate
@@ -54,6 +54,8 @@ async function updateStreak(userId: string, type: 'PRAYER' | 'LOGIN', today: Dat
     where: { userId_type: { userId, type } },
     data: { currentStreak: newCurrent, longestStreak: newLongest, lastLoggedDate: today },
   })
+
+  return newCurrent
 }
 
 export async function streakRoutes(app: FastifyInstance) {
@@ -79,11 +81,12 @@ export async function streakRoutes(app: FastifyInstance) {
     })
 
     // Prayer streak advances when all 5 are completed today
+    let prayerStreak: number | undefined
     if (todayCount >= 5) {
-      await updateStreak(userId, 'PRAYER', today)
+      prayerStreak = await updateStreak(userId, 'PRAYER', today)
     }
 
-    return reply.send({ success: true, todayCount })
+    return reply.send({ success: true, todayCount, prayerStreak })
   })
 
   // DELETE /streaks/prayer?prayer=FAJR — unmark a prayer for today

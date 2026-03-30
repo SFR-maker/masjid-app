@@ -76,6 +76,11 @@
         "expo-auth-session",
         "expo-crypto"
       ]
+    },
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["react-native-track-player"]
+      }
     }
   }
 }

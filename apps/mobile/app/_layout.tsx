@@ -28,6 +28,10 @@ import '../global.css'
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null }
   static getDerivedStateFromError(error: Error) { return { error } }
+  componentDidCatch() {
+    // Ensure the splash screen is dismissed even when a render error is caught
+    if (Platform.OS !== 'web') SplashScreen.hideAsync().catch(() => {})
+  }
   render() {
     if (this.state.error) {
       return (
@@ -66,6 +70,13 @@ const tokenCache = Platform.OS === 'web'
     }
 
 export default function RootLayout() {
+  // Hard fallback: dismiss splash after 5 s no matter what (ErrorBoundary, Clerk hang, etc.)
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 5000)
+    return () => clearTimeout(t)
+  }, [])
+
   return (
     <ErrorBoundary>
     <ThemeProvider>
@@ -120,13 +131,6 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoaded && fontsLoaded && Platform.OS !== 'web') SplashScreen.hideAsync()
   }, [isLoaded, fontsLoaded])
-
-  // Fallback: force-hide splash after 5 s in case Clerk or fonts never resolve
-  useEffect(() => {
-    if (Platform.OS === 'web') return
-    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 5000)
-    return () => clearTimeout(t)
-  }, [])
 
   // ── One-time setup for notification channels and categories ───────────────
   useEffect(() => {

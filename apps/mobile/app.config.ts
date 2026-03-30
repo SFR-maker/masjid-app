@@ -70,6 +70,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundler: 'metro',
     output: 'single',
   },
+  newArchEnabled: false,
   experiments: {
     typedRoutes: true,
   },

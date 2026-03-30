@@ -124,7 +124,7 @@ async function schedulePrayerNotifications(times: AdhanPrayerTimes) {
           content: {
             title: `🕌 ${prayer.label} Prayer`,
             body: `It's time for ${prayer.label} prayer.`,
-            sound: true,
+            sound: Platform.OS === 'ios' ? 'adhan.wav' : 'adhan.wav',
             categoryIdentifier: 'adhan_playing',
             data: { tag: ADHAN_TAG, prayer: prayer.key },
             ...(Platform.OS === 'android' && { channelId: 'adhan' }),

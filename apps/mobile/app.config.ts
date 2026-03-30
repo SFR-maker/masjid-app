@@ -55,7 +55,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-updates',
-    'expo-notifications',
+    ['expo-notifications', { sounds: ['./assets/sounds/adhan.wav'] }],
     ['@stripe/stripe-react-native', { merchantIdentifier: 'merchant.com.masjidapp.mobile', enableGooglePay: true }],
     ['expo-location', { locationWhenInUsePermission: 'Allow Masjidly to find mosques near you.' }],
     [

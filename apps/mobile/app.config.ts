@@ -17,7 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.masjidapp.mobile',
-    buildNumber: '4',
+    buildNumber: '5',
     infoPlist: {
       NSLocationWhenInUseUsageDescription: 'Allow Masjidly to find mosques near you.',
       NSCameraUsageDescription: 'Used to upload your profile photo.',
@@ -32,7 +32,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     googleServicesFile: './google-services.json',
     package: 'com.masjidapp.mobile',
-    versionCode: 4,
+    versionCode: 5,
     permissions: [
       'ACCESS_FINE_LOCATION',
       'ACCESS_COARSE_LOCATION',

@@ -25,7 +25,7 @@ export async function PlaybackService() {
     } else if (state === State.Paused) {
       store.setIsPlaying(false)
       store.setIsPaused(true)
-    } else if (state === State.Stopped || state === State.None || state === State.Error) {
+    } else if (state === State.Stopped || state === State.None || state === State.Error || state === State.Ended) {
       store.setIsPlaying(false)
       store.setIsPaused(false)
       store.setPlayingAyah(null)

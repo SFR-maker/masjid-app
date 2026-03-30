@@ -121,6 +121,13 @@ function RootNavigator() {
     if (isLoaded && fontsLoaded && Platform.OS !== 'web') SplashScreen.hideAsync()
   }, [isLoaded, fontsLoaded])
 
+  // Fallback: force-hide splash after 5 s in case Clerk or fonts never resolve
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 5000)
+    return () => clearTimeout(t)
+  }, [])
+
   // ── One-time setup for notification channels and categories ───────────────
   useEffect(() => {
     setupAdhanChannel().catch(console.warn)

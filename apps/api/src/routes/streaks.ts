@@ -80,10 +80,13 @@ export async function streakRoutes(app: FastifyInstance) {
       where: { userId, date: today },
     })
 
+    req.log.info({ userId, prayer, localDate, today: today.toISOString(), todayCount }, '[streak] prayer marked')
+
     // Prayer streak advances when all 5 are completed today
     let prayerStreak: number | undefined
     if (todayCount >= 5) {
       prayerStreak = await updateStreak(userId, 'PRAYER', today)
+      req.log.info({ userId, prayerStreak }, '[streak] prayer streak updated')
     }
 
     return reply.send({ success: true, todayCount, prayerStreak })

@@ -1,7 +1,7 @@
 import { useEffect, Component, ReactNode, useMemo } from 'react'
 import { setupAdhanChannel } from '../hooks/useAdhanScheduler'
 import { usePushNotificationSetup, setupAdhanCategory } from '../hooks/useNotifications'
-import { View, ActivityIndicator, Text, ScrollView, Platform } from 'react-native'
+import { View, ActivityIndicator, Text, ScrollView, Platform, Linking } from 'react-native'
 import { Stack, router } from 'expo-router'
 import NowPlayingBar from '../components/NowPlayingBar'
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo'
@@ -123,6 +123,21 @@ function RootNavigator() {
   useEffect(() => {
     setupAdhanChannel().catch(console.warn)
     setupAdhanCategory().catch(console.warn)
+  }, [])
+
+  // ── RNTP notification tap: intercept trackplayer://notification.click deep link ─
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    function handleUrl({ url }: { url: string }) {
+      if (url.includes('notification.click')) {
+        router.push('/quran' as any)
+      }
+    }
+    Linking.getInitialURL().then(url => {
+      if (url?.includes('notification.click')) router.push('/quran' as any)
+    }).catch(() => {})
+    const sub = Linking.addEventListener('url', handleUrl)
+    return () => sub.remove()
   }, [])
 
   // ── react-native-track-player: initialize once for Quran lock screen widget ─

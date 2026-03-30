@@ -6,7 +6,7 @@ import { requireAuth } from '../plugins/auth'
 const PRAYER_NAMES = ['FAJR', 'DHUHR', 'ASR', 'MAGHRIB', 'ISHA'] as const
 
 function toDateOnly(date: Date): Date {
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
 }
 
 // Parse a YYYY-MM-DD string (local date sent by the client) as UTC midnight

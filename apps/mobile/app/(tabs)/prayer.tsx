@@ -86,48 +86,49 @@ export default function PrayerScreen() {
   const { isSignedIn } = useAuth()
   const queryClient = useQueryClient()
 
-  // Track which prayers the user has marked as prayed today
-  const [prayedToday, setPrayedToday] = useState<Set<string>>(new Set())
-
   const todayKey = format(new Date(), 'yyyy-MM-dd')
 
   const { data: streakData } = useQuery({
     queryKey: ['streaks', todayKey],
     queryFn: () => api.get<any>(`/streaks/me?localDate=${todayKey}`),
     enabled: !!isSignedIn,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
   })
 
-  useEffect(() => {
-    if (streakData?.data?.todayPrayed) {
-      setPrayedToday(new Set(streakData.data.todayPrayed))
-    }
-  }, [streakData])
+  // Invalidate streak data every time this tab comes into focus so checkmarks
+  // are always fresh regardless of changes made on other screens.
+  useFocusEffect(
+    useCallback(() => {
+      if (isSignedIn) queryClient.invalidateQueries({ queryKey: ['streaks'] })
+    }, [isSignedIn, queryClient])
+  )
+
+  // Derive prayer state directly from server data — single source of truth.
+  const todayPrayed: string[] = streakData?.data?.todayPrayed ?? []
 
   const { mutate: markPrayed } = useMutation({
     mutationFn: (prayer: string) => api.post('/streaks/prayer', { prayer, localDate: todayKey }),
     onMutate: (prayer) => {
-      setPrayedToday((prev) => new Set([...prev, prayer]))
+      queryClient.setQueryData(['streaks', todayKey], (old: any) => {
+        if (!old) return old
+        const prev: string[] = old.data?.todayPrayed ?? []
+        if (prev.includes(prayer)) return old
+        return { ...old, data: { ...old.data, todayPrayed: [...prev, prayer] } }
+      })
     },
-    onError: (_, prayer) => {
-      setPrayedToday((prev) => { const s = new Set(prev); s.delete(prayer); return s })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['streaks'] })
-    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
   })
 
   const { mutate: unmarkPrayed } = useMutation({
     mutationFn: (prayer: string) => api.delete(`/streaks/prayer?prayer=${prayer}&localDate=${todayKey}`),
     onMutate: (prayer) => {
-      setPrayedToday((prev) => { const s = new Set(prev); s.delete(prayer); return s })
+      queryClient.setQueryData(['streaks', todayKey], (old: any) => {
+        if (!old) return old
+        const prev: string[] = old.data?.todayPrayed ?? []
+        return { ...old, data: { ...old.data, todayPrayed: prev.filter((p) => p !== prayer) } }
+      })
     },
-    onError: (_, prayer) => {
-      setPrayedToday((prev) => new Set([...prev, prayer]))
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['streaks'] })
-    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
   })
 
   // Persist & restore source selection
@@ -626,7 +627,7 @@ export default function PrayerScreen() {
                     : null
 
                   const prayerKey = prayer.key.toUpperCase()
-                  const hasPrayed = prayedToday.has(prayerKey)
+                  const hasPrayed = todayPrayed.includes(prayerKey)
                   const canPray = !!isSignedIn && isToday(selectedDate)
 
                   const row = (

@@ -185,6 +185,9 @@ export async function streakRoutes(app: FastifyInstance) {
     const prayer = streaks.find((s) => s.type === 'PRAYER')
     const login = streaks.find((s) => s.type === 'LOGIN')
 
+    const todayPrayed = todayLogs.map((l) => l.prayer)
+    req.log.info({ userId, todayPrayed, prayerStreak: prayer?.currentStreak ?? 0, loginStreak: login?.currentStreak ?? 0 }, '[streak] GET /me')
+
     return reply.send({
       success: true,
       data: {
@@ -196,7 +199,7 @@ export async function streakRoutes(app: FastifyInstance) {
           current: login?.currentStreak ?? 0,
           longest: login?.longestStreak ?? 0,
         },
-        todayPrayed: todayLogs.map((l) => l.prayer),
+        todayPrayed,
       },
     })
   })

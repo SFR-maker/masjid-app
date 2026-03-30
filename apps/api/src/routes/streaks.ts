@@ -80,13 +80,13 @@ export async function streakRoutes(app: FastifyInstance) {
       where: { userId, date: today },
     })
 
-    req.log.info({ userId, prayer, localDate, today: today.toISOString(), todayCount }, '[streak] prayer marked')
+    console.log('[streak] prayer marked', { userId, prayer, localDate, today: today.toISOString(), todayCount })
 
     // Prayer streak advances when all 5 are completed today
     let prayerStreak: number | undefined
     if (todayCount >= 5) {
       prayerStreak = await updateStreak(userId, 'PRAYER', today)
-      req.log.info({ userId, prayerStreak }, '[streak] prayer streak updated')
+      console.log('[streak] prayer streak updated', { userId, prayerStreak })
     }
 
     return reply.send({ success: true, todayCount, prayerStreak })
@@ -144,6 +144,7 @@ export async function streakRoutes(app: FastifyInstance) {
             }
           }
 
+          console.log('[streak] prayer unmark revert', { userId, newStreak, newLastLoggedDate })
           await prisma.userStreak.update({
             where: { userId_type: { userId, type: 'PRAYER' } },
             data: { currentStreak: newStreak, lastLoggedDate: newLastLoggedDate },
@@ -152,7 +153,7 @@ export async function streakRoutes(app: FastifyInstance) {
       }
     }
 
-    return reply.send({ success: true })
+    return reply.send({ success: true, todayCount })
   })
 
   // POST /streaks/login — record a daily login (call on app open)
@@ -186,7 +187,7 @@ export async function streakRoutes(app: FastifyInstance) {
     const login = streaks.find((s) => s.type === 'LOGIN')
 
     const todayPrayed = todayLogs.map((l) => l.prayer)
-    req.log.info({ userId, todayPrayed, prayerStreak: prayer?.currentStreak ?? 0, loginStreak: login?.currentStreak ?? 0 }, '[streak] GET /me')
+    console.log('[streak] GET /me', { userId, todayPrayed, prayerStreak: prayer?.currentStreak ?? 0, loginStreak: login?.currentStreak ?? 0 })
 
     return reply.send({
       success: true,

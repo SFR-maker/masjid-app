@@ -43,7 +43,7 @@ export function StreakWidget() {
         })
       }
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
+    onSettled: () => queryClient.refetchQueries({ queryKey: ['streaks', todayKey] }),
   })
 
   const unmarkMutation = useMutation({
@@ -55,7 +55,7 @@ export function StreakWidget() {
         return { ...old, data: { ...old.data, todayPrayed: prev.filter((p) => p !== prayer) } }
       })
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
+    onSettled: () => queryClient.refetchQueries({ queryKey: ['streaks', todayKey] }),
   })
 
   if (!isSignedIn) return null

@@ -124,7 +124,7 @@ export default function PrayerScreen() {
         })
       }
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
+    onSettled: () => queryClient.refetchQueries({ queryKey: ['streaks', todayKey] }),
   })
 
   const { mutate: unmarkPrayed } = useMutation({
@@ -136,7 +136,7 @@ export default function PrayerScreen() {
         return { ...old, data: { ...old.data, todayPrayed: prev.filter((p) => p !== prayer) } }
       })
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['streaks'] }),
+    onSettled: () => queryClient.refetchQueries({ queryKey: ['streaks', todayKey] }),
   })
 
   // Persist & restore source selection

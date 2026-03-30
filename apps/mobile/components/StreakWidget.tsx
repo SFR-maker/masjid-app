@@ -23,6 +23,7 @@ export function StreakWidget() {
     queryFn: () => api.get<any>(`/streaks/me?localDate=${todayKey}`),
     enabled: !!isSignedIn,
     staleTime: 0,
+    refetchInterval: 3000,
   })
 
   const markMutation = useMutation({

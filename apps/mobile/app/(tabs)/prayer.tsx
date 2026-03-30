@@ -93,6 +93,7 @@ export default function PrayerScreen() {
     queryFn: () => api.get<any>(`/streaks/me?localDate=${todayKey}`),
     enabled: !!isSignedIn,
     staleTime: 0,
+    refetchInterval: 3000,
   })
 
   // Invalidate streak data every time this tab comes into focus so checkmarks

@@ -111,7 +111,7 @@ export async function streakRoutes(app: FastifyInstance) {
       where: { userId, prayer, date: today },
     })
 
-    // If today now has fewer than 5 prayers and the streak was earned today, revert it
+    // If today now has fewer than 5 prayers and the streak was earned today, step it back
     const todayCount = await prisma.prayerLog.count({ where: { userId, date: today } })
     if (todayCount < 5) {
       const streak = await prisma.userStreak.findUnique({
@@ -120,40 +120,17 @@ export async function streakRoutes(app: FastifyInstance) {
       if (streak?.lastLoggedDate) {
         const lastLogged = toDateOnly(new Date(streak.lastLoggedDate))
         if (daysBetween(today, lastLogged) === 0) {
-          // Recalculate streak from actual prayer log history (don't blindly subtract 1)
-          const prevDates = await prisma.prayerLog.findMany({
-            where: { userId, date: { lt: today } },
-            distinct: ['date'],
-            select: { date: true },
-            orderBy: { date: 'desc' },
-            take: 100,
-          })
-
-          let newStreak = 0
-          let newLastLoggedDate: Date | null = null
-          let chainDate: Date | null = null
-
-          for (const { date } of prevDates) {
-            const count = await prisma.prayerLog.count({ where: { userId, date } })
-            if (count < 5) continue // partial day — skip but don't break chain yet
-
-            const d = toDateOnly(new Date(date))
-            if (!newLastLoggedDate) {
-              newLastLoggedDate = d
-              chainDate = d
-              newStreak = 1
-            } else if (chainDate && daysBetween(chainDate, d) === 1) {
-              newStreak++
-              chainDate = d
-            } else {
-              break // gap in the chain
-            }
-          }
-
-          console.log('[streak] prayer unmark revert', { userId, newStreak, newLastLoggedDate })
+          // Step back: today's credit is revoked. Restore to the day before today.
+          // If currentStreak was N (today = day N), after revert it should be N-1
+          // with lastLoggedDate = yesterday, so re-marking today correctly extends to N.
+          const prevCurrent = Math.max(0, streak.currentStreak - 1)
+          const prevLastDate = prevCurrent > 0
+            ? new Date(today.getTime() - 86400000) // yesterday (UTC)
+            : null
+          console.log('[streak] prayer unmark revert', { userId, prevCurrent, prevLastDate })
           await prisma.userStreak.update({
             where: { userId_type: { userId, type: 'PRAYER' } },
-            data: { currentStreak: newStreak, lastLoggedDate: newLastLoggedDate },
+            data: { currentStreak: prevCurrent, lastLoggedDate: prevLastDate },
           })
         }
       }

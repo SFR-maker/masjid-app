@@ -61,7 +61,7 @@ export default function FollowersPage() {
   const [isFavorite, setIsFavorite] = useState<'all' | 'true' | 'false'>('all')
   const [volunteer, setVolunteer] = useState<'all' | 'true' | 'false'>('all')
   const [marriage, setMarriage] = useState<'all' | 'true' | 'false'>('all')
-  const [gender, setGender] = useState<'all' | 'male' | 'female' | 'other'>('all')
+  const [gender, setGender] = useState<'all' | 'MALE' | 'FEMALE' | 'PREFER_NOT_TO_SAY'>('all')
   const [ageMin, setAgeMin] = useState('')
   const [ageMax, setAgeMax] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('newest')
@@ -194,11 +194,11 @@ export default function FollowersPage() {
   function clearFilters() {
     setSearch(''); setDebouncedSearch('')
     setIsFavorite('all'); setVolunteer('all'); setMarriage('all')
-    setGender('all'); setAgeMin(''); setAgeMax('')
+    setGender('all' as const); setAgeMin(''); setAgeMax('')
     setPage(1)
   }
 
-  const hasFilters = debouncedSearch || isFavorite !== 'all' || volunteer !== 'all' || marriage !== 'all' || gender !== 'all' || ageMin || ageMax
+  const hasFilters = !!(debouncedSearch || isFavorite !== 'all' || volunteer !== 'all' || marriage !== 'all' || gender !== 'all' || ageMin || ageMax)
 
   const items = data?.items ?? []
   const total = data?.total ?? 0
@@ -304,9 +304,9 @@ export default function FollowersPage() {
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Gender</p>
             <div className="flex gap-1.5">
               <Chip active={gender === 'all'} onClick={() => { setGender('all'); setPage(1) }}>All</Chip>
-              <Chip active={gender === 'male'} onClick={() => { setGender('male'); setPage(1) }}>Male</Chip>
-              <Chip active={gender === 'female'} onClick={() => { setGender('female'); setPage(1) }}>Female</Chip>
-              <Chip active={gender === 'other'} onClick={() => { setGender('other'); setPage(1) }}>Other</Chip>
+              <Chip active={gender === 'MALE'} onClick={() => { setGender('MALE'); setPage(1) }}>Male</Chip>
+              <Chip active={gender === 'FEMALE'} onClick={() => { setGender('FEMALE'); setPage(1) }}>Female</Chip>
+              <Chip active={gender === 'PREFER_NOT_TO_SAY'} onClick={() => { setGender('PREFER_NOT_TO_SAY'); setPage(1) }}>Prefer not to say</Chip>
             </div>
           </div>
 

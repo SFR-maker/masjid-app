@@ -15,11 +15,11 @@
     "db:seed": "turbo db:seed"
   },
   "devDependencies": {
-    "turbo": "^2.3.0",
-    "typescript": "^5.7.0",
     "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
     "prettier": "^3.4.0",
-    "eslint": "^9.0.0"
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
   },
   "packageManager": "pnpm@9.15.0",
   "pnpm": {
@@ -30,6 +30,9 @@
       "expo-linking": "~8.0.11",
       "expo-web-browser": "~15.0.10",
       "expo-application": "~7.0.8"
+    },
+    "patchedDependencies": {
+      "react-native-track-player@4.1.2": "patches/react-native-track-player@4.1.2.patch"
     }
   }
 }

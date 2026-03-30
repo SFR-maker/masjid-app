@@ -189,7 +189,7 @@ export function useAdhanScheduler(times: AdhanPrayerTimes | null) {
         }
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
+          staysActiveInBackground: true,  // keep playing if screen locks mid-adhan
           allowsRecordingIOS: false,
         })
         const { sound } = await Audio.Sound.createAsync(
@@ -228,7 +228,7 @@ export async function previewAdhan(id: string) {
     }
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
+      staysActiveInBackground: true,
       allowsRecordingIOS: false,
     })
     const url = getAdhanUrl(id)

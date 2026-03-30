@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   Alert, RefreshControl, TextInput, Modal, KeyboardAvoidingView, Platform,
-  FlatList, Linking,
+  FlatList, Linking, BackHandler,
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -1198,6 +1198,19 @@ export default function AdminDashboard() {
     queryFn: () => api.get<any>('/users/me/admin-mosques'),
     staleTime: 30_000,
   })
+
+  // Intercept Android hardware back press when inside a mosque sub-section
+  useEffect(() => {
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (selectedMosqueId || (section !== 'home')) {
+        setSelectedMosqueId(null)
+        setSection('home')
+        return true  // consumed — don't exit app
+      }
+      return false  // let system handle (exit tab / app)
+    })
+    return () => handler.remove()
+  }, [selectedMosqueId, section])
 
   const adminData = data?.data ?? {}
   const mosques: any[] = adminData.items ?? []

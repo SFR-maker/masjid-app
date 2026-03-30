@@ -35,6 +35,7 @@ if (Platform.OS !== 'web') {
       sound: undefined,
       enableVibrate: false,
       showBadge: false,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     }).catch(() => {})
   }
 }

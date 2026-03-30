@@ -2,11 +2,11 @@ import { useState, useRef, useEffect } from 'react'
 import {
   View, Text, Pressable, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity, Platform, Alert, Share,
-  FlatList, Animated, useWindowDimensions, Keyboard,
+  FlatList, Animated, useWindowDimensions, Keyboard, AppState,
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'
+import { Video, ResizeMode, AVPlaybackStatus, Audio } from 'expo-av'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
@@ -215,6 +215,27 @@ export default function VideoScreen() {
   })
   // Lift panel up when keyboard opens so input stays above keyboard
   const panelBottom = keyboardShift.interpolate({ inputRange: [0, 1], outputRange: [0, 1] })
+
+  // Configure audio session so video plays over silent mode and resumes after calls
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      allowsRecordingIOS: false,
+    }).catch(() => {})
+
+    // Resume playback when app comes back to foreground after a call interruption
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && videoRef.current) {
+        videoRef.current.getStatusAsync().then((s) => {
+          if (s.isLoaded && !s.isPlaying && !s.didJustFinish) {
+            videoRef.current?.playAsync().catch(() => {})
+          }
+        }).catch(() => {})
+      }
+    })
+    return () => sub.remove()
+  }, [])
 
   // Keyboard listeners — lift the panel on Android (iOS handled by SafeAreaView)
   useEffect(() => {

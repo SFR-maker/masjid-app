@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { I18nManager } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Updates from 'expo-updates'
 import i18n, { LANGUAGE_KEY, RTL_LANGUAGES, loadStoredLanguage } from '../lib/i18n'
 
 interface LanguageContextValue {
@@ -32,8 +33,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const shouldBeRTL = RTL_LANGUAGES.includes(code)
     if (I18nManager.isRTL !== shouldBeRTL) {
       I18nManager.forceRTL(shouldBeRTL)
-      // RTL change requires app reload — on real device, you'd call Updates.reloadAsync()
-      // For now, the direction takes effect on next component render
+      // Reload the JS bundle so layout direction applies consistently everywhere
+      if (!__DEV__) {
+        await Updates.reloadAsync()
+      }
     }
   }
 

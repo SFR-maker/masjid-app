@@ -18,7 +18,7 @@ export function StreakWidget() {
 
   const todayKey = format(new Date(), 'yyyy-MM-dd')
 
-  const { data } = useQuery({
+  const { data, refetch } = useQuery({
     queryKey: ['streaks', todayKey],
     queryFn: () => api.get<any>(`/streaks/me?localDate=${todayKey}`),
     enabled: !!isSignedIn,
@@ -35,15 +35,7 @@ export function StreakWidget() {
         return { ...old, data: { ...old.data, todayPrayed: [...prev, prayer] } }
       })
     },
-    onSuccess: (res) => {
-      if (res.prayerStreak !== undefined) {
-        queryClient.setQueryData(['streaks', todayKey], (old: any) => {
-          if (!old) return old
-          return { ...old, data: { ...old.data, prayer: { ...old.data?.prayer, current: res.prayerStreak } } }
-        })
-      }
-    },
-    onSettled: () => queryClient.refetchQueries({ queryKey: ['streaks', todayKey] }),
+    onSettled: () => refetch(),
   })
 
   const unmarkMutation = useMutation({
@@ -55,7 +47,7 @@ export function StreakWidget() {
         return { ...old, data: { ...old.data, todayPrayed: prev.filter((p) => p !== prayer) } }
       })
     },
-    onSettled: () => queryClient.refetchQueries({ queryKey: ['streaks', todayKey] }),
+    onSettled: () => refetch(),
   })
 
   if (!isSignedIn) return null

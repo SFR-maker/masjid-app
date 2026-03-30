@@ -88,7 +88,7 @@ export default function PrayerScreen() {
 
   const todayKey = format(new Date(), 'yyyy-MM-dd')
 
-  const { data: streakData } = useQuery({
+  const { data: streakData, refetch: refetchStreaks } = useQuery({
     queryKey: ['streaks', todayKey],
     queryFn: () => api.get<any>(`/streaks/me?localDate=${todayKey}`),
     enabled: !!isSignedIn,
@@ -124,7 +124,7 @@ export default function PrayerScreen() {
         })
       }
     },
-    onSettled: () => queryClient.refetchQueries({ queryKey: ['streaks', todayKey] }),
+    onSettled: () => refetchStreaks(),
   })
 
   const { mutate: unmarkPrayed } = useMutation({
@@ -136,7 +136,7 @@ export default function PrayerScreen() {
         return { ...old, data: { ...old.data, todayPrayed: prev.filter((p) => p !== prayer) } }
       })
     },
-    onSettled: () => queryClient.refetchQueries({ queryKey: ['streaks', todayKey] }),
+    onSettled: () => refetchStreaks(),
   })
 
   // Persist & restore source selection

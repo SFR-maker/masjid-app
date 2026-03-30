@@ -40,6 +40,20 @@ if (Platform.OS !== 'web') {
   }
 }
 
+/** Register notification action category for the adhan stop button. */
+export async function setupAdhanCategory() {
+  if (Platform.OS === 'web') return
+  try {
+    await Notifications.setNotificationCategoryAsync('adhan_playing', [
+      {
+        identifier: 'adhan_stop',
+        buttonTitle: '🔇 Stop Adhan',
+        options: { opensAppToForeground: false, isDestructive: true },
+      },
+    ])
+  } catch {}
+}
+
 /** Register notification action categories for the Quran media player.
  *  Call once on app start (before any Quran notification is shown). */
 export async function setupQuranPlayerCategory() {

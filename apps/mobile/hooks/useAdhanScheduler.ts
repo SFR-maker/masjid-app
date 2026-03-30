@@ -125,6 +125,7 @@ async function schedulePrayerNotifications(times: AdhanPrayerTimes) {
             title: `🕌 ${prayer.label} Prayer`,
             body: `It's time for ${prayer.label} prayer.`,
             sound: true,
+            categoryIdentifier: 'adhan_playing',
             data: { tag: ADHAN_TAG, prayer: prayer.key },
             ...(Platform.OS === 'android' && { channelId: 'adhan' }),
           },
@@ -197,10 +198,12 @@ export function useAdhanScheduler(times: AdhanPrayerTimes | null) {
           { shouldPlay: true, volume: 1.0 }
         )
         soundRef.current = sound
+        _activeAdhanSound = sound
         sound.setOnPlaybackStatusUpdate(status => {
           if (status.isLoaded && status.didJustFinish) {
             sound.unloadAsync().catch(() => {})
             soundRef.current = null
+            _activeAdhanSound = null
           }
         })
       } catch (err) {
@@ -247,6 +250,17 @@ export async function previewAdhan(id: string) {
     }, 15000)
   } catch (err) {
     console.warn('[Adhan Preview] Failed:', err)
+  }
+}
+
+// ─── Stop adhan from notification action ────────────────────────────────────
+let _activeAdhanSound: Audio.Sound | null = null
+
+export async function stopAdhanAudio() {
+  if (_activeAdhanSound) {
+    await _activeAdhanSound.stopAsync().catch(() => {})
+    await _activeAdhanSound.unloadAsync().catch(() => {})
+    _activeAdhanSound = null
   }
 }
 

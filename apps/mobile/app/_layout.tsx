@@ -1,6 +1,6 @@
 import { useEffect, Component, ReactNode, useMemo } from 'react'
 import { setupAdhanChannel } from '../hooks/useAdhanScheduler'
-import { usePushNotificationSetup, setupQuranPlayerCategory } from '../hooks/useNotifications'
+import { usePushNotificationSetup, setupQuranPlayerCategory, setupAdhanCategory } from '../hooks/useNotifications'
 import { View, ActivityIndicator, Text, ScrollView, Platform } from 'react-native'
 import { Stack, router } from 'expo-router'
 import NowPlayingBar from '../components/NowPlayingBar'
@@ -20,6 +20,7 @@ import { useFonts } from 'expo-font'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { toggleQuranPlayback, nextQuranAyah, prevQuranAyah } from '../lib/quranAudio'
+import { stopAdhanAudio, ADHAN_TAG } from '../hooks/useAdhanScheduler'
 import { StripeProvider } from '@stripe/stripe-react-native'
 import '../lib/i18n'
 import '../global.css'
@@ -121,6 +122,7 @@ function RootNavigator() {
   // ── One-time setup for notification channels and categories ───────────────
   useEffect(() => {
     setupAdhanChannel().catch(console.warn)
+    setupAdhanCategory().catch(console.warn)
     setupQuranPlayerCategory().catch(console.warn)
   }, [])
 
@@ -130,6 +132,14 @@ function RootNavigator() {
 
     function handleNotificationResponse(response: Notifications.NotificationResponse) {
       const data = response.notification.request.content.data as any ?? {}
+
+      // Adhan stop button
+      if (data?.tag === ADHAN_TAG) {
+        if (response.actionIdentifier === 'adhan_stop') {
+          stopAdhanAudio().catch(() => {})
+        }
+        return
+      }
 
       // Quran media controls (action buttons on lock screen / notification shade)
       if (data?.type === 'quran_player') {

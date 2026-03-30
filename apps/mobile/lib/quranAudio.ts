@@ -1,61 +1,17 @@
-import { Audio } from 'expo-av'
 import { Platform } from 'react-native'
-import * as Notifications from 'expo-notifications'
 import { useQuranAudioStore } from './quranAudioStore'
 
-let _sound: Audio.Sound | null = null
-let _preloaded: Audio.Sound | null = null
-let _preloadedIndex = -1
+// RNTP is native-only — lazy-load to avoid web bundle errors
+let TrackPlayer: any = null
+if (Platform.OS !== 'web') {
+  TrackPlayer = require('react-native-track-player').default
+}
+
 let _ayahs: any[] = []
-let _isPlaying = false
-let _isPaused = false
-let _session = 0        // incremented on every new start/stop — invalidates stale async chains
-let _surahNumber = 0    // current surah, used to decide whether to play Bismillah
-let _currentIndex = -1  // index of the currently playing ayah in _ayahs
+let _surahNumber = 0
 
-// ── Media notification ────────────────────────────────────────────────────────
-const QURAN_NOTIF_ID = 'quran-media-player'
-
-async function _updateMediaNotification(isPlaying: boolean) {
-  if (Platform.OS === 'web') return
-  try {
-    const { surahName, reciterName, playingAyah } = useQuranAudioStore.getState()
-    const ayahLabel = playingAyah === 0
-      ? 'Bismillah'
-      : playingAyah !== null
-        ? `Ayah ${playingAyah}`
-        : ''
-    await Notifications.scheduleNotificationAsync({
-      identifier: QURAN_NOTIF_ID,
-      content: {
-        title: `🎵 ${surahName || 'Quran'}`,
-        body: ayahLabel ? `${reciterName} · ${ayahLabel}` : (reciterName || 'Playing'),
-        sticky: true,
-        autoDismiss: false,
-        vibrate: [],
-        sound: false,
-        priority: Notifications.AndroidNotificationPriority.LOW,
-        color: '#14532D',
-        categoryIdentifier: isPlaying ? 'quran_playing' : 'quran_paused',
-        data: { type: 'quran_player' },
-      },
-      trigger: Platform.OS === 'android' ? ({ type: 'channel', channelId: 'quran_player' } as any) : null,
-    })
-  } catch {}
-}
-
-async function _dismissMediaNotification() {
-  if (Platform.OS === 'web') return
-  try { await Notifications.dismissNotificationAsync(QURAN_NOTIF_ID) } catch {}
-}
-
-export function setAyahsForPlayback(ayahs: any[]) {
-  _ayahs = ayahs
-}
-
-export function setSurahNumber(n: number) {
-  _surahNumber = n
-}
+// Maps numberInSurah (or 'bismillah') → index in the current RNTP queue
+const _numberToQueueIndex = new Map<number | string, number>()
 
 // Derives the Bismillah audio URL from the loaded ayahs' URL pattern.
 // All alquran.cloud audio URLs follow: {base}/{globalAyahNumber}.mp3
@@ -68,281 +24,143 @@ function _getBismillahUrl(): string | null {
   return firstAudio.substring(0, lastSlash + 1) + '1.mp3'
 }
 
-async function _clearSounds() {
-  if (_sound) {
-    try { await _sound.stopAsync(); await _sound.unloadAsync() } catch {}
-    _sound = null
+function _buildTracks(includeBismillah: boolean): any[] {
+  _numberToQueueIndex.clear()
+  const { surahName, reciterName } = useQuranAudioStore.getState()
+  const tracks: any[] = []
+  let queueIdx = 0
+
+  if (includeBismillah) {
+    const url = _getBismillahUrl()
+    if (url) {
+      _numberToQueueIndex.set('bismillah', queueIdx++)
+      tracks.push({
+        id: 'bismillah',
+        url,
+        title: surahName ? `${surahName} — Bismillah` : 'Bismillah',
+        artist: reciterName || 'Quran',
+        album: surahName || 'Quran',
+        artwork: require('../assets/icon.png'),
+      })
+    }
   }
-  if (_preloaded) {
-    try { await _preloaded.unloadAsync() } catch {}
-    _preloaded = null
-    _preloadedIndex = -1
+
+  for (const ayah of _ayahs) {
+    if (!ayah?.audio) continue
+    _numberToQueueIndex.set(ayah.numberInSurah, queueIdx++)
+    tracks.push({
+      id: String(ayah.numberInSurah),
+      url: ayah.audio,
+      title: surahName ? `${surahName} — Ayah ${ayah.numberInSurah}` : `Ayah ${ayah.numberInSurah}`,
+      artist: reciterName || 'Quran',
+      album: surahName || 'Quran',
+      artwork: require('../assets/icon.png'),
+    })
   }
+
+  return tracks
+}
+
+export function setAyahsForPlayback(ayahs: any[]) {
+  _ayahs = ayahs
+}
+
+export function setSurahNumber(n: number) {
+  _surahNumber = n
 }
 
 export async function stopQuranAudio() {
-  _session++
-  _isPlaying = false
-  _isPaused = false
-  _currentIndex = -1
-  const { setIsPlaying, setIsPaused, setPlayingAyah } = useQuranAudioStore.getState()
-  setIsPlaying(false)
-  setIsPaused(false)
-  setPlayingAyah(null)
-  await _clearSounds()
-  _dismissMediaNotification()
+  if (Platform.OS === 'web' || !TrackPlayer) return
+  const store = useQuranAudioStore.getState()
+  store.setIsPlaying(false)
+  store.setIsPaused(false)
+  store.setPlayingAyah(null)
+  try { await TrackPlayer.reset() } catch {}
 }
 
 export async function pauseQuranAudio() {
-  if (!_isPlaying || _isPaused) return
-  _session++
-  _isPaused = true
-  _isPlaying = false
-  const { setIsPlaying, setIsPaused } = useQuranAudioStore.getState()
-  setIsPlaying(false)
-  setIsPaused(true)
-  if (_sound) {
-    try { await _sound.pauseAsync() } catch {}
-  }
-  _updateMediaNotification(false)
+  if (Platform.OS === 'web' || !TrackPlayer) return
+  const store = useQuranAudioStore.getState()
+  if (!store.isPlaying) return
+  store.setIsPlaying(false)
+  store.setIsPaused(true)
+  try { await TrackPlayer.pause() } catch {}
 }
 
 export async function resumeQuranAudio() {
-  if (!_isPaused || !_sound) return
-  _isPaused = false
-  _isPlaying = true
-  _session++
-  const mySession = _session
-  const { setIsPlaying, setIsPaused } = useQuranAudioStore.getState()
-  setIsPlaying(true)
-  setIsPaused(false)
-  _updateMediaNotification(true)
-  try {
-    await _sound.playAsync()
-    // re-attach status listener so auto-advance continues after resume
-    const resumedSound = _sound
-    // find which index we're at from the store
-    const currentAyah = useQuranAudioStore.getState().playingAyah
-    const currentIndex = _ayahs.findIndex(a => a.numberInSurah === currentAyah)
-    resumedSound.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) return
-      if (status.didJustFinish) {
-        resumedSound.unloadAsync().catch(() => {})
-        if (_sound === resumedSound) _sound = null
-        if (_isPlaying && _session === mySession) {
-          _playChain(currentIndex + 1, mySession)
-        }
-      }
-    })
-  } catch {}
-}
-
-async function _preloadNext(index: number, session: number) {
-  if (!_isPlaying || _session !== session) return
-  let nextIdx = index
-  while (nextIdx < _ayahs.length && !_ayahs[nextIdx]?.audio) nextIdx++
-  if (nextIdx >= _ayahs.length) return
-  if (_preloadedIndex === nextIdx) return
-
-  if (_preloaded) {
-    try { await _preloaded.unloadAsync() } catch {}
-    _preloaded = null
-    _preloadedIndex = -1
-  }
-
-  try {
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: _ayahs[nextIdx].audio },
-      { shouldPlay: false },
-    )
-    if (!_isPlaying || _session !== session) {
-      sound.unloadAsync().catch(() => {})
-      return
-    }
-    _preloaded = sound
-    _preloadedIndex = nextIdx
-  } catch {}
-}
-
-async function _playBismillahThenChain(bismillahUrl: string, session: number) {
-  if (_session !== session || !_isPlaying) return
-  _currentIndex = -1  // Bismillah — before first ayah
-  // 0 = Bismillah sentinel — highlights the banner in the UI
-  useQuranAudioStore.getState().setPlayingAyah(0)
-  _updateMediaNotification(true)
-  try {
-    const { sound } = await Audio.Sound.createAsync({ uri: bismillahUrl }, { shouldPlay: true })
-    if (_session !== session) { sound.unloadAsync().catch(() => {}); return }
-    const prev = _sound
-    _sound = sound
-    if (prev) prev.unloadAsync().catch(() => {})
-    // Preload first real ayah while Bismillah plays
-    _preloadNext(0, session)
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) return
-      if (status.didJustFinish) {
-        sound.unloadAsync().catch(() => {})
-        if (_sound === sound) _sound = null
-        if (_isPlaying && _session === session) _playChain(0, session)
-      }
-    })
-  } catch {
-    if (_isPlaying && _session === session) _playChain(0, session)
-  }
-}
-
-async function _playChain(index: number, session: number) {
-  // Stale session — another start/stop/pause superseded this chain
-  if (_session !== session) return
-
-  if (index >= _ayahs.length || !_isPlaying) {
-    if (_session === session) {
-      _isPlaying = false
-      _isPaused = false
-      _currentIndex = -1
-      useQuranAudioStore.getState().setIsPlaying(false)
-      useQuranAudioStore.getState().setPlayingAyah(null)
-      _dismissMediaNotification()
-    }
-    return
-  }
-
-  const ayah = _ayahs[index]
-  if (!ayah?.audio) {
-    _playChain(index + 1, session)
-    return
-  }
-
-  _currentIndex = index
+  if (Platform.OS === 'web' || !TrackPlayer) return
   const store = useQuranAudioStore.getState()
-  store.setPlayingAyah(ayah.numberInSurah)
-  _updateMediaNotification(true)
-
-  try {
-    let sound: Audio.Sound
-
-    if (_preloaded && _preloadedIndex === index) {
-      sound = _preloaded
-      _preloaded = null
-      _preloadedIndex = -1
-      await sound.playAsync()
-    } else {
-      if (_preloaded) {
-        try { await _preloaded.unloadAsync() } catch {}
-        _preloaded = null
-        _preloadedIndex = -1
-      }
-      const result = await Audio.Sound.createAsync(
-        { uri: ayah.audio },
-        { shouldPlay: true },
-      )
-      sound = result.sound
-    }
-
-    // Guard: session may have changed while we were awaiting createAsync
-    if (_session !== session) {
-      sound.unloadAsync().catch(() => {})
-      return
-    }
-
-    const prev = _sound
-    _sound = sound
-    if (prev) prev.unloadAsync().catch(() => {})
-
-    _preloadNext(index + 1, session)
-
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) return
-      if (status.didJustFinish) {
-        sound.unloadAsync().catch(() => {})
-        if (_sound === sound) _sound = null
-        if (_isPlaying && _session === session) _playChain(index + 1, session)
-      }
-    })
-  } catch {
-    if (_isPlaying && _session === session) _playChain(index + 1, session)
-  }
-}
-
-export async function startQuranPlaybackFromIndex(index: number) {
-  await Audio.setAudioModeAsync({
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: true,
-    allowsRecordingIOS: false,
-  })
-  if (_sound) {
-    try { await _sound.stopAsync(); await _sound.unloadAsync() } catch {}
-    _sound = null
-  }
-  _session++
-  const mySession = _session
-  _isPlaying = true
-  _isPaused = false
-  const store = useQuranAudioStore.getState()
+  if (!store.isPaused) return
   store.setIsPlaying(true)
   store.setIsPaused(false)
-  // Play Bismillah only when starting from the very beginning (index 0)
-  const bismillahUrl = index === 0 && _surahNumber !== 1 && _surahNumber !== 9
-    ? _getBismillahUrl()
-    : null
-  if (bismillahUrl) {
-    _playBismillahThenChain(bismillahUrl, mySession)
-  } else {
-    _playChain(index, mySession)
-  }
+  try { await TrackPlayer.play() } catch {}
 }
 
 export async function startQuranPlayback() {
-  if (!_ayahs.length) return
-  await Audio.setAudioModeAsync({
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: true,
-    allowsRecordingIOS: false,
-  })
-  if (_sound) {
-    try { await _sound.stopAsync(); await _sound.unloadAsync() } catch {}
-    _sound = null
-  }
-  _session++
-  const mySession = _session
-  _isPlaying = true
-  _isPaused = false
-  useQuranAudioStore.getState().setIsPlaying(true)
-  useQuranAudioStore.getState().setIsPaused(false)
+  if (!_ayahs.length || Platform.OS === 'web' || !TrackPlayer) return
+  const includeBismillah = _surahNumber !== 1 && _surahNumber !== 9
+  const tracks = _buildTracks(includeBismillah)
+  if (!tracks.length) return
 
-  // Play Bismillah first for all surahs except Al-Fatiha (1) and At-Tawba (9)
-  const bismillahUrl = _surahNumber !== 1 && _surahNumber !== 9 ? _getBismillahUrl() : null
-  if (bismillahUrl) {
-    _playBismillahThenChain(bismillahUrl, mySession)
-  } else {
-    _playChain(0, mySession)
-  }
+  const store = useQuranAudioStore.getState()
+  store.setIsPlaying(true)
+  store.setIsPaused(false)
+  try {
+    await TrackPlayer.reset()
+    await TrackPlayer.add(tracks)
+    await TrackPlayer.play()
+  } catch {}
 }
 
-// ── Navigation controls (used by media notification action handlers) ──────────
+export async function startQuranPlaybackFromIndex(index: number) {
+  if (!_ayahs.length || Platform.OS === 'web' || !TrackPlayer) return
+  const includeBismillah = index === 0 && _surahNumber !== 1 && _surahNumber !== 9
+  const tracks = _buildTracks(includeBismillah)
+  if (!tracks.length) return
 
-/** Toggle between play and pause. */
+  const store = useQuranAudioStore.getState()
+  store.setIsPlaying(true)
+  store.setIsPaused(false)
+  try {
+    await TrackPlayer.reset()
+    await TrackPlayer.add(tracks)
+
+    // Skip to the appropriate queue position when not starting from the top
+    if (index > 0) {
+      const ayah = _ayahs[index]
+      if (ayah) {
+        const qIdx = _numberToQueueIndex.get(ayah.numberInSurah)
+        if (qIdx !== undefined && qIdx > 0) {
+          await TrackPlayer.skip(qIdx)
+        }
+      }
+    }
+
+    await TrackPlayer.play()
+  } catch {}
+}
+
 export async function toggleQuranPlayback() {
-  if (_isPlaying) {
+  const store = useQuranAudioStore.getState()
+  if (store.isPlaying) {
     await pauseQuranAudio()
-  } else if (_isPaused) {
+  } else if (store.isPaused) {
     await resumeQuranAudio()
   }
 }
 
-/** Skip to the next ayah. */
 export async function nextQuranAyah() {
-  if (!_isPlaying && !_isPaused) return
-  let nextIdx = _currentIndex + 1
-  while (nextIdx < _ayahs.length && !_ayahs[nextIdx]?.audio) nextIdx++
-  if (nextIdx >= _ayahs.length) return
-  await startQuranPlaybackFromIndex(nextIdx)
+  if (Platform.OS === 'web' || !TrackPlayer) return
+  try {
+    await TrackPlayer.skipToNext()
+    await TrackPlayer.play()
+  } catch {}
 }
 
-/** Go back to the previous ayah (or restart current if near the beginning). */
 export async function prevQuranAyah() {
-  if (!_isPlaying && !_isPaused) return
-  let prevIdx = _currentIndex - 1
-  while (prevIdx >= 0 && !_ayahs[prevIdx]?.audio) prevIdx--
-  await startQuranPlaybackFromIndex(Math.max(0, prevIdx))
+  if (Platform.OS === 'web' || !TrackPlayer) return
+  try {
+    await TrackPlayer.skipToPrevious()
+    await TrackPlayer.play()
+  } catch {}
 }

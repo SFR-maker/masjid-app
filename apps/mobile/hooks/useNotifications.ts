@@ -27,16 +27,6 @@ if (Platform.OS !== 'web') {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#14532D',
     }).catch(() => {})
-
-    // Quran media player channel — no sound/vibration for silent media controls
-    Notifications.setNotificationChannelAsync('quran_player', {
-      name: 'Quran Player',
-      importance: Notifications.AndroidImportance.LOW,
-      sound: undefined,
-      enableVibrate: false,
-      showBadge: false,
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    }).catch(() => {})
   }
 }
 
@@ -54,23 +44,6 @@ export async function setupAdhanCategory() {
   } catch {}
 }
 
-/** Register notification action categories for the Quran media player.
- *  Call once on app start (before any Quran notification is shown). */
-export async function setupQuranPlayerCategory() {
-  if (Platform.OS === 'web') return
-  try {
-    await Notifications.setNotificationCategoryAsync('quran_playing', [
-      { identifier: 'quran_prev',  buttonTitle: '⏮',       options: { opensAppToForeground: false } },
-      { identifier: 'quran_pause', buttonTitle: '⏸ Pause', options: { opensAppToForeground: false } },
-      { identifier: 'quran_next',  buttonTitle: '⏭',       options: { opensAppToForeground: false } },
-    ])
-    await Notifications.setNotificationCategoryAsync('quran_paused', [
-      { identifier: 'quran_prev', buttonTitle: '⏮',      options: { opensAppToForeground: false } },
-      { identifier: 'quran_play', buttonTitle: '▶ Play', options: { opensAppToForeground: false } },
-      { identifier: 'quran_next', buttonTitle: '⏭',      options: { opensAppToForeground: false } },
-    ])
-  } catch {}
-}
 
 export function useUnreadNotificationCount() {
   const [isActive, setIsActive] = useState(AppState.currentState === 'active')

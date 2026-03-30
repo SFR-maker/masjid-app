@@ -1,6 +1,6 @@
 import { useEffect, Component, ReactNode, useMemo } from 'react'
 import { setupAdhanChannel } from '../hooks/useAdhanScheduler'
-import { usePushNotificationSetup, setupQuranPlayerCategory, setupAdhanCategory } from '../hooks/useNotifications'
+import { usePushNotificationSetup, setupAdhanCategory } from '../hooks/useNotifications'
 import { View, ActivityIndicator, Text, ScrollView, Platform } from 'react-native'
 import { Stack, router } from 'expo-router'
 import NowPlayingBar from '../components/NowPlayingBar'
@@ -123,7 +123,25 @@ function RootNavigator() {
   useEffect(() => {
     setupAdhanChannel().catch(console.warn)
     setupAdhanCategory().catch(console.warn)
-    setupQuranPlayerCategory().catch(console.warn)
+  }, [])
+
+  // ── react-native-track-player: initialize once for Quran lock screen widget ─
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    const TrackPlayer = require('react-native-track-player').default
+    const { Capability } = require('react-native-track-player')
+    TrackPlayer.setupPlayer({ autoHandleInterruptions: true })
+      .then(() => TrackPlayer.updateOptions({
+        capabilities: [
+          Capability.Play,
+          Capability.Pause,
+          Capability.SkipToNext,
+          Capability.SkipToPrevious,
+          Capability.Stop,
+        ],
+        compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToNext],
+      }))
+      .catch(console.warn)
   }, [])
 
   // ── Notification tap handler: Quran controls + deep links ────────────────

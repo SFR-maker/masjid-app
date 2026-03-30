@@ -36,7 +36,7 @@ export const ADHANS = [
 export type AdhanId = typeof ADHANS[number]['id']
 
 export const ADHAN_SELECTION_KEY = 'adhan_selection'
-const ADHAN_TAG = 'adhan-prayer'
+export const ADHAN_TAG = 'adhan-prayer'
 
 export function getAdhanUrl(id: string): string {
   return ADHANS.find(a => a.id === id)?.url ?? ADHANS[0].url
